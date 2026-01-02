@@ -1,4 +1,4 @@
-name: Build Expo APK
+name: Build Expo Release APK (Auto Signed)
 
 on:
   push:
@@ -30,18 +30,29 @@ jobs:
         run: npm install
 
       - name: Expo Prebuild
-        # بيحول مشروع الإكسبو لملفات أندرويد حقيقية عشان نقدر نبنيها
         run: npx expo prebuild
 
-      - name: Build APK (Debug)
-        # بنعمل Debug APK لأنه مش بيحتاج مفاتيح تشفير (Keystore) ويشتغل على أي موبايل
+      # الخطوة دي السحر كله: بنعمل مفتاح وهمي في وقت التشغيل
+      - name: Generate Temporary Keystore
+        run: |
+          keytool -genkey -v -keystore android/app/temp.keystore \
+          -alias mykeyalias \
+          -keyalg RSA -keysize 2048 -validity 10000 \
+          -storepass password123 -keypass password123 \
+          -dname "CN=Temp, OU=Temp, O=Temp, L=Temp, S=Temp, C=TE"
+
+      - name: Build Release APK
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleRelease \
+            -Pandroid.injected.signing.store.file=$(pwd)/app/temp.keystore \
+            -Pandroid.injected.signing.store.password=password123 \
+            -Pandroid.injected.signing.key.alias=mykeyalias \
+            -Pandroid.injected.signing.key.password=password123
 
       - name: Upload APK
         uses: actions/upload-artifact@v3
         with:
-          name: expo-app-debug
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: app-release
+          path: android/app/build/outputs/apk/release/app-release.apk
