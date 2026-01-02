@@ -15,7 +15,7 @@
     "expo-web-browser": "~15.0.10",
     "react-native-svg": "15.12.1",
     "expo-auth-session": "~7.0.10",
-    "expo-image-picker": "~17.0.10",
+    "expo-image-picker": "~17.0.10", 
     "expo-task-manager": "~14.0.9",
     "@expo/vector-icons": "^15.0.3",
     "expo-notifications": "~0.32.15",
