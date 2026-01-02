@@ -25,8 +25,11 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      # دي الخطوة الجديدة: بنصلح ملف package.json أوتوماتيك ونشيل السطر البايظ
+      - name: Fix package.json errors
+        run: sed -i '/"react-native-vector-icons\/Ionicons"/d' package.json
+
       - name: Install Dependencies
-        # التعديل هنا: ضفنا --legacy-peer-deps عشان يتجاهل مشاكل الإصدارات
         run: npm install --legacy-peer-deps
 
       - name: Expo Prebuild
