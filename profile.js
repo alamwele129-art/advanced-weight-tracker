@@ -4,43 +4,37 @@ import {
   StatusBar, Platform, Alert, I18nManager, ActivityIndicator
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'; 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, CommonActions } from '@react-navigation/native';
 import { supabase } from './supabaseClient';
 
-// ========================> ✨ بداية التعديل المطلوب ✨ <========================
-// (1) استخدام المفتاح الصحيح لبيانات الاشتراك
 const USER_SUBSCRIPTION_DATA_KEY = '@App:userSubscriptionData';
-// ========================> 🔚 نهاية التعديل المطلوب 🔚 <========================
 
 const translations = {
   en: {
     profile: 'Profile', settings: 'Settings', aboutApp: 'About App', logout: 'Logout',
-    loadingEmail: 'Loading email...', emailNotFound: 'Email not found', errorLoadingData: 'Error loading data',
-    userNamePlaceholder: 'User Name', edit: 'Edit', logoutConfirmTitle: 'Logout',
+    loadingEmail: 'Loading...', emailNotFound: 'Data saved on device', errorLoadingData: 'Error loading data',
+    userNamePlaceholder: 'Guest User', edit: 'Edit', logoutConfirmTitle: 'Logout',
     logoutConfirmMessage: 'Are you sure you want to log out?', logoutErrorTitle: 'Logout Error',
     logoutErrorMessage: 'Could not log out. Please try again.', ok: 'OK', cancel: 'Cancel',
-    editProfile: 'Edit Profile', editProfileNotSetup: 'Navigation to edit profile screen is not set up.',
-    languageChangeAlertTitle: "Language Change",
-    languageChangeAlertMessage: "Please restart the app for language changes to take full effect.",
-    loadingProfile: "Loading Profile...",
+    editProfile: 'Edit Profile', 
     upgradeToPremium: 'Upgrade to Premium',
-    manageSubscription: 'Manage Subscription',
     premiumMember: 'Premium Member',
+    signInSync: 'Sign in / Sync Data',
+    guestDesc: 'Sign in to save your data permanently',
   },
   ar: {
-    profile: 'الملف الشخصي', settings: 'الإعدادات', aboutApp: 'حول التطبيق', logout: 'تسجيل الخروج',
-    loadingEmail: 'جار تحميل البريد...', emailNotFound: 'لم يتم العثور على البريد الإلكتروني', errorLoadingData: 'خطأ في تحميل البيانات',
-    userNamePlaceholder: 'اسم المستخدم', edit: 'تعديل', logoutConfirmTitle: 'تسجيل الخروج',
+    profile: 'الملف الشخصي', settings: 'الإعدادات', aboutApp: 'حول التطبيق', logout: 'تسجيل الدخول / مزامنة',
+    loadingEmail: 'جار التحميل...', emailNotFound: 'البيانات محفوظة على الجهاز', errorLoadingData: 'خطأ في تحميل البيانات',
+    userNamePlaceholder: 'زائر', edit: 'تعديل', logoutConfirmTitle: 'تسجيل الخروج',
     logoutConfirmMessage: 'هل أنت متأكد أنك تريد تسجيل الخروج؟', logoutErrorTitle: 'خطأ في تسجيل الخروج',
     logoutErrorMessage: 'تعذر تسجيل الخروج. يرجى المحاولة مرة أخرى.', ok: 'موافق', cancel: 'إلغاء',
-    editProfile: 'تعديل الملف الشخصي', editProfileNotSetup: 'الانتقال إلى شاشة تعديل الملف الشخصي غير مجهز.',
-    languageChangeAlertTitle: "تغيير اللغة",
-    languageChangeAlertMessage: "يرجى إعادة تشغيل التطبيق لتطبيق تغييرات اللغة بشكل كامل.",
-    loadingProfile: "جار تحميل الملف الشخصي...",
+    editProfile: 'تعديل الملف الشخصي', 
     upgradeToPremium: 'الترقية إلى بريميوم',
-    manageSubscription: 'إدارة الاشتراك',
     premiumMember: 'عضو مميز',
+    signInSync: 'تسجيل الدخول / مزامنة البيانات',
+    guestDesc: 'سجل دخولك لحفظ بياناتك من الضياع',
   },
 };
 const colors = {
@@ -63,10 +57,7 @@ const darkTheme = {
 const ICON_SIZE = 24;
 const HEADER_ICON_SIZE = 28;
 const DEFAULT_PROFILE_ASSET = require('./assets/profile.png');
-// ========================> ✨ بداية التعديل المطلوب ✨ <========================
-// (2) إضافة أيقونة التاج
 const CROWN_ICON_ASSET = require('./assets/crown.png');
-// ========================> 🔚 نهاية التعديل المطلوب 🔚 <========================
 const USER_PROFILE_DATA_KEY = '@Profile:userProfileData';
 const LOGGED_IN_EMAIL_KEY = 'loggedInUserEmail';
 
@@ -86,12 +77,9 @@ const getStyles = (themeMode) => {
     profilePicContainer: { marginTop: 25, marginBottom: 15, width: 110, height: 110, borderRadius: 55, overflow: 'hidden', borderWidth: 3, borderColor: theme.profileBorder, shadowColor: theme.shadow, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.15, shadowRadius: 3, elevation: 3, backgroundColor: theme.placeholderBg },
     profilePic: { width: '100%', height: '100%' },
     userInfoContainer: { alignItems: 'center', marginBottom: 25 },
-    // ========================> ✨ بداية التعديل المطلوب ✨ <========================
-    // (3) تعديل الستايل الخاص باسم المستخدم لدعم الأيقونة بجانبه
     userNameContainer: { flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
     userName: { fontSize: 20, fontWeight: 'bold', color: theme.text, textAlign: 'center' },
     premiumBadge: { width: 20, height: 20, marginLeft: I18nManager.isRTL ? 0 : 8, marginRight: I18nManager.isRTL ? 8 : 0 },
-    // ========================> 🔚 نهاية التعديل المطلوب 🔚 <========================
     userEmail: { fontSize: 14, color: theme.subtleText, textAlign: 'center' },
     menuContainer: { width: '100%' },
     menuItem: { flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 15, width: '100%' },
@@ -99,6 +87,7 @@ const getStyles = (themeMode) => {
     menuIcon: { width: ICON_SIZE, height: ICON_SIZE, marginRight: I18nManager.isRTL ? 0 : 15, marginLeft: I18nManager.isRTL ? 15 : 0 },
     menuText: { fontSize: 16, color: theme.text, textAlign: I18nManager.isRTL ? 'right' : 'left' },
     logoutText: { color: theme.logoutText },
+    syncText: { color: theme.primary, fontWeight: 'bold' },
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.background },
     loadingText: { fontSize: 18, marginTop: 10, color: theme.text }
   });
@@ -112,6 +101,7 @@ const ProfileScreen = ({
   const [currentLanguage, setCurrentLanguage] = useState(language || (I18nManager.isRTL ? 'ar' : 'en'));
   const [currentThemeMode, setCurrentThemeMode] = useState(darkMode ? 'dark' : 'light');
   const [isPremium, setIsPremium] = useState(false);
+  const [isGuest, setIsGuest] = useState(true); 
   const t = useCallback((key) => { return translations[currentLanguage]?.[key] || translations['en']?.[key] || key; }, [currentLanguage]);
   const [displayedUsername, setDisplayedUsername] = useState(() => t('userNamePlaceholder'));
   const [displayedEmail, setDisplayedEmail] = useState(() => t('loadingEmail'));
@@ -129,8 +119,6 @@ const ProfileScreen = ({
 
   const loadProfileData = useCallback(async () => {
     try {
-      // ========================> ✨ بداية التعديل المطلوب ✨ <========================
-      // (4) تحديث طريقة قراءة حالة الاشتراك
       const [userProfileDataString, loggedInUserEmail, subscriptionDataString] = await Promise.all([
         AsyncStorage.getItem(USER_PROFILE_DATA_KEY),
         AsyncStorage.getItem(LOGGED_IN_EMAIL_KEY),
@@ -146,11 +134,18 @@ const ProfileScreen = ({
         }
       }
       
-      setDisplayedUsername(profileData.username || t('userNamePlaceholder'));
-      setDisplayedEmail(loggedInUserEmail || t('emailNotFound'));
+      if (loggedInUserEmail) {
+          setIsGuest(false);
+          setDisplayedUsername(profileData.username || t('userNamePlaceholder'));
+          setDisplayedEmail(loggedInUserEmail);
+      } else {
+          setIsGuest(true);
+          setDisplayedUsername(t('userNamePlaceholder')); 
+          setDisplayedEmail(t('emailNotFound')); 
+      }
+
       setProfileImageUri(profileData.profileImageUrl || null);
       setIsPremium(isSubscribed);
-      // ========================> 🔚 نهاية التعديل المطلوب 🔚 <========================
     } catch (error) {
       console.error("[ProfileScreen] Error loading profile data:", error);
       setDisplayedEmail(t('errorLoadingData'));
@@ -164,7 +159,19 @@ const ProfileScreen = ({
   const handleUpgradePress = () => { if (navigateToPremium) navigateToPremium(); };
   const handleSettingsPress = () => { if (navigateToSettings) navigateToSettings(); };
   const handleAboutPress = () => { if (navigateToAbout) navigateToAbout(); };
-  const handleEditProfilePress = () => { if (navigateToEditProfile) navigateToEditProfile(); };
+  
+  // ==========================================================
+  // ✨ التعديل هنا: زرار الأيقونة العلوية يرجع لـ Index لو زائر
+  // ==========================================================
+  const handleEditProfilePress = () => { 
+      if (isGuest) {
+          // ✅ إعادة تعيين المسار والذهاب لصفحة البداية (Get Started)
+          navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name: 'Index' }] }));
+      } else {
+          if (navigateToEditProfile) navigateToEditProfile(); 
+      }
+  };
+  
   const handleGoBack = () => { if (goBack) goBack(); };
   
   const handleLogoutPress = () => {
@@ -178,12 +185,7 @@ const ProfileScreen = ({
             try {
               const { error } = await supabase.auth.signOut();
               if (error) throw error; 
-
-              // ========================> ✨ بداية التعديل المطلوب ✨ <========================
-              // (5) حذف مفتاح الاشتراك الصحيح عند الخروج
               await AsyncStorage.multiRemove([LOGGED_IN_EMAIL_KEY, USER_PROFILE_DATA_KEY, USER_SUBSCRIPTION_DATA_KEY]);
-              // ========================> 🔚 نهاية التعديل المطلوب 🔚 <========================
-              
               navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name: 'Index' }] }));
             } catch (error) {
               console.error("Logout Failed:", error);
@@ -193,6 +195,10 @@ const ProfileScreen = ({
           style: 'destructive',
         },
       ], { cancelable: true });
+  };
+
+  const handleSyncPress = () => {
+      navigation.navigate('Login'); 
   };
 
   const styles = getStyles(currentThemeMode);
@@ -225,8 +231,9 @@ const ProfileScreen = ({
         <View style={styles.card}>
            <View style={styles.cardTopIcons}>
              <View style={styles.iconPlaceholder} />
+             {/* الأيقونة العلوية: باب دخول (لو زائر) أو قلم تعديل (لو مسجل) */}
              <TouchableOpacity style={styles.iconButton} onPress={handleEditProfilePress}>
-               <Icon name="create-outline" size={ICON_SIZE} color={currentThemeColors.iconOnCard} />
+               <Icon name={isGuest ? "log-in-outline" : "create-outline"} size={ICON_SIZE} color={currentThemeColors.iconOnCard} />
              </TouchableOpacity>
            </View>
 
@@ -234,8 +241,6 @@ const ProfileScreen = ({
              <Image source={profileImageSource} style={styles.profilePic} key={imageKey} resizeMode="cover" onError={() => setProfileImageUri(null)} />
            </View>
            
-           {/* ========================> ✨ بداية التعديل المطلوب ✨ <======================== */}
-           {/* (6) عرض اسم المستخدم مع أيقونة التاج إذا كان مشتركًا */}
            <View style={styles.userInfoContainer}>
                 <View style={styles.userNameContainer}>
                     <Text style={styles.userName} numberOfLines={1}>{displayedUsername}</Text>
@@ -248,12 +253,12 @@ const ProfileScreen = ({
                     )}
                 </View>
                 <Text style={styles.userEmail} numberOfLines={1}>{displayedEmail}</Text>
+                {isGuest && (
+                    <Text style={{fontSize: 12, color: colors.primaryGreen, marginTop: 5}}>{t('guestDesc')}</Text>
+                )}
            </View>
-           {/* ========================> 🔚 نهاية التعديل المطلوب 🔚 <======================== */}
 
            <View style={styles.menuContainer}>
-             {/* ========================> ✨ بداية التعديل المطلوب ✨ <======================== */}
-             {/* (7) عرض "عضو مميز" أو "الترقية" بناءً على حالة الاشتراك */}
              {isPremium ? (
                 <View style={styles.menuItem}>
                     <View style={styles.menuItemContent}>
@@ -273,7 +278,6 @@ const ProfileScreen = ({
                     <Icon name={I18nManager.isRTL ? "chevron-back-outline" : "chevron-forward-outline"} size={ICON_SIZE - 2} color={currentThemeColors.arrowOnCard} />
                 </TouchableOpacity>
              )}
-             {/* ========================> 🔚 نهاية التعديل المطلوب 🔚 <======================== */}
              
              <TouchableOpacity style={styles.menuItem} onPress={handleSettingsPress} activeOpacity={0.6}>
                <View style={styles.menuItemContent}>
@@ -291,13 +295,23 @@ const ProfileScreen = ({
                <Icon name={I18nManager.isRTL ? "chevron-back-outline" : "chevron-forward-outline"} size={ICON_SIZE - 2} color={currentThemeColors.arrowOnCard} />
              </TouchableOpacity>
 
-             <TouchableOpacity style={styles.menuItem} onPress={handleLogoutPress} activeOpacity={0.6}>
-               <View style={styles.menuItemContent}>
-                 <Icon name="log-out-outline" size={ICON_SIZE} color={currentThemeColors.logoutText} style={styles.menuIcon} />
-                 <Text style={[styles.menuText, styles.logoutText]}>{t('logout')}</Text>
-               </View>
-               <Icon name={I18nManager.isRTL ? "chevron-back-outline" : "chevron-forward-outline"} size={ICON_SIZE - 2} color={currentThemeColors.arrowOnCard} />
-             </TouchableOpacity>
+             {isGuest ? (
+                 <TouchableOpacity style={styles.menuItem} onPress={handleSyncPress} activeOpacity={0.6}>
+                    <View style={styles.menuItemContent}>
+                      <MaterialCommunityIcons name="cloud-sync-outline" size={ICON_SIZE} color={colors.primaryGreen} style={styles.menuIcon} />
+                      <Text style={[styles.menuText, styles.syncText]}>{t('signInSync')}</Text>
+                    </View>
+                    <Icon name={I18nManager.isRTL ? "chevron-back-outline" : "chevron-forward-outline"} size={ICON_SIZE - 2} color={currentThemeColors.arrowOnCard} />
+                  </TouchableOpacity>
+             ) : (
+                 <TouchableOpacity style={styles.menuItem} onPress={handleLogoutPress} activeOpacity={0.6}>
+                   <View style={styles.menuItemContent}>
+                     <Icon name="log-out-outline" size={ICON_SIZE} color={currentThemeColors.logoutText} style={styles.menuIcon} />
+                     <Text style={[styles.menuText, styles.logoutText]}>{t('logout')}</Text>
+                   </View>
+                   <Icon name={I18nManager.isRTL ? "chevron-back-outline" : "chevron-forward-outline"} size={ICON_SIZE - 2} color={currentThemeColors.arrowOnCard} />
+                 </TouchableOpacity>
+             )}
           </View>
         </View>
         <View style={{ height: 30 }} />

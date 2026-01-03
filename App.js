@@ -4,13 +4,13 @@ import { NavigationContainer, CommonActions } from "@react-navigation/native";
 import { createStackNavigator } from '@react-navigation/stack';
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { I18nManager, useColorScheme, Alert, View, Button, Text } from 'react-native';
+import { I18nManager, useColorScheme, Alert, View, ActivityIndicator } from 'react-native';
 import RNRestart from 'react-native-restart';
 import { supabase } from './supabaseClient'; 
 
 // --- Screen Imports ---
 import IndexScreen from "./Index";
-import WeightTracker from "./weighttracker"; // تأكد من صحة المسار
+import WeightTracker from "./weighttracker";
 import FoodScreen from "./food"; 
 import WaterTrackingScreen from "./water";
 import StepsScreen from "./steps";
@@ -34,7 +34,7 @@ import CaloriesDetailsScreen from './Calories';
 import ActiveTimeDetailsScreen from './ActiveTime';
 import PremiumScreen from './PremiumScreen'; 
 
-import { initializeNotificationsAndTasks, enableDailyNotifications, disableDailyNotifications } from './notificationService';
+import { enableDailyNotifications, disableDailyNotifications } from './notificationService';
 import { APP_LANGUAGE_KEY, APP_DARK_MODE_KEY, INTENDED_ROUTE_AFTER_RESTART_KEY, appTranslations as globalAppTranslations } from './constants'; 
 
 const Stack = createStackNavigator();
@@ -45,8 +45,10 @@ const defaultGlobalAppTranslations = {
 };
 const effectiveGlobalAppTranslations = globalAppTranslations || defaultGlobalAppTranslations;
 
-const AuthStack = ({ language, darkMode }) => (
-  <Stack.Navigator screenOptions={{ headerShown: false }}>
+// ✅ دمجنا كل الشاشات هنا في RootStack
+const RootStack = ({ language, darkMode, handlers, initialRoute }) => (
+  <Stack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false }}>
+    {/* --- شاشات البداية والتوثيق --- */}
     <Stack.Screen name="Index">
         {(props) => <IndexScreen {...props} language={language} darkMode={darkMode} />}
     </Stack.Screen>
@@ -65,16 +67,11 @@ const AuthStack = ({ language, darkMode }) => (
     <Stack.Screen name="ResetPassword">
         {(props) => <ResetPasswordScreen {...props} language={language} darkMode={darkMode} />}
     </Stack.Screen>
-  </Stack.Navigator>
-);
 
-const AppStack = ({ language, darkMode, handlers }) => (
-  <Stack.Navigator initialRouteName="Weight" screenOptions={{ headerShown: false }}>
-    {/* الشاشة الرئيسية التي تحتوي على الشريط السفلي */}
+    {/* --- شاشات التطبيق الأساسية --- */}
     <Stack.Screen name="Weight">
       {(props) => <WeightTracker {...props} language={language} darkMode={darkMode} />}
     </Stack.Screen>
-    {/* بقية الشاشات يمكن الوصول إليها مباشرة أو عبر الروابط الداخلية */}
     <Stack.Screen name="Food">
       {(props) => <FoodScreen {...props} language={language} darkMode={darkMode} />}
     </Stack.Screen>
@@ -233,21 +230,20 @@ const App = () => {
     return <SplashScreen />;
   }
 
+  // ✅ تحديد شاشة البداية
+  // لو فيه سيشن -> ابدأ بـ Weight
+  // لو مفيش سيشن -> ابدأ بـ Index
+  const initialRouteName = session && session.user ? "Weight" : "Index";
+
   return (
     <SafeAreaProvider>
       <NavigationContainer ref={navigationRef} onReady={onNavigationReady}>
-        {session && session.user ? (
-          <AppStack 
+          <RootStack 
             language={appLanguage} 
             darkMode={isAppDarkMode} 
             handlers={{ handleChangeLanguage, handleToggleDarkMode }} 
+            initialRoute={initialRouteName}
           />
-        ) : (
-          <AuthStack 
-            language={appLanguage} 
-            darkMode={isAppDarkMode} 
-          />
-        )}
       </NavigationContainer>
     </SafeAreaProvider>
   );

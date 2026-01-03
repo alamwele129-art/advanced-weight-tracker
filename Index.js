@@ -43,6 +43,12 @@ const IndexScreen = ({ language }) => {
     }
   };
 
+  const handleStart = () => {
+      // ✅ هنا التعديل: التوجيه مباشرة للصفحة الرئيسية أو صفحة إعداد البيانات الأولية
+      // تأكد أن اسم الشاشة هنا يطابق اسم الـ Tab Navigator أو الصفحة الرئيسية في App.js
+      navigation.replace('Weight'); // أو 'WeightTracker' حسب تسميتك
+  };
+
   const currentTexts = texts[language] || texts['en']; 
 
   return (
@@ -59,12 +65,11 @@ const IndexScreen = ({ language }) => {
                 <Text style={styles.heading}>{currentTexts[currentSection].heading}</Text>
                 <Text style={styles.paragraph}>{currentTexts[currentSection].paragraph}</Text>
               </View>
+              {/* ✅ زرار واحد كبير للبدء فوراً */}
               <View style={styles.buttonContainer}>
-                <TouchableOpacity style={styles.signInButton} onPress={() => navigation.navigate('Login')}>
-                  <Text style={styles.signInText}>{language === 'en' ? "Sign in" : "تسجيل الدخول"}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.signUpButton} onPress={() => navigation.navigate('SignUp')}>
-                  <Text style={styles.signUpText}>{language === 'en' ? "Sign up" : "تسجيل"}</Text>
+                <TouchableOpacity style={styles.startButton} onPress={handleStart}>
+                  <Text style={styles.startButtonText}>{language === 'en' ? "Get Started" : "ابدأ الآن"}</Text>
+                  <MaterialIcons name={language === 'en' ? "arrow-forward" : "arrow-back"} size={20} color="#fff" style={{marginLeft: 10}} />
                 </TouchableOpacity>
               </View>
             </>
@@ -76,13 +81,11 @@ const IndexScreen = ({ language }) => {
           )}
 
           <View style={styles.bottomContainer}>
-            {/* زر اليسار */}
             <TouchableOpacity 
                 style={[styles.navButton, styles.leftButton, { opacity: currentSection > 0 ? 1 : 0 }]} 
                 onPress={() => showSection(currentSection - 1)}
                 disabled={currentSection === 0}
             >
-              {/* تم تصغير حجم السهم هنا إلى 24 */}
               <MaterialIcons name="arrow-back" size={24} color="#ffffff" />
             </TouchableOpacity>
 
@@ -92,13 +95,11 @@ const IndexScreen = ({ language }) => {
                 ))}
             </View>
 
-            {/* زر اليمين */}
             <TouchableOpacity 
                 style={[styles.navButton, styles.rightButton, { opacity: currentSection < 2 ? 1 : 0 }]} 
                 onPress={() => showSection(currentSection + 1)}
                 disabled={currentSection === 2}
             >
-               {/* تم تصغير حجم السهم هنا إلى 24 */}
               <MaterialIcons name="arrow-forward" size={24} color="#ffffff" />
             </TouchableOpacity>
           </View>
@@ -109,131 +110,41 @@ const IndexScreen = ({ language }) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  lightGreenBackground: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#d0f0c0',
-  },
-  fullGreenOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 128, 0, 0.2)',
-  },
-  image: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
-  },
-  greenOverlay: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  content: {
-    position: 'absolute',
-    bottom: height * 0.13,
-    left: 15,
-    right: 15,
-    alignItems: 'center',
-  },
-  upperContent: {
-    position: 'absolute',
-    bottom: height * 0.28,
-    left: 15,
-    right: 15,
-    alignItems: 'center',
-  },
-  heading: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-  paragraph: {
-    fontSize: 16,
-    color: '#ffffff',
-    textAlign: 'center',
-    lineHeight: 24,
-  },
-  buttonContainer: {
-    position: 'absolute',
-    bottom: height * 0.11,
-    width: '100%',
-    alignItems: 'center',
-  },
-  signInButton: {
-    width: '80%',
-    backgroundColor: 'rgba(76, 175, 80, 1)',
-    borderRadius: 30,
-    paddingVertical: 12,
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  signInText: {
-    color: '#ffffff',
-    fontSize: 16,
-  },
-  signUpButton: {
-    width: '80%',
-    backgroundColor: 'transparent',
-    borderWidth: 2,
-    borderColor: '#ffffff',
-    borderRadius: 30,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  signUpText: {
-    color: '#ffffff',
-    fontSize: 16,
-  },
-  bottomContainer: {
-    position: 'absolute',
-    bottom: 30,
-    left: 20,
-    right: 20,
-    height: 60,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pageIndicator: {
-    flexDirection: 'row',
-  },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
-    marginHorizontal: 5,
-  },
-  activeDot: {
-    backgroundColor: '#ffffff',
-  },
+  container: { flex: 1 },
+  lightGreenBackground: { ...StyleSheet.absoluteFillObject, backgroundColor: '#d0f0c0' },
+  fullGreenOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0, 128, 0, 0.2)' },
+  image: { flex: 1, width: '100%', height: '100%' },
+  greenOverlay: { ...StyleSheet.absoluteFillObject },
+  content: { position: 'absolute', bottom: height * 0.13, left: 15, right: 15, alignItems: 'center' },
+  upperContent: { position: 'absolute', bottom: height * 0.25, left: 15, right: 15, alignItems: 'center' },
+  heading: { fontSize: 24, fontWeight: 'bold', color: '#ffffff', textAlign: 'center', marginBottom: 10 },
+  paragraph: { fontSize: 16, color: '#ffffff', textAlign: 'center', lineHeight: 24 },
   
-  // --- تم تعديل الأبعاد هنا لتصغير الدائرة ---
-  navButton: {
+  // ✅ ستايل الزرار الجديد
+  buttonContainer: { position: 'absolute', bottom: height * 0.14, width: '100%', alignItems: 'center' },
+  startButton: {
+    width: '85%',
+    backgroundColor: '#4CAF50', // لون أخضر مميز
+    borderRadius: 30,
+    paddingVertical: 15,
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    width: 40,  // تم التصغير من 50 إلى 40
-    height: 40, // تم التصغير من 50 إلى 40
-    borderRadius: 20, // يجب أن يكون نصف العرض/الارتفاع
-    backgroundColor: 'rgba(76, 175, 80, 1)',
-    position: 'absolute',
+    elevation: 5,
     shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
-    elevation: 5,
   },
-  leftButton: {
-    left: 0,
-  },
-  rightButton: {
-    right: 0,
-  },
+  startButtonText: { color: '#ffffff', fontSize: 18, fontWeight: 'bold' },
+
+  bottomContainer: { position: 'absolute', bottom: 30, left: 20, right: 20, height: 60, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  pageIndicator: { flexDirection: 'row' },
+  dot: { width: 10, height: 10, borderRadius: 5, backgroundColor: 'rgba(255, 255, 255, 0.5)', marginHorizontal: 5 },
+  activeDot: { backgroundColor: '#ffffff' },
+  navButton: { justifyContent: 'center', alignItems: 'center', width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(76, 175, 80, 1)', position: 'absolute', shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84, elevation: 5 },
+  leftButton: { left: 0 },
+  rightButton: { right: 0 },
 });
 
 export default IndexScreen;

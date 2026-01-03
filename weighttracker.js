@@ -1,8 +1,10 @@
 ﻿import React, { useState, useEffect, useCallback } from 'react';
 import {
-    View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity, Dimensions,
+    View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions,
     Modal, TextInput, Alert, KeyboardAvoidingView, Platform, Image, ActivityIndicator
 } from 'react-native';
+// ✅ 1. استيراد المكتبة الضرورية والمكونات
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'; 
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { LineChart } from 'react-native-chart-kit';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -10,7 +12,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import tips from './tips';
 
 // --- استيراد الأيقونات والمكونات ---
-// تأكد من وجود هذه الصور في مجلد assets
 const weightNavIcon = require('./assets/balance.png');
 const foodNavIcon = require('./assets/restaurant.png');
 const waterNavIcon = require('./assets/water.png');
@@ -62,6 +63,9 @@ const getLocalDateString = (date) => { const year = date.getFullYear(); const mo
 const formatDisplayDate = (dateString, lang) => { const date = new Date(dateString); const utcDate = new Date(date.valueOf() + date.getTimezoneOffset() * 60000); return utcDate.toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US', { month: 'long', day: '2-digit', year: 'numeric' }); };
 
 const WeightTracker = ({ navigation, language, darkMode }) => {
+  // ✅ 2. تعريف الـ Hook عشان نجيب مسافة الأزرار
+  const insets = useSafeAreaInsets();
+  
   const [currentScreen, setCurrentScreen] = useState('weight');
   const [history, setHistory] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
@@ -291,6 +295,7 @@ const WeightTracker = ({ navigation, language, darkMode }) => {
       }
   };
     
+  // ✅ 3. تعديل الشريط السفلي ليدعم الـ Padding والارتفاع الديناميكي
   const renderNavBar = () => {
       const t = (key) => translations[language][key] || key;
       const styles = createStyles(darkMode, language === 'ar');
@@ -305,7 +310,14 @@ const WeightTracker = ({ navigation, language, darkMode }) => {
       const stepsRelatedScreens = ['steps', 'distance', 'calories', 'activeTime'];
 
       return (
-          <View style={styles.navBar}>
+          // هنا التعديل: زيادة الارتفاع بمقدار الـ inset وإضافة paddingBottom
+          <View style={[
+              styles.navBar, 
+              { 
+                  height: 10 + insets.bottom, 
+                  paddingBottom: 0 // نتأكد إن فيه مسافة كافية
+              }
+          ]}>
               {navItems.map((item) => {
                   const isActive = item.key === 'steps' ? stepsRelatedScreens.includes(currentScreen) : currentScreen === item.key;
                   const iconTintColor = isActive ? (darkMode ? '#00afa0' : '#388e3c') : (darkMode ? '#777' : '#adb5bd');
@@ -322,9 +334,6 @@ const WeightTracker = ({ navigation, language, darkMode }) => {
       );
   };
 
-  // ============================================================
-  // ✨ التعديل الجذري هنا في دالة renderScreenContent ✨
-  // ============================================================
 const renderScreenContent = () => {
       const isRTL = language === 'ar';
       const t = (key) => translations[language][key] || key;
@@ -335,13 +344,12 @@ const renderScreenContent = () => {
 
       return (
           <SafeAreaView style={safeAreaStyle}>
-              {/* الحاوية الرئيسية */}
               <View style={styles.mainContainer}>
                   
-                  {/* 1. المحتوى المتحرك (السكرول) */}
                   <View style={styles.contentContainer}>
                       <ScrollView 
-                        contentContainerStyle={styles.scrollContent} 
+                        // زودنا الـ padding عشان المحتوى ميختفيش ورا الشريط الطويل
+                        contentContainerStyle={[styles.scrollContent, { paddingBottom: 110 + insets.bottom }]} 
                         onScrollBeginDrag={hideTooltip} 
                         keyboardShouldPersistTaps="handled"
                         showsVerticalScrollIndicator={false}
@@ -350,20 +358,18 @@ const renderScreenContent = () => {
                       </ScrollView>
                   </View>
 
-                  {/* 2. منطقة التحكم السفلية (دي طبقة منفصلة تماماً فوق السكرول) */}
                   <View style={styles.bottomFloatingLayer} pointerEvents="box-none">
                       
-                      {/* زرار الزائد */}
                       {currentScreen === 'weight' && (
                           <TouchableOpacity 
-                              style={[styles.fab, isRTL ? { left: 20 } : { right: 20 }]} 
+                              // رفعنا زرار الزائد عشان يواكب ارتفاع الشريط الجديد
+                              style={[styles.fab, isRTL ? { left: 20 } : { right: 20 }, { bottom: 23 + insets.bottom }]} 
                               onPress={() => setModalVisible(true)}
                           >
                               <Icon name="plus" size={30} color="#fff" />
                           </TouchableOpacity>
                       )}
 
-                      {/* الشريط السفلي */}
                       <View style={styles.navBarContainer}>
                           {renderNavBar()}
                       </View>
@@ -371,7 +377,6 @@ const renderScreenContent = () => {
 
               </View>
 
-              {/* المودال */}
               <Modal animationType="fade" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
                   <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalCenteredView}>
                       <View style={styles.modalView}>
@@ -392,50 +397,39 @@ const renderScreenContent = () => {
   return renderScreenContent();
 };
 
-// ============================================================
-// ✨ تحديث الـ Styles لإصلاح التموضع ✨
-// ============================================================
 const createStyles = (isDark, isRTL) => StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: isDark ? '#121212' : '#f4f6f8' },
     
-    // الحاوية الأساسية (للويب والموبايل)
     mainContainer: {
         flex: 1,
         backgroundColor: 'transparent',
-        height: Platform.OS === 'web' ? '100vh' : '100%', // إجبار الويب على الالتزام بطول النافذة
-        overflow: 'hidden', // ممنوع أي حاجة تخرج بره حدود الشاشة
+        height: Platform.OS === 'web' ? '100vh' : '100%',
+        overflow: 'hidden',
     },
 
-    // حاوية المحتوى
     contentContainer: {
         flex: 1,
         width: '100%',
     },
 
-    // مساحة السكرول الداخلية
     scrollContent: { 
         padding: 16, 
-        paddingBottom: 120 // مساحة عشان المحتوى ميوصلش لحد الشريط ويختفي وراه
+        // paddingBottom is handled dynamically in render
     },
 
-    // ============================================================
-    // ✨ الطبقة العائمة الجديدة (الحل السحري) ✨
-    // ============================================================
     bottomFloatingLayer: {
         position: 'absolute',
         bottom: 0,
         left: 0,
         right: 0,
-        height: 120, // ارتفاع المنطقة اللي فيها الشريط والزرار
-        justifyContent: 'flex-end', // نزل كل حاجة لتحت
-        zIndex: 9999, // أعلى طبقة في التطبيق
+        justifyContent: 'flex-end',
+        zIndex: 9999,
         elevation: 20,
     },
 
-    // زرار الزائد (تعديل ليكون داخل الطبقة العائمة)
     fab: { 
         position: 'absolute',
-        bottom: 90, // يظهر فوق الشريط
+        // bottom is handled dynamically in render
         width: 60, 
         height: 60, 
         borderRadius: 30, 
@@ -449,34 +443,37 @@ const createStyles = (isDark, isRTL) => StyleSheet.create({
         shadowRadius: 3.84,
     },
 
-    // حاوية الشريط السفلي
     navBarContainer: {
         width: '100%',
         alignItems: 'center',
-        paddingBottom: 20, // مسافة من حافة الشاشة السفلية
+        paddingBottom: 0, 
     },
 
-    // تصميم الشريط نفسه
     navBar: { 
         flexDirection: 'row', 
         justifyContent: 'space-around', 
-        alignItems: 'center', 
+        alignItems: 'center', // توسيط عمودي للأيقونات
         
-        width: '92%', // العرض أقل من الشاشة عشان يبان عايم
-        height: 70, 
-        borderRadius: 35,
+        width: '100%', 
+        // height is handled dynamically
+        
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        borderBottomLeftRadius: 0,
+        borderBottomRightRadius: 0,
         
         backgroundColor: isDark ? '#1e1e1e' : '#ffffff', 
         
-        // الظلال والتجسيم
         shadowColor: isDark ? '#000' : '#b0b0b0',
-        shadowOffset: { width: 0, height: 5 },
-        shadowOpacity: 0.3,
-        shadowRadius: 6,
-        elevation: 10,
+        shadowOffset: { width: 0, height: -3 },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+        elevation: 15,
+        
+        // paddingBottom is handled dynamically
     },
     
-    // --- باقي الستايلات القديمة زي ما هي ---
+    // --- باقي الستايلات ---
     header: { alignItems: 'center', justifyContent: 'center', marginBottom: 16, position: 'relative' },
     screenTitle: { textAlign: 'center', fontSize: 28, fontWeight: 'bold', color: isDark ? '#e0e0e0' : '#2c3e50' },
     headerIcon: { position: 'absolute', [isRTL ? 'left' : 'right']: 0, padding: 5, },
@@ -514,8 +511,8 @@ const createStyles = (isDark, isRTL) => StyleSheet.create({
     tooltipUnitText: { color: 'white', fontWeight: 'normal', fontSize: 14, marginLeft: 4 },
     tooltipArrow: { width: 0, height: 0, borderLeftWidth: 6, borderRightWidth: 6, borderTopWidth: 6, borderStyle: 'solid', backgroundColor: 'transparent', borderLeftColor: 'transparent', borderRightColor: 'transparent', borderTopColor: 'black' },
     navItem: { alignItems: 'center', justifyContent: 'center', flex: 1, height: '100%', paddingTop: 5, },
-    navIconImage: { width: 30, height: 30, marginBottom: 5, resizeMode: 'contain' },
-    navText: { fontSize: 11, fontWeight: '500', textAlign: 'center', color: isDark ? '#777' : '#adb5bd', },
+    navIconImage: { width: 60, height: 60, marginBottom: -10, resizeMode: 'contain' },
+    navText: { fontSize: 11, fontWeight: '500', textAlign: 'center', color: isDark ? '#777' : '#adb5bd', bottom: 4, width: '100%', },
     activeNavText: { fontWeight: 'bold', color: isDark ? '#00afa0' : '#388e3c', },
     filterContainer: { flexDirection: 'row', justifyContent: 'center', marginBottom: 10, backgroundColor: isDark ? '#2c3e50' : '#ecf0f1', borderRadius: 8, padding: 4, },
     filterButton: { flex: 1, paddingVertical: 8, borderRadius: 6, alignItems: 'center', justifyContent: 'center', marginHorizontal: 2, },
