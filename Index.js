@@ -6,16 +6,14 @@ import {
   StyleSheet,
   TouchableOpacity,
   Dimensions,
-  Platform
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { AntDesign } from '@expo/vector-icons';
+import { MaterialIcons } from '@expo/vector-icons'; 
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 
 const { width, height } = Dimensions.get('window');
 
-// نصوص وصور الواجهة تبقى كما هي
 const texts = {
   en: [
     { heading: "Advanced Weight Tracker", paragraph: "Welcome to Advanced Weight Tracker! Discover amazing features to enhance your daily experience." },
@@ -35,13 +33,12 @@ const images = [
   'https://i.imgur.com/CPLIluy.jpeg'
 ];
 
-// الشاشة الآن تستقبل اللغة كـ prop من App.js
 const IndexScreen = ({ language }) => {
   const navigation = useNavigation();
   const [currentSection, setCurrentSection] = useState(0);
 
   const showSection = (sectionNumber) => {
-    if (sectionNumber >= 0 && sectionNumber < texts[language].length) {
+    if (sectionNumber >= 0 && sectionNumber < texts[language || 'en'].length) {
       setCurrentSection(sectionNumber);
     }
   };
@@ -79,12 +76,14 @@ const IndexScreen = ({ language }) => {
           )}
 
           <View style={styles.bottomContainer}>
+            {/* زر اليسار */}
             <TouchableOpacity 
                 style={[styles.navButton, styles.leftButton, { opacity: currentSection > 0 ? 1 : 0 }]} 
                 onPress={() => showSection(currentSection - 1)}
                 disabled={currentSection === 0}
             >
-              <AntDesign name="arrowleft" size={24} color="#ffffff" />
+              {/* تم تصغير حجم السهم هنا إلى 24 */}
+              <MaterialIcons name="arrow-back" size={24} color="#ffffff" />
             </TouchableOpacity>
 
             <View style={styles.pageIndicator}>
@@ -93,12 +92,14 @@ const IndexScreen = ({ language }) => {
                 ))}
             </View>
 
+            {/* زر اليمين */}
             <TouchableOpacity 
                 style={[styles.navButton, styles.rightButton, { opacity: currentSection < 2 ? 1 : 0 }]} 
                 onPress={() => showSection(currentSection + 1)}
                 disabled={currentSection === 2}
             >
-              <AntDesign name="arrowright" size={24} color="#ffffff" />
+               {/* تم تصغير حجم السهم هنا إلى 24 */}
+              <MaterialIcons name="arrow-forward" size={24} color="#ffffff" />
             </TouchableOpacity>
           </View>
         </ImageBackground>
@@ -127,18 +128,16 @@ const styles = StyleSheet.create({
   greenOverlay: {
     ...StyleSheet.absoluteFillObject,
   },
-  // --- التعديل الأول: رفع النص "حبة صغيرة" في أول صفحتين ---
   content: {
     position: 'absolute',
-    bottom: height * 0.13, // <<< --- زيادة طفيفة جداً
+    bottom: height * 0.13,
     left: 15,
     right: 15,
     alignItems: 'center',
   },
-  // --- التعديل الثاني: رفع النص "حبة صغيرة" في الصفحة الثالثة ---
   upperContent: {
     position: 'absolute',
-    bottom: height * 0.28, // <<< --- زيادة طفيفة جداً
+    bottom: height * 0.28,
     left: 15,
     right: 15,
     alignItems: 'center',
@@ -156,10 +155,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 24,
   },
-  // --- التعديل الثالث: رفع الأزرار "حبة صغيرة" في الصفحة الثالثة ---
   buttonContainer: {
     position: 'absolute',
-    bottom: height * 0.11, // <<< --- زيادة طفيفة جداً
+    bottom: height * 0.11,
     width: '100%',
     alignItems: 'center',
   },
@@ -193,7 +191,7 @@ const styles = StyleSheet.create({
     bottom: 30,
     left: 20,
     right: 20,
-    height: 50,
+    height: 60,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -211,13 +209,24 @@ const styles = StyleSheet.create({
   activeDot: {
     backgroundColor: '#ffffff',
   },
+  
+  // --- تم تعديل الأبعاد هنا لتصغير الدائرة ---
   navButton: {
     justifyContent: 'center',
     alignItems: 'center',
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,  // تم التصغير من 50 إلى 40
+    height: 40, // تم التصغير من 50 إلى 40
+    borderRadius: 20, // يجب أن يكون نصف العرض/الارتفاع
+    backgroundColor: 'rgba(76, 175, 80, 1)',
     position: 'absolute',
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   leftButton: {
     left: 0,
