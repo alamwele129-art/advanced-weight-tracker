@@ -3,9 +3,8 @@ import {
     View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions,
     Modal, TextInput, Alert, KeyboardAvoidingView, Platform, Image, ActivityIndicator
 } from 'react-native';
-// ✅ 1. استيراد المكتبة الضرورية والمكونات
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'; 
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useFocusEffect } from '@react-navigation/native';
 import { LineChart } from 'react-native-chart-kit';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -63,7 +62,6 @@ const getLocalDateString = (date) => { const year = date.getFullYear(); const mo
 const formatDisplayDate = (dateString, lang) => { const date = new Date(dateString); const utcDate = new Date(date.valueOf() + date.getTimezoneOffset() * 60000); return utcDate.toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US', { month: 'long', day: '2-digit', year: 'numeric' }); };
 
 const WeightTracker = ({ navigation, language, darkMode }) => {
-  // ✅ 2. تعريف الـ Hook عشان نجيب مسافة الأزرار
   const insets = useSafeAreaInsets();
   
   const [currentScreen, setCurrentScreen] = useState('weight');
@@ -188,6 +186,7 @@ const WeightTracker = ({ navigation, language, darkMode }) => {
     
     if (isLoading) { return (<View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', height: 400 }}><ActivityIndicator size="large" color={darkMode ? '#4CAF50' : '#388e3c'} /></View>); }
     if (history.length === 0) { return (<View style={{flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20}}><Text style={styles.loadingText}>No weight history yet.</Text><Text style={styles.loadingText}>Tap the '+' button to add your first weight!</Text></View>); }
+    
     const sortedHistory = [...history].sort((a, b) => new Date(b.date) - new Date(a.date)); 
     const currentEntry = sortedHistory[0]; 
     const startingEntry = sortedHistory[sortedHistory.length - 1]; 
@@ -229,10 +228,37 @@ const WeightTracker = ({ navigation, language, darkMode }) => {
         tooltipStyle = { left: tooltip.x - horizontalOffset, top: verticalOffset };
     }
     
-    return ( <View> <View style={[styles.header, dynamicStyles.row]}> <Text style={styles.screenTitle}>{t('weightTracker')}</Text> <TouchableOpacity onPress={handleProfilePress} style={styles.headerIcon}> <Image source={moreIcon} style={{ width: 55, height: 55 }} /> </TouchableOpacity> </View> <TouchableOpacity activeOpacity={1} onPress={hideTooltip}> <View style={styles.card}> <Text style={[styles.cardTitle, dynamicStyles.textAlign, dynamicStyles.rtlText]}>{t('currentStatus')}</Text> <View style={[styles.currentWeightContainer, dynamicStyles.row]}> <Text style={styles.currentWeight}>{currentEntry.weight.toFixed(1)} {t('kg')}</Text> <View style={[styles.changeBadge, { backgroundColor: totalChange <= 0 ? '#4CAF50' : '#F44336' }]}> <Icon name={totalChange <= 0 ? 'arrow-down-bold' : 'arrow-up-bold'} size={14} color="#fff" /> <Text style={styles.changeText}>{Math.abs(totalChange).toFixed(1)} {t('kg')}</Text> </View> </View> <Text style={[styles.lastUpdatedText, dynamicStyles.textAlign, dynamicStyles.rtlText]}>{t('lastUpdate')} {formatDisplayDate(currentEntry.date, language)}</Text> <View style={[styles.statsRow, dynamicStyles.row]}> <View style={styles.statItem}><Text style={styles.statLabel}>{t('starting')}</Text><Text style={styles.statValue}>{startingEntry.weight.toFixed(1)} {t('kg')}</Text></View> <View style={styles.statItem}><Text style={styles.statLabel}>{t('goal')}</Text><Text style={styles.statValue}>{goalWeight.toFixed(1)} {t('kg')}</Text></View> <View style={styles.statItem}><Text style={styles.statLabel}>{t('bmi')}</Text><Text style={styles.statValue}>{bmi}</Text></View> </View> </View> </TouchableOpacity> 
-    <View style={styles.card}> 
-        <Text style={[styles.cardTitle, dynamicStyles.textAlign, dynamicStyles.rtlText]}>{t('progressChart')}</Text> 
-        <View style={styles.filterContainer}>
+    return (
+      <View>
+        <View style={[styles.header, dynamicStyles.row]}>
+          <Text style={styles.screenTitle}>{t('weightTracker')}</Text>
+          <TouchableOpacity onPress={handleProfilePress} style={styles.headerIcon}>
+            <Image source={moreIcon} style={{ width: 55, height: 55 }} />
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity activeOpacity={1} onPress={hideTooltip}>
+          <View style={styles.card}>
+            <Text style={[styles.cardTitle, dynamicStyles.textAlign, dynamicStyles.rtlText]}>{t('currentStatus')}</Text>
+            <View style={[styles.currentWeightContainer, dynamicStyles.row]}>
+              <Text style={styles.currentWeight}>{currentEntry.weight.toFixed(1)} {t('kg')}</Text>
+              <View style={[styles.changeBadge, { backgroundColor: totalChange <= 0 ? '#4CAF50' : '#F44336' }]}>
+                <Icon name={totalChange <= 0 ? 'arrow-down-bold' : 'arrow-up-bold'} size={14} color="#fff" />
+                <Text style={styles.changeText}>{Math.abs(totalChange).toFixed(1)} {t('kg')}</Text>
+              </View>
+            </View>
+            <Text style={[styles.lastUpdatedText, dynamicStyles.textAlign, dynamicStyles.rtlText]}>{t('lastUpdate')} {formatDisplayDate(currentEntry.date, language)}</Text>
+            <View style={[styles.statsRow, dynamicStyles.row]}>
+              <View style={styles.statItem}><Text style={styles.statLabel}>{t('starting')}</Text><Text style={styles.statValue}>{startingEntry.weight.toFixed(1)} {t('kg')}</Text></View>
+              <View style={styles.statItem}><Text style={styles.statLabel}>{t('goal')}</Text><Text style={styles.statValue}>{goalWeight.toFixed(1)} {t('kg')}</Text></View>
+              <View style={styles.statItem}><Text style={styles.statLabel}>{t('bmi')}</Text><Text style={styles.statValue}>{bmi}</Text></View>
+            </View>
+          </View>
+        </TouchableOpacity>
+        
+        <View style={styles.card}>
+          <Text style={[styles.cardTitle, dynamicStyles.textAlign, dynamicStyles.rtlText]}>{t('progressChart')}</Text>
+          <View style={styles.filterContainer}>
             {['1W', '1M', '3M', 'All'].map(filter => {
                 const isPremiumFeature = ['1M', '3M', 'All'].includes(filter);
                 const isLocked = isPremiumFeature && !isUserPremium;
@@ -249,14 +275,63 @@ const WeightTracker = ({ navigation, language, darkMode }) => {
                     </TouchableOpacity>
                 );
             })}
+          </View>
+
+          <View style={styles.chartContainer}>
+            {chartHistory.length > 1 ? (
+              <LineChart
+                data={chartData}
+                width={Dimensions.get('window').width - 64}
+                height={220}
+                chartConfig={chartConfig}
+                bezier
+                withShadow
+                style={{ marginVertical: 8, borderRadius: 16 }}
+                segments={5}
+                onDataPointClick={({ value, x, y, index }) => { if (tooltip && tooltip.index === index) { hideTooltip(); } else { setTooltip({ x, y, value, index }); } }}
+              />
+            ) : (
+              <View style={{height: 220, justifyContent: 'center', alignItems: 'center'}}>
+                <Text style={{color: darkMode ? '#999' : '#777'}}>Not enough data to draw a chart for this period.</Text>
+              </View>
+            )}
+            {tooltip && (
+              <View style={[styles.tooltipWrapper, tooltipStyle]}>
+                <View style={styles.tooltipContainer}>
+                  <Text style={styles.tooltipValueText}>{tooltip.value.toFixed(1)}</Text>
+                  <Text style={styles.tooltipUnitText}>{t('kg')}</Text>
+                </View>
+                <View style={styles.tooltipArrow} />
+              </View>
+            )}
+          </View>
         </View>
 
-        <View style={styles.chartContainer}> { chartHistory.length > 1 ? ( <LineChart data={chartData} width={Dimensions.get('window').width - 64} height={220} chartConfig={chartConfig} bezier withShadow style={{ marginVertical: 8, borderRadius: 16 }} segments={5} onDataPointClick={({ value, x, y, index }) => { if (tooltip && tooltip.index === index) { hideTooltip(); } else { setTooltip({ x, y, value, index }); } }} /> ) : ( <View style={{height: 220, justifyContent: 'center', alignItems: 'center'}}> <Text style={{color: darkMode ? '#999' : '#777'}}>Not enough data to draw a chart for this period.</Text> </View> )} 
-        {tooltip && ( <View style={[styles.tooltipWrapper, tooltipStyle]}><View style={styles.tooltipContainer}><Text style={styles.tooltipValueText}>{tooltip.value.toFixed(1)}</Text><Text style={styles.tooltipUnitText}>{t('kg')}</Text></View><View style={styles.tooltipArrow} /></View> )} 
-        </View> 
-    </View> 
-
-    <TouchableOpacity activeOpacity={1} onPress={hideTooltip}> <View style={styles.card}> <Text style={[styles.cardTitle, dynamicStyles.textAlign, dynamicStyles.rtlText]}>{t('history')}</Text> {sortedHistory.map((entry, index) => { const prev = sortedHistory[index + 1]; const change = prev ? entry.weight - prev.weight : 0; return ( <View key={entry.date} style={[styles.historyItem, dynamicStyles.row, index === sortedHistory.length - 1 && { borderBottomWidth: 0 }]}><View style={{flex: 1}}><Text style={[styles.historyDate, dynamicStyles.textAlign, dynamicStyles.rtlText]}>{formatDisplayDate(entry.date, language)}</Text><Text style={[styles.historyWeight, dynamicStyles.textAlign]}>{entry.weight.toFixed(1)} {t('kg')}</Text></View>{prev && <Text style={{color: change <= 0 ? '#4CAF50' : '#F44336', fontWeight: 'bold' }}>{change > 0 ? '+' : ''}{change.toFixed(1)} {t('kg')}</Text>}</View> ); })} </View> </TouchableOpacity> <View style={styles.tipCard}> <Text style={[styles.tipLabel, dynamicStyles.rtlText]}>{t('dailyTip')}</Text> <Text style={[styles.tipText, dynamicStyles.rtlText]}>{dailyTip}</Text> </View> </View> );
+        <TouchableOpacity activeOpacity={1} onPress={hideTooltip}>
+          <View style={styles.card}>
+            <Text style={[styles.cardTitle, dynamicStyles.textAlign, dynamicStyles.rtlText]}>{t('history')}</Text>
+            {sortedHistory.map((entry, index) => {
+              const prev = sortedHistory[index + 1];
+              const change = prev ? entry.weight - prev.weight : 0;
+              return (
+                <View key={entry.date} style={[styles.historyItem, dynamicStyles.row, index === sortedHistory.length - 1 && { borderBottomWidth: 0 }]}>
+                  <View style={{flex: 1}}>
+                    <Text style={[styles.historyDate, dynamicStyles.textAlign, dynamicStyles.rtlText]}>{formatDisplayDate(entry.date, language)}</Text>
+                    <Text style={[styles.historyWeight, dynamicStyles.textAlign]}>{entry.weight.toFixed(1)} {t('kg')}</Text>
+                  </View>
+                  {prev && <Text style={{color: change <= 0 ? '#4CAF50' : '#F44336', fontWeight: 'bold' }}>{change > 0 ? '+' : ''}{change.toFixed(1)} {t('kg')}</Text>}
+                </View>
+              );
+            })}
+          </View>
+        </TouchableOpacity>
+        
+        <View style={styles.tipCard}>
+          <Text style={[styles.tipLabel, dynamicStyles.rtlText]}>{t('dailyTip')}</Text>
+          <Text style={[styles.tipText, dynamicStyles.rtlText]}>{dailyTip}</Text>
+        </View>
+      </View>
+    );
   };
     
   const handleNavigationRequest = (screenName, params = {}) => {
@@ -295,7 +370,6 @@ const WeightTracker = ({ navigation, language, darkMode }) => {
       }
   };
     
-  // ✅ 3. تعديل الشريط السفلي ليدعم الـ Padding والارتفاع الديناميكي
   const renderNavBar = () => {
       const t = (key) => translations[language][key] || key;
       const styles = createStyles(darkMode, language === 'ar');
@@ -310,12 +384,12 @@ const WeightTracker = ({ navigation, language, darkMode }) => {
       const stepsRelatedScreens = ['steps', 'distance', 'calories', 'activeTime'];
 
       return (
-          // هنا التعديل: زيادة الارتفاع بمقدار الـ inset وإضافة paddingBottom
+          // تعديل: زيادة الارتفاع ليكون مناسباً
           <View style={[
               styles.navBar, 
               { 
-                  height: 10 + insets.bottom, 
-                  paddingBottom: 0 // نتأكد إن فيه مسافة كافية
+                  height: 15 + insets.bottom, 
+                  paddingBottom: insets.bottom > 0 ? insets.bottom - 10 : 0
               }
           ]}>
               {navItems.map((item) => {
@@ -334,7 +408,7 @@ const WeightTracker = ({ navigation, language, darkMode }) => {
       );
   };
 
-const renderScreenContent = () => {
+  const renderScreenContent = () => {
       const isRTL = language === 'ar';
       const t = (key) => translations[language][key] || key;
       const styles = createStyles(darkMode, isRTL);
@@ -348,7 +422,6 @@ const renderScreenContent = () => {
                   
                   <View style={styles.contentContainer}>
                       <ScrollView 
-                        // زودنا الـ padding عشان المحتوى ميختفيش ورا الشريط الطويل
                         contentContainerStyle={[styles.scrollContent, { paddingBottom: 110 + insets.bottom }]} 
                         onScrollBeginDrag={hideTooltip} 
                         keyboardShouldPersistTaps="handled"
@@ -362,8 +435,7 @@ const renderScreenContent = () => {
                       
                       {currentScreen === 'weight' && (
                           <TouchableOpacity 
-                              // رفعنا زرار الزائد عشان يواكب ارتفاع الشريط الجديد
-                              style={[styles.fab, isRTL ? { left: 20 } : { right: 20 }, { bottom: 23 + insets.bottom }]} 
+                              style={[styles.fab, isRTL ? { left: 20 } : { right: 20 }, { bottom: 35 + insets.bottom }]} 
                               onPress={() => setModalVisible(true)}
                           >
                               <Icon name="plus" size={30} color="#fff" />
@@ -414,7 +486,6 @@ const createStyles = (isDark, isRTL) => StyleSheet.create({
 
     scrollContent: { 
         padding: 16, 
-        // paddingBottom is handled dynamically in render
     },
 
     bottomFloatingLayer: {
@@ -429,7 +500,6 @@ const createStyles = (isDark, isRTL) => StyleSheet.create({
 
     fab: { 
         position: 'absolute',
-        // bottom is handled dynamically in render
         width: 60, 
         height: 60, 
         borderRadius: 30, 
@@ -452,28 +522,18 @@ const createStyles = (isDark, isRTL) => StyleSheet.create({
     navBar: { 
         flexDirection: 'row', 
         justifyContent: 'space-around', 
-        alignItems: 'center', // توسيط عمودي للأيقونات
-        
+        alignItems: 'center',
         width: '100%', 
-        // height is handled dynamically
-        
         borderTopLeftRadius: 20,
         borderTopRightRadius: 20,
-        borderBottomLeftRadius: 0,
-        borderBottomRightRadius: 0,
-        
         backgroundColor: isDark ? '#1e1e1e' : '#ffffff', 
-        
         shadowColor: isDark ? '#000' : '#b0b0b0',
         shadowOffset: { width: 0, height: -3 },
         shadowOpacity: 0.1,
         shadowRadius: 3,
         elevation: 15,
-        
-        // paddingBottom is handled dynamically
     },
     
-    // --- باقي الستايلات ---
     header: { alignItems: 'center', justifyContent: 'center', marginBottom: 16, position: 'relative' },
     screenTitle: { textAlign: 'center', fontSize: 28, fontWeight: 'bold', color: isDark ? '#e0e0e0' : '#2c3e50' },
     headerIcon: { position: 'absolute', [isRTL ? 'left' : 'right']: 0, padding: 5, },
@@ -510,8 +570,8 @@ const createStyles = (isDark, isRTL) => StyleSheet.create({
     tooltipValueText: { color: 'white', fontWeight: 'bold', fontSize: 15 },
     tooltipUnitText: { color: 'white', fontWeight: 'normal', fontSize: 14, marginLeft: 4 },
     tooltipArrow: { width: 0, height: 0, borderLeftWidth: 6, borderRightWidth: 6, borderTopWidth: 6, borderStyle: 'solid', backgroundColor: 'transparent', borderLeftColor: 'transparent', borderRightColor: 'transparent', borderTopColor: 'black' },
-    navItem: { alignItems: 'center', justifyContent: 'center', flex: 1, height: '100%', paddingTop: 5, },
-    navIconImage: { width: 60, height: 60, marginBottom: -10, resizeMode: 'contain' },
+    navItem: { alignItems: 'center', justifyContent: 'flex-start', flex: 1, height: '100%', paddingTop: 5, },
+    navIconImage: { width: 60, height: 60, marginBottom: -10, marginTop: -5, resizeMode: 'contain' },
     navText: { fontSize: 11, fontWeight: '500', textAlign: 'center', color: isDark ? '#777' : '#adb5bd', bottom: 4, width: '100%', },
     activeNavText: { fontWeight: 'bold', color: isDark ? '#00afa0' : '#388e3c', },
     filterContainer: { flexDirection: 'row', justifyContent: 'center', marginBottom: 10, backgroundColor: isDark ? '#2c3e50' : '#ecf0f1', borderRadius: 8, padding: 4, },

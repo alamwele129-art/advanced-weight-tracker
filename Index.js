@@ -44,12 +44,15 @@ const IndexScreen = ({ language }) => {
   };
 
   const handleStart = () => {
-      // ✅ هنا التعديل: التوجيه مباشرة للصفحة الرئيسية أو صفحة إعداد البيانات الأولية
-      // تأكد أن اسم الشاشة هنا يطابق اسم الـ Tab Navigator أو الصفحة الرئيسية في App.js
-      navigation.replace('Weight'); // أو 'WeightTracker' حسب تسميتك
+      navigation.replace('Weight'); 
   };
 
   const currentTexts = texts[language] || texts['en']; 
+  
+  // تحديد اتجاه الأيقونات بناء على اللغة
+  // في العربي: السابق يشير لليمين، التالي يشير لليسار
+  const backArrowIcon = language === 'ar' ? "arrow-forward" : "arrow-back";
+  const nextArrowIcon = language === 'ar' ? "arrow-back" : "arrow-forward";
 
   return (
     <SafeAreaView style={styles.container}>
@@ -65,11 +68,12 @@ const IndexScreen = ({ language }) => {
                 <Text style={styles.heading}>{currentTexts[currentSection].heading}</Text>
                 <Text style={styles.paragraph}>{currentTexts[currentSection].paragraph}</Text>
               </View>
-              {/* ✅ زرار واحد كبير للبدء فوراً */}
+              
               <View style={styles.buttonContainer}>
                 <TouchableOpacity style={styles.startButton} onPress={handleStart}>
                   <Text style={styles.startButtonText}>{language === 'en' ? "Get Started" : "ابدأ الآن"}</Text>
-                  <MaterialIcons name={language === 'en' ? "arrow-forward" : "arrow-back"} size={20} color="#fff" style={{marginLeft: 10}} />
+                  {/* تم ضبط السهم هنا أيضاً ليتوافق مع اللغة */}
+                  <MaterialIcons name={nextArrowIcon} size={20} color="#fff" style={{marginLeft: 10}} />
                 </TouchableOpacity>
               </View>
             </>
@@ -81,12 +85,14 @@ const IndexScreen = ({ language }) => {
           )}
 
           <View style={styles.bottomContainer}>
+            {/* زر السابق (على اليسار في التصميم) */}
             <TouchableOpacity 
                 style={[styles.navButton, styles.leftButton, { opacity: currentSection > 0 ? 1 : 0 }]} 
                 onPress={() => showSection(currentSection - 1)}
                 disabled={currentSection === 0}
             >
-              <MaterialIcons name="arrow-back" size={24} color="#ffffff" />
+              {/* ✅ التعديل هنا: في العربي السابق سهم يمين، في الانجليزي سهم شمال */}
+              <MaterialIcons name={backArrowIcon} size={24} color="#ffffff" />
             </TouchableOpacity>
 
             <View style={styles.pageIndicator}>
@@ -95,12 +101,14 @@ const IndexScreen = ({ language }) => {
                 ))}
             </View>
 
+            {/* زر التالي (على اليمين في التصميم) */}
             <TouchableOpacity 
                 style={[styles.navButton, styles.rightButton, { opacity: currentSection < 2 ? 1 : 0 }]} 
                 onPress={() => showSection(currentSection + 1)}
                 disabled={currentSection === 2}
             >
-              <MaterialIcons name="arrow-forward" size={24} color="#ffffff" />
+              {/* ✅ التعديل هنا: في العربي التالي سهم شمال، في الانجليزي سهم يمين */}
+              <MaterialIcons name={nextArrowIcon} size={24} color="#ffffff" />
             </TouchableOpacity>
           </View>
         </ImageBackground>
@@ -120,11 +128,10 @@ const styles = StyleSheet.create({
   heading: { fontSize: 24, fontWeight: 'bold', color: '#ffffff', textAlign: 'center', marginBottom: 10 },
   paragraph: { fontSize: 16, color: '#ffffff', textAlign: 'center', lineHeight: 24 },
   
-  // ✅ ستايل الزرار الجديد
   buttonContainer: { position: 'absolute', bottom: height * 0.14, width: '100%', alignItems: 'center' },
   startButton: {
     width: '85%',
-    backgroundColor: '#4CAF50', // لون أخضر مميز
+    backgroundColor: '#4CAF50',
     borderRadius: 30,
     paddingVertical: 15,
     flexDirection: 'row',
