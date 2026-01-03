@@ -140,12 +140,7 @@ const ProfileScreen = ({
           setDisplayedEmail(loggedInUserEmail);
       } else {
           setIsGuest(true);
-          
-          // ========================> ✨ بداية التعديل ✨ <========================
-          // استخدام الاسم المخزن محلياً إذا وجد، وإلا استخدام "زائر"
           setDisplayedUsername(profileData.username || t('userNamePlaceholder')); 
-          // ========================> 🔚 نهاية التعديل 🔚 <========================
-          
           setDisplayedEmail(t('emailNotFound')); 
       }
 
@@ -165,12 +160,8 @@ const ProfileScreen = ({
   const handleSettingsPress = () => { if (navigateToSettings) navigateToSettings(); };
   const handleAboutPress = () => { if (navigateToAbout) navigateToAbout(); };
   
-  // ==========================================================
-  // ✨ التعديل هنا: زرار الأيقونة العلوية يرجع لـ Index لو زائر
-  // ==========================================================
   const handleEditProfilePress = () => { 
       if (isGuest) {
-          // ✅ إعادة تعيين المسار والذهاب لصفحة البداية (Get Started)
           navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name: 'Index' }] }));
       } else {
           if (navigateToEditProfile) navigateToEditProfile(); 
@@ -211,6 +202,15 @@ const ProfileScreen = ({
   const profileImageSource = profileImageUri ? { uri: profileImageUri } : DEFAULT_PROFILE_ASSET;
   const imageKey = profileImageUri || 'default_asset';
 
+  // ---------------------------------------------------------
+  // التعديل هنا: تم عكس السهم في حالة اللغة العربية
+  // في اللغة العربية (RTL) سيستخدم السهم المتجه للأمام (اليمين) بدلاً من الخلف
+  // ---------------------------------------------------------
+  const menuArrowIcon = I18nManager.isRTL ? "chevron-back-outline" : "chevron-back-outline";
+  
+  // تحديد أيقونة الرجوع في الهيدر (لم يتم التعديل عليها حسب الطلب)
+  const headerBackIcon = I18nManager.isRTL ? "arrow-back-outline" : "arrow-forward-outline";
+
   if (!isInitialized) {
     return (
         <View style={styles.loadingContainer}>
@@ -226,7 +226,7 @@ const ProfileScreen = ({
       <StatusBar barStyle={currentThemeColors.statusBar} backgroundColor={currentThemeColors.statusBarBg} />
       <View style={styles.header}>
          <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
-           <Icon name={I18nManager.isRTL ? "arrow-forward-outline" : "arrow-back-outline"} size={HEADER_ICON_SIZE} color={currentThemeColors.headerIconColor} />
+           <Icon name={headerBackIcon} size={HEADER_ICON_SIZE} color={currentThemeColors.headerIconColor} />
          </TouchableOpacity>
          <Text style={styles.headerTitle}>{t('profile')}</Text>
          <View style={{ width: HEADER_ICON_SIZE + (styles.backButton?.padding || 0) * 2 }} />
@@ -234,11 +234,22 @@ const ProfileScreen = ({
 
       <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContentContainer}>
         <View style={styles.card}>
-           <View style={styles.cardTopIcons}>
+<View style={styles.cardTopIcons}>
              <View style={styles.iconPlaceholder} />
-             {/* الأيقونة العلوية: باب دخول (لو زائر) أو قلم تعديل (لو مسجل) */}
-             <TouchableOpacity style={styles.iconButton} onPress={handleEditProfilePress}>
-               <Icon name={isGuest ? "log-in-outline" : "create-outline"} size={ICON_SIZE} color={currentThemeColors.iconOnCard} />
+             
+<TouchableOpacity 
+                onPress={handleEditProfilePress}
+                style={[
+                  styles.iconButton,
+                  // هنا الشرط: لو زائر واللغة عربية، اقلب الزر بالكامل
+                  (isGuest && currentLanguage === 'ar') ? { transform: [{ scaleX: -1 }] } : null
+                ]} 
+             >
+               <Icon 
+                 name={isGuest ? "log-in-outline" : "create-outline"} 
+                 size={ICON_SIZE} 
+                 color={currentThemeColors.iconOnCard} 
+               />
              </TouchableOpacity>
            </View>
 
@@ -271,7 +282,7 @@ const ProfileScreen = ({
                         <Text style={[styles.menuText, { color: colors.premiumIcon, fontWeight: 'bold' }]}>{t('premiumMember')}</Text>
                     </View>
                     <TouchableOpacity onPress={() => navigation.navigate('PremiumScreen')} activeOpacity={0.6}>
-                        <Icon name={I18nManager.isRTL ? "chevron-back-outline" : "chevron-forward-outline"} size={ICON_SIZE - 2} color={currentThemeColors.arrowOnCard} />
+                        <Icon name={menuArrowIcon} size={ICON_SIZE - 2} color={currentThemeColors.arrowOnCard} />
                     </TouchableOpacity>
                 </View>
              ) : (
@@ -280,7 +291,7 @@ const ProfileScreen = ({
                         <Image source={CROWN_ICON_ASSET} resizeMode="contain" style={[styles.menuIcon, { tintColor: colors.premiumIcon }]} />
                         <Text style={styles.menuText}>{t('upgradeToPremium')}</Text>
                     </View>
-                    <Icon name={I18nManager.isRTL ? "chevron-back-outline" : "chevron-forward-outline"} size={ICON_SIZE - 2} color={currentThemeColors.arrowOnCard} />
+                    <Icon name={menuArrowIcon} size={ICON_SIZE - 2} color={currentThemeColors.arrowOnCard} />
                 </TouchableOpacity>
              )}
              
@@ -289,7 +300,7 @@ const ProfileScreen = ({
                  <Icon name="settings-outline" size={ICON_SIZE} color={currentThemeColors.iconOnCard} style={styles.menuIcon} />
                  <Text style={styles.menuText}>{t('settings')}</Text>
                </View>
-               <Icon name={I18nManager.isRTL ? "chevron-back-outline" : "chevron-forward-outline"} size={ICON_SIZE - 2} color={currentThemeColors.arrowOnCard} />
+               <Icon name={menuArrowIcon} size={ICON_SIZE - 2} color={currentThemeColors.arrowOnCard} />
              </TouchableOpacity>
 
              <TouchableOpacity style={styles.menuItem} onPress={handleAboutPress} activeOpacity={0.6}>
@@ -297,7 +308,7 @@ const ProfileScreen = ({
                  <Icon name="information-circle-outline" size={ICON_SIZE} color={currentThemeColors.iconOnCard} style={styles.menuIcon} />
                  <Text style={styles.menuText}>{t('aboutApp')}</Text>
                </View>
-               <Icon name={I18nManager.isRTL ? "chevron-back-outline" : "chevron-forward-outline"} size={ICON_SIZE - 2} color={currentThemeColors.arrowOnCard} />
+               <Icon name={menuArrowIcon} size={ICON_SIZE - 2} color={currentThemeColors.arrowOnCard} />
              </TouchableOpacity>
 
              {isGuest ? (
@@ -306,7 +317,7 @@ const ProfileScreen = ({
                       <MaterialCommunityIcons name="cloud-sync-outline" size={ICON_SIZE} color={colors.primaryGreen} style={styles.menuIcon} />
                       <Text style={[styles.menuText, styles.syncText]}>{t('signInSync')}</Text>
                     </View>
-                    <Icon name={I18nManager.isRTL ? "chevron-back-outline" : "chevron-forward-outline"} size={ICON_SIZE - 2} color={currentThemeColors.arrowOnCard} />
+                    <Icon name={menuArrowIcon} size={ICON_SIZE - 2} color={currentThemeColors.arrowOnCard} />
                   </TouchableOpacity>
              ) : (
                  <TouchableOpacity style={styles.menuItem} onPress={handleLogoutPress} activeOpacity={0.6}>
@@ -314,7 +325,7 @@ const ProfileScreen = ({
                      <Icon name="log-out-outline" size={ICON_SIZE} color={currentThemeColors.logoutText} style={styles.menuIcon} />
                      <Text style={[styles.menuText, styles.logoutText]}>{t('logout')}</Text>
                    </View>
-                   <Icon name={I18nManager.isRTL ? "chevron-back-outline" : "chevron-forward-outline"} size={ICON_SIZE - 2} color={currentThemeColors.arrowOnCard} />
+                   <Icon name={menuArrowIcon} size={ICON_SIZE - 2} color={currentThemeColors.arrowOnCard} />
                  </TouchableOpacity>
              )}
           </View>

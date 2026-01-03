@@ -12,15 +12,15 @@ import {
   I18nManager,
   Platform,
 } from 'react-native';
+// 1. إضافة مكتبة الأيقونات
+import Icon from 'react-native-vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Picker } from '@react-native-picker/picker';
 import { useFocusEffect } from '@react-navigation/native';
 
 const USER_SETTINGS_KEY = '@Settings:generalSettings';
 const USER_PROFILE_DATA_KEY = '@Profile:userProfileData';
-// ========================> ✨ بداية التعديل المطلوب ✨ <========================
 const USER_SUBSCRIPTION_DATA_KEY = '@App:userSubscriptionData';
-// ========================> 🔚 نهاية التعديل المطلوب 🔚 <========================
 
 const SettingsScreen = ({
   navigation,
@@ -39,7 +39,6 @@ const SettingsScreen = ({
     useCallback(() => {
       const checkUserStatus = async () => {
         try {
-            // ========================> ✨ بداية التعديل المطلوب ✨ <========================
             const subscriptionDataString = await AsyncStorage.getItem(USER_SUBSCRIPTION_DATA_KEY);
             let isPremium = false;
             if (subscriptionDataString) {
@@ -52,7 +51,6 @@ const SettingsScreen = ({
             }
             setIsUserPremium(isPremium);
             console.log(`[SettingsScreen] Premium status loaded: ${isPremium}`);
-            // ========================> 🔚 نهاية التعديل المطلوب 🔚 <========================
         } catch (e) {
           console.error("Failed to load premium status.", e);
           setIsUserPremium(false);
@@ -146,15 +144,32 @@ const SettingsScreen = ({
   const dynamicStyles = styles(isDarkMode, isUserPremium);
 
   const PremiumPickerWrapper = ({ children, isLocked }) => {
-    if (isLocked) { return ( <TouchableOpacity onPress={handlePremiumFeaturePress} style={dynamicStyles.disabledOverlay}> {children} </TouchableOpacity> ); }
+    if (isLocked) { 
+        // إصلاح الخطأ: إزالة المسافات حول children
+        return ( 
+            <TouchableOpacity onPress={handlePremiumFeaturePress} style={dynamicStyles.disabledOverlay}>
+                {children}
+            </TouchableOpacity> 
+        ); 
+    }
     return children;
   };
 
   return (
     <ScrollView style={dynamicStyles.outerContainer} contentContainerStyle={dynamicStyles.scrollContentContainer} keyboardShouldPersistTaps="handled" key={`${selectedLanguage}-${isDarkMode}-${isUserPremium}`} >
       <View style={dynamicStyles.container}>
+        
+        {/* الهيدر المعدل مع أيقونة السهم */}
         <View style={dynamicStyles.header}>
-          <TouchableOpacity onPress={handleGoBack} style={dynamicStyles.backButtonWrapper}><Text style={dynamicStyles.backButton}>{t.backArrow}</Text></TouchableOpacity>
+          <TouchableOpacity onPress={handleGoBack} style={dynamicStyles.backButtonWrapper}>
+             <Icon 
+                name="arrow-back" 
+                size={24}  // 1. صغرنا الحجم من 30 إلى 24
+                // 2. غيرنا اللون ليطابق لون العنوان (غامق في الفاتح، وفاتح في الداكن)
+                color={isDarkMode ? '#e0e0e0' : '#004d40'} 
+                style={selectedLanguage === 'ar' ? { transform: [{ scaleX: -1 }] } : {}}
+              />
+          </TouchableOpacity>
           <Text style={dynamicStyles.title}>{t.settingsTitle}</Text>
           <View style={dynamicStyles.headerPlaceholder} />
         </View>
