@@ -229,7 +229,12 @@ const WeightTracker = ({ navigation, language, darkMode }) => {
     }
     
     return (
-      <View>
+      /* --- تعديل: إضافة ScrollView هنا بدلاً من الحاوية الرئيسية --- */
+      <ScrollView 
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 110 + insets.bottom }]}
+        showsVerticalScrollIndicator={false}
+        onScrollBeginDrag={hideTooltip}
+      >
         <View style={[styles.header, dynamicStyles.row]}>
           <Text style={styles.screenTitle}>{t('weightTracker')}</Text>
           <TouchableOpacity onPress={handleProfilePress} style={styles.headerIcon}>
@@ -330,7 +335,7 @@ const WeightTracker = ({ navigation, language, darkMode }) => {
           <Text style={[styles.tipLabel, dynamicStyles.rtlText]}>{t('dailyTip')}</Text>
           <Text style={[styles.tipText, dynamicStyles.rtlText]}>{dailyTip}</Text>
         </View>
-      </View>
+      </ScrollView>
     );
   };
     
@@ -384,11 +389,10 @@ const WeightTracker = ({ navigation, language, darkMode }) => {
       const stepsRelatedScreens = ['steps', 'distance', 'calories', 'activeTime'];
 
       return (
-          // تعديل: زيادة الارتفاع ليكون مناسباً
           <View style={[
               styles.navBar, 
               { 
-                  height: 15 + insets.bottom, 
+                  height: 23 + insets.bottom, // تعديل الارتفاع ليكون مناسباً
                   paddingBottom: insets.bottom > 0 ? insets.bottom - 10 : 0
               }
           ]}>
@@ -420,22 +424,18 @@ const WeightTracker = ({ navigation, language, darkMode }) => {
           <SafeAreaView style={safeAreaStyle}>
               <View style={styles.mainContainer}>
                   
+                  {/* --- تم إزالة ScrollView من هنا لمنع تداخل القوائم --- */}
                   <View style={styles.contentContainer}>
-                      <ScrollView 
-                        contentContainerStyle={[styles.scrollContent, { paddingBottom: 110 + insets.bottom }]} 
-                        onScrollBeginDrag={hideTooltip} 
-                        keyboardShouldPersistTaps="handled"
-                        showsVerticalScrollIndicator={false}
-                      >
+                      <View style={{flex: 1}}>
                           {renderCurrentScreenComponent()}
-                      </ScrollView>
+                      </View>
                   </View>
 
                   <View style={styles.bottomFloatingLayer} pointerEvents="box-none">
                       
                       {currentScreen === 'weight' && (
                           <TouchableOpacity 
-                              style={[styles.fab, isRTL ? { left: 20 } : { right: 20 }, { bottom: 35 + insets.bottom }]} 
+                              style={[styles.fab, isRTL ? { left: 20 } : { right: 20 }, { bottom: 40 + insets.bottom }]} 
                               onPress={() => setModalVisible(true)}
                           >
                               <Icon name="plus" size={30} color="#fff" />
@@ -571,8 +571,8 @@ const createStyles = (isDark, isRTL) => StyleSheet.create({
     tooltipUnitText: { color: 'white', fontWeight: 'normal', fontSize: 14, marginLeft: 4 },
     tooltipArrow: { width: 0, height: 0, borderLeftWidth: 6, borderRightWidth: 6, borderTopWidth: 6, borderStyle: 'solid', backgroundColor: 'transparent', borderLeftColor: 'transparent', borderRightColor: 'transparent', borderTopColor: 'black' },
     navItem: { alignItems: 'center', justifyContent: 'flex-start', flex: 1, height: '100%', paddingTop: 5, },
-    navIconImage: { width: 60, height: 60, marginBottom: -10, marginTop: -5, resizeMode: 'contain' },
-    navText: { fontSize: 11, fontWeight: '500', textAlign: 'center', color: isDark ? '#777' : '#adb5bd', bottom: 4, width: '100%', },
+    navIconImage: { width: 65, height: 65, marginBottom: -10, marginTop: -5, resizeMode: 'contain' },
+    navText: { fontSize: 12, fontWeight: '500', textAlign: 'center', color: isDark ? '#777' : '#adb5bd', bottom: -1, width: '100%', },
     activeNavText: { fontWeight: 'bold', color: isDark ? '#00afa0' : '#388e3c', },
     filterContainer: { flexDirection: 'row', justifyContent: 'center', marginBottom: 10, backgroundColor: isDark ? '#2c3e50' : '#ecf0f1', borderRadius: 8, padding: 4, },
     filterButton: { flex: 1, paddingVertical: 8, borderRadius: 6, alignItems: 'center', justifyContent: 'center', marginHorizontal: 2, },
