@@ -140,7 +140,12 @@ const ProfileScreen = ({
           setDisplayedEmail(loggedInUserEmail);
       } else {
           setIsGuest(true);
-          setDisplayedUsername(t('userNamePlaceholder')); 
+          
+          // ========================> ✨ بداية التعديل ✨ <========================
+          // استخدام الاسم المخزن محلياً إذا وجد، وإلا استخدام "زائر"
+          setDisplayedUsername(profileData.username || t('userNamePlaceholder')); 
+          // ========================> 🔚 نهاية التعديل 🔚 <========================
+          
           setDisplayedEmail(t('emailNotFound')); 
       }
 
@@ -243,7 +248,7 @@ const ProfileScreen = ({
            
            <View style={styles.userInfoContainer}>
                 <View style={styles.userNameContainer}>
-                    <Text style={styles.userName} numberOfLines={1}>{displayedUsername}</Text>
+                    <Text style={styles.userName}>{displayedUsername}</Text>
                     {isPremium && (
                         <Image
                             source={CROWN_ICON_ASSET}
