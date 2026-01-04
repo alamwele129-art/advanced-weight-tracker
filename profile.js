@@ -7,7 +7,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'; 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, CommonActions } from '@react-navigation/native';
-import { supabase } from './supabaseClient'; // 1. استيراد Supabase
+import { supabase } from './supabaseClient';
 
 const USER_SUBSCRIPTION_DATA_KEY = '@App:userSubscriptionData';
 const ICON_SIZE = 24;
@@ -18,9 +18,54 @@ const USER_PROFILE_DATA_KEY = '@Profile:userProfileData';
 const LOGGED_IN_EMAIL_KEY = 'loggedInUserEmail';
 
 const translations = {
-  en: { profile: 'Profile', settings: 'Settings', aboutApp: 'About App', logout: 'Logout', loadingEmail: 'Loading...', emailNotFound: 'Data saved on device', errorLoadingData: 'Error loading data', userNamePlaceholder: 'Guest User', edit: 'Edit', logoutConfirmTitle: 'Logout', logoutConfirmMessage: 'Are you sure you want to log out?', logoutErrorTitle: 'Logout Error', logoutErrorMessage: 'Could not log out. Please try again.', ok: 'OK', cancel: 'Cancel', editProfile: 'Edit Profile', upgradeToPremium: 'Upgrade to Premium', premiumMember: 'Premium Member', signInSync: 'Sign in / Sync Data', guestDesc: 'Sign in to save your data permanently', },
-  ar: { profile: 'الملف الشخصي', settings: 'الإعدادات', aboutApp: 'حول التطبيق', logout: 'تسجيل الدخول / مزامنة', loadingEmail: 'جار التحميل...', emailNotFound: 'البيانات محفوظة على الجهاز', errorLoadingData: 'خطأ في تحميل البيانات', userNamePlaceholder: 'زائر', edit: 'تعديل', logoutConfirmTitle: 'تسجيل الخروج', logoutConfirmMessage: 'هل أنت متأكد أنك تريد تسجيل الخروج؟', logoutErrorTitle: 'خطأ في تسجيل الخروج', logoutErrorMessage: 'تعذر تسجيل الخروج. يرجى المحاولة مرة أخرى.', ok: 'موافق', cancel: 'إلغاء', editProfile: 'تعديل الملف الشخصي', upgradeToPremium: 'الترقية إلى بريميوم', premiumMember: 'عضو مميز', signInSync: 'تسجيل الدخول / مزامنة البيانات', guestDesc: 'سجل دخولك لحفظ بياناتك من الضياع', },
+  en: { 
+    profile: 'Profile', 
+    settings: 'Settings', 
+    aboutApp: 'About App', 
+    logout: 'Logout', 
+    loadingEmail: 'Loading...', 
+    emailNotFound: 'Data saved on device', 
+    errorLoadingData: 'Error loading data', 
+    userNamePlaceholder: 'Guest User', 
+    edit: 'Edit', 
+    logoutConfirmTitle: 'Logout', 
+    logoutConfirmMessage: 'Are you sure you want to log out?', 
+    logoutErrorTitle: 'Logout Error', 
+    logoutErrorMessage: 'Could not log out. Please try again.', 
+    ok: 'OK', 
+    cancel: 'Cancel', 
+    editProfile: 'Edit Profile', 
+    upgradeToPremium: 'Upgrade to Premium', 
+    premiumMember: 'Premium Member', 
+    signInSync: 'Sign in / Sync Data', 
+    guestDesc: 'Sign in to save your data permanently',
+    loadingProfile: 'Loading Profile...' // تمت الإضافة
+  },
+  ar: { 
+    profile: 'الملف الشخصي', 
+    settings: 'الإعدادات', 
+    aboutApp: 'حول التطبيق', 
+    logout: 'تسجيل الخروج', 
+    loadingEmail: 'جار التحميل...', 
+    emailNotFound: 'البيانات محفوظة على الجهاز', 
+    errorLoadingData: 'خطأ في تحميل البيانات', 
+    userNamePlaceholder: 'زائر', 
+    edit: 'تعديل', 
+    logoutConfirmTitle: 'تسجيل الخروج', 
+    logoutConfirmMessage: 'هل أنت متأكد أنك تريد تسجيل الخروج؟', 
+    logoutErrorTitle: 'خطأ في تسجيل الخروج', 
+    logoutErrorMessage: 'تعذر تسجيل الخروج. يرجى المحاولة مرة أخرى.', 
+    ok: 'موافق', 
+    cancel: 'إلغاء', 
+    editProfile: 'تعديل الملف الشخصي', 
+    upgradeToPremium: 'الترقية إلى بريميوم', 
+    premiumMember: 'عضو مميز', 
+    signInSync: 'تسجيل الدخول / مزامنة البيانات', 
+    guestDesc: 'سجل دخولك لحفظ بياناتك من الضياع',
+    loadingProfile: 'جار تحميل الملف الشخصي...' // تمت الإضافة
+  },
 };
+
 const colors = { primaryGreen: '#4CAF50', white: '#ffffff', black: '#000000', lightGrey: '#f0f0f0', mediumGrey: '#777777', darkGrey: '#333333', darkBackground: '#121212', darkCard: '#1e1e1e', darkText: '#e0e0e0', darkSubtleText: '#a0a0a0', lightRed: '#d9534f', darkRed: '#ff6b6b', lightPlaceholderBg: '#eeeeee', darkPlaceholderBg: '#444444', premiumIcon: '#F5B041' };
 const lightTheme = { background: colors.lightGrey, cardBackground: colors.white, text: colors.darkGrey, subtleText: colors.mediumGrey, primary: colors.primaryGreen, headerText: colors.white, iconOnCard: colors.primaryGreen, arrowOnCard: colors.mediumGrey, logoutText: colors.lightRed, statusBar: 'dark-content', statusBarBg: colors.primaryGreen, shadow: colors.black, profileBorder: colors.white, placeholderBg: colors.lightPlaceholderBg, headerIconColor: colors.white, activityIndicator: colors.primaryGreen, };
 const darkTheme = { background: colors.darkBackground, cardBackground: colors.darkCard, text: colors.darkText, subtleText: colors.darkSubtleText, primary: colors.primaryGreen, headerText: colors.white, iconOnCard: colors.primaryGreen, arrowOnCard: colors.darkSubtleText, logoutText: colors.darkRed, statusBar: 'light-content', statusBarBg: colors.primaryGreen, shadow: colors.black, profileBorder: colors.darkCard, placeholderBg: colors.darkPlaceholderBg, headerIconColor: colors.white, activityIndicator: colors.white, };
@@ -62,7 +107,11 @@ const ProfileScreen = ({ navigation, language, darkMode, navigateToPremium, navi
   const [currentThemeMode, setCurrentThemeMode] = useState(darkMode ? 'dark' : 'light');
   const [isPremium, setIsPremium] = useState(false);
   const [isGuest, setIsGuest] = useState(true); 
-  const t = useCallback((key) => { return translations[currentLanguage]?.[key] || translations['en']?.[key] || key; }, [currentLanguage]);
+  
+  const t = useCallback((key) => { 
+    return translations[currentLanguage]?.[key] || translations['en']?.[key] || key; 
+  }, [currentLanguage]);
+
   const [displayedUsername, setDisplayedUsername] = useState(() => t('userNamePlaceholder'));
   const [displayedEmail, setDisplayedEmail] = useState(() => t('loadingEmail'));
   const [profileImageUri, setProfileImageUri] = useState(null);
@@ -71,29 +120,22 @@ const ProfileScreen = ({ navigation, language, darkMode, navigateToPremium, navi
   useEffect(() => { if (language && language !== currentLanguage) { setCurrentLanguage(language); } }, [language, currentLanguage]);
   useEffect(() => { const newThemeMode = darkMode ? 'dark' : 'light'; if (newThemeMode !== currentThemeMode) { setCurrentThemeMode(newThemeMode); } }, [darkMode, currentThemeMode]);
 
-  // -------------------------------------------------------------
-  // 3. تحميل البيانات (مع المزامنة)
-  // -------------------------------------------------------------
   const loadProfileData = useCallback(async () => {
     try {
-      // أ. محاولة جلب التحديثات من Supabase
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
           const { data: profile } = await supabase.from('profiles').select('full_name, avatar_url').eq('id', user.id).single();
           if (profile) {
-              // تحديث النسخة المحلية ببيانات السيرفر
               const storedLocal = await AsyncStorage.getItem(USER_PROFILE_DATA_KEY);
               const localData = storedLocal ? JSON.parse(storedLocal) : {};
               const mergedData = { 
                   ...localData, 
                   username: profile.full_name,
-                  // avatar_url بنحتفظ بيه لو موجود، لكن حاليا بنعتمد ع المحلي للصور
               };
               await AsyncStorage.setItem(USER_PROFILE_DATA_KEY, JSON.stringify(mergedData));
           }
       }
 
-      // ب. العرض من المحلي
       const [userProfileDataString, loggedInUserEmail, subscriptionDataString] = await Promise.all([
         AsyncStorage.getItem(USER_PROFILE_DATA_KEY),
         AsyncStorage.getItem(LOGGED_IN_EMAIL_KEY),
@@ -129,12 +171,23 @@ const ProfileScreen = ({ navigation, language, darkMode, navigateToPremium, navi
     }
   }, [currentLanguage, t]);
 
-  useFocusEffect(useCallback(() => { setIsInitialized(false); loadProfileData(); }, [loadProfileData]));
+  useFocusEffect(useCallback(() => { 
+    setIsInitialized(false); 
+    loadProfileData(); 
+  }, [loadProfileData]));
 
   const handleUpgradePress = () => { if (navigateToPremium) navigateToPremium(); };
   const handleSettingsPress = () => { if (navigateToSettings) navigateToSettings(); };
   const handleAboutPress = () => { if (navigateToAbout) navigateToAbout(); };
-  const handleEditProfilePress = () => { if (isGuest) { navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name: 'Index' }] })); } else { if (navigateToEditProfile) navigateToEditProfile(); } };
+  
+  const handleEditProfilePress = () => { 
+      if (isGuest) { 
+          navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name: 'Index' }] })); 
+      } else { 
+          if (navigateToEditProfile) navigateToEditProfile(); 
+      } 
+  };
+  
   const handleGoBack = () => { if (goBack) goBack(); };
   
   const handleLogoutPress = () => {
@@ -169,23 +222,44 @@ const ProfileScreen = ({ navigation, language, darkMode, navigateToPremium, navi
   const menuArrowIcon = I18nManager.isRTL ? "chevron-back-outline" : "chevron-back-outline";
   const headerBackIcon = I18nManager.isRTL ? "arrow-back-outline" : "arrow-forward-outline";
 
+  // هنا تم إصلاح الخطأ بتنظيم الكود
   if (!isInitialized) {
-    return ( <View style={styles.loadingContainer}> <StatusBar barStyle={currentThemeColors.statusBar} backgroundColor={currentThemeColors.statusBarBg} /> <ActivityIndicator size="large" color={currentThemeColors.activityIndicator} /> <Text style={styles.loadingText}>{t('loadingProfile')}</Text> </View> );
+    return ( 
+      <View style={styles.loadingContainer}> 
+        <StatusBar barStyle={currentThemeColors.statusBar} backgroundColor={currentThemeColors.statusBarBg} /> 
+        <ActivityIndicator size="large" color={currentThemeColors.activityIndicator} /> 
+        <Text style={styles.loadingText}>{t('loadingProfile')}</Text> 
+      </View> 
+    );
   }
 
   return (
     <View style={styles.screenContainer}>
       <StatusBar barStyle={currentThemeColors.statusBar} backgroundColor={currentThemeColors.statusBarBg} />
       <View style={styles.header}>
-         <TouchableOpacity onPress={handleGoBack} style={styles.backButton}><Icon name={headerBackIcon} size={HEADER_ICON_SIZE} color={currentThemeColors.headerIconColor} /></TouchableOpacity>
+         <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
+             <Icon name={headerBackIcon} size={HEADER_ICON_SIZE} color={currentThemeColors.headerIconColor} />
+         </TouchableOpacity>
          <Text style={styles.headerTitle}>{t('profile')}</Text>
          <View style={{ width: HEADER_ICON_SIZE + (styles.backButton?.padding || 0) * 2 }} />
        </View>
       <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContentContainer}>
         <View style={styles.card}>
            <View style={styles.cardTopIcons}>
-             <View style={styles.iconPlaceholder} />
-             <TouchableOpacity onPress={handleEditProfilePress} style={[ styles.iconButton, (isGuest && currentLanguage === 'ar') ? { transform: [{ scaleX: -1 }] } : null ]} >
+             
+<TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate('editprofile')}>
+                {/* تم تغيير الحجم هنا من ICON_SIZE إلى 20 ليصبح أصغر */}
+                <MaterialCommunityIcons 
+                    name="square-edit-outline" 
+                    size={20} 
+                    color={currentThemeColors.iconOnCard} 
+                />
+             </TouchableOpacity>
+
+             <TouchableOpacity 
+                onPress={handleEditProfilePress} 
+                style={[ styles.iconButton, (isGuest && currentLanguage === 'ar') ? { transform: [{ scaleX: -1 }] } : null ]} 
+             >
                <Icon name={isGuest ? "log-in-outline" : "create-outline"} size={ICON_SIZE} color={currentThemeColors.iconOnCard} />
              </TouchableOpacity>
            </View>
@@ -207,7 +281,9 @@ const ProfileScreen = ({ navigation, language, darkMode, navigateToPremium, navi
                         <Icon name="checkmark-circle" size={ICON_SIZE} color={colors.premiumIcon} style={styles.menuIcon} />
                         <Text style={[styles.menuText, { color: colors.premiumIcon, fontWeight: 'bold' }]}>{t('premiumMember')}</Text>
                     </View>
-                    <TouchableOpacity onPress={() => navigation.navigate('PremiumScreen')} activeOpacity={0.6}><Icon name={menuArrowIcon} size={ICON_SIZE - 2} color={currentThemeColors.arrowOnCard} /></TouchableOpacity>
+                    <TouchableOpacity onPress={() => navigation.navigate('PremiumScreen')} activeOpacity={0.6}>
+                        <Icon name={menuArrowIcon} size={ICON_SIZE - 2} color={currentThemeColors.arrowOnCard} />
+                    </TouchableOpacity>
                 </View>
              ) : (
                 <TouchableOpacity style={styles.menuItem} onPress={handleUpgradePress} activeOpacity={0.6}>
