@@ -12,11 +12,12 @@ import {
   I18nManager,
   Platform,
 } from 'react-native';
-// 1. إضافة مكتبة الأيقونات
 import Icon from 'react-native-vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Picker } from '@react-native-picker/picker';
 import { useFocusEffect } from '@react-navigation/native';
+// 1. استيراد مكتبة التحديثات (لازم تكون سطبتها بالأمر اللي فوق)
+import * as Updates from 'expo-updates';
 
 const USER_SETTINGS_KEY = '@Settings:generalSettings';
 const USER_PROFILE_DATA_KEY = '@Profile:userProfileData';
@@ -50,7 +51,6 @@ const SettingsScreen = ({
                 }
             }
             setIsUserPremium(isPremium);
-            console.log(`[SettingsScreen] Premium status loaded: ${isPremium}`);
         } catch (e) {
           console.error("Failed to load premium status.", e);
           setIsUserPremium(false);
@@ -75,10 +75,10 @@ const SettingsScreen = ({
 
   const translations = {
     ar: {
-      settingsTitle: 'الإعدادات', usernameLabel: 'اسم المستخدم:', heightLabel: 'الطول (سم):', weightGoalLabel: 'هدف الوزن (كجم):', languageLabel: 'اللغة:', notificationsLabel: 'الإشعارات:', notificationsOn: 'تشغيل', notificationsOff: 'إيقاف', saveButton: 'حفظ الإعدادات', modalMessage: 'تم حفظ الإعدادات بنجاح!', modalButton: 'موافق', darkModeLabel: 'الوضع الداكن:', backArrow: '←', saveErrorTitle: 'خطأ', saveErrorMessage: 'فشل حفظ الإعدادات.', loadErrorTitle: 'خطأ', loadErrorMessage: 'فشل تحميل الإعدادات.', placeholderUsername: 'أدخل اسم المستخدم', placeholderHeight: 'أدخل الطول', placeholderWeightGoal: 'أدخل الوزن المستهدف', languageChangeAlertTitle: "تغيير اللغة", languageChangeAlertMessage: "يرجى إعادة تشغيل التطبيق لتطبيق تغييرات اللغة بشكل كامل.", premiumFeature: 'ميزة مميزة', upgradePrompt: 'هذه الميزة متاحة فقط للمشتركين. هل ترغب بالترقية الآن؟', upgrade: 'ترقية', cancel: 'إلغاء',
+      settingsTitle: 'الإعدادات', usernameLabel: 'اسم المستخدم:', heightLabel: 'الطول (سم):', weightGoalLabel: 'هدف الوزن (كجم):', languageLabel: 'اللغة:', notificationsLabel: 'الإشعارات:', notificationsOn: 'تشغيل', notificationsOff: 'إيقاف', saveButton: 'حفظ الإعدادات', modalMessage: 'تم حفظ الإعدادات بنجاح!', modalButton: 'موافق', darkModeLabel: 'الوضع الداكن:', backArrow: '←', saveErrorTitle: 'خطأ', saveErrorMessage: 'فشل حفظ الإعدادات.', loadErrorTitle: 'خطأ', loadErrorMessage: 'فشل تحميل الإعدادات.', placeholderUsername: 'أدخل اسم المستخدم', placeholderHeight: 'أدخل الطول', placeholderWeightGoal: 'أدخل الوزن المستهدف', languageChangeAlertTitle: "تغيير اللغة", languageChangeAlertMessage: "تم تحديث إعدادات اللغة. سيتم إعادة تشغيل التطبيق الآن.", premiumFeature: 'ميزة مميزة', upgradePrompt: 'هذه الميزة متاحة فقط للمشتركين. هل ترغب بالترقية الآن؟', upgrade: 'ترقية', cancel: 'إلغاء',
     },
     en: {
-      settingsTitle: 'Settings', usernameLabel: 'Username:', heightLabel: 'Height (cm):', weightGoalLabel: 'Weight Goal (kg):', languageLabel: 'Language:', notificationsLabel: 'Notifications:', notificationsOn: 'On', notificationsOff: 'Off', saveButton: 'Save Settings', modalMessage: 'Settings saved successfully!', modalButton: 'OK', darkModeLabel: 'Dark Mode:', backArrow: '←', saveErrorTitle: 'Error', saveErrorMessage: 'Failed to save settings.', loadErrorTitle: 'Error', loadErrorMessage: 'Failed to load settings.', placeholderUsername: 'Enter username', placeholderHeight: 'Enter height', placeholderWeightGoal: 'Enter weight goal', languageChangeAlertTitle: "Language Change", languageChangeAlertMessage: "Please restart the app for language changes to take full effect.", premiumFeature: 'Premium Feature', upgradePrompt: 'This feature is available for premium users only. Would you like to upgrade now?', upgrade: 'Upgrade', cancel: 'Cancel',
+      settingsTitle: 'Settings', usernameLabel: 'Username:', heightLabel: 'Height (cm):', weightGoalLabel: 'Weight Goal (kg):', languageLabel: 'Language:', notificationsLabel: 'Notifications:', notificationsOn: 'On', notificationsOff: 'Off', saveButton: 'Save Settings', modalMessage: 'Settings saved successfully!', modalButton: 'OK', darkModeLabel: 'Dark Mode:', backArrow: '←', saveErrorTitle: 'Error', saveErrorMessage: 'Failed to save settings.', loadErrorTitle: 'Error', loadErrorMessage: 'Failed to load settings.', placeholderUsername: 'Enter username', placeholderHeight: 'Enter height', placeholderWeightGoal: 'Enter weight goal', languageChangeAlertTitle: "Language Change", languageChangeAlertMessage: "Language settings updated. The app will restart now.", premiumFeature: 'Premium Feature', upgradePrompt: 'This feature is available for premium users only. Would you like to upgrade now?', upgrade: 'Upgrade', cancel: 'Cancel',
     }
   };
   
@@ -101,7 +101,6 @@ const SettingsScreen = ({
         }
       } catch (error) {
         console.error("[SettingsScreen] Failed to load form data:", error);
-        Alert.alert(t.loadErrorTitle, t.loadErrorMessage);
       }
     };
     loadFormData();
@@ -111,14 +110,44 @@ const SettingsScreen = ({
     try {
       const generalSettings = { height: height, weightGoal: weightGoal, notifications: notifications };
       const profileData = { username: username };
+      
       await AsyncStorage.setItem(USER_SETTINGS_KEY, JSON.stringify(generalSettings));
       await AsyncStorage.setItem(USER_PROFILE_DATA_KEY, JSON.stringify(profileData));
-      if (changeLanguageProp) { await changeLanguageProp(selectedLanguage); }
+
+      // --- منطق تغيير اللغة وإعادة التشغيل ---
+      if (selectedLanguage !== languageProp) {
+          await AsyncStorage.setItem('appLanguage', selectedLanguage);
+          
+          const isAr = selectedLanguage === 'ar';
+          I18nManager.allowRTL(true);
+          I18nManager.forceRTL(isAr);
+
+          Alert.alert(
+              t.languageChangeAlertTitle,
+              t.languageChangeAlertMessage,
+              [{
+                  text: t.modalButton,
+                  onPress: async () => {
+                      try {
+                          // هنا بنستخدم المكتبة لعمل ريستارت
+                          await Updates.reloadAsync();
+                      } catch (e) {
+                          console.log("Reload failed", e);
+                      }
+                  }
+              }],
+              { cancelable: false }
+          );
+          return; 
+      }
+      // ------------------------------------
+
       if (toggleDarkModeProp && isDarkMode !== darkModeProp) { await toggleDarkModeProp(isDarkMode); }
       if (updateGoalWeightInParent) { updateGoalWeightInParent(weightGoal); }
       if (notifications === 'on') { if (enableNotifications) enableNotifications(); } else { if (disableNotifications) disableNotifications(); }
-      console.log("[SettingsScreen] Settings saved successfully!");
+      
       setModalVisible(true);
+
     } catch (error) {
       console.error("[SettingsScreen] Failed to save settings:", error);
       Alert.alert(t.saveErrorTitle, t.saveErrorMessage);
@@ -127,14 +156,7 @@ const SettingsScreen = ({
   
   const handlePremiumFeaturePress = () => {
     if (!isUserPremium) {
-      Alert.alert(
-        t.premiumFeature,
-        t.upgradePrompt,
-        [
-          { text: t.cancel, style: 'cancel' },
-          { text: t.upgrade, onPress: () => navigation.navigate('PremiumScreen') }
-        ]
-      );
+      Alert.alert(t.premiumFeature, t.upgradePrompt, [{ text: t.cancel, style: 'cancel' }, { text: t.upgrade, onPress: () => navigation.navigate('PremiumScreen') }]);
     }
   };
 
@@ -145,12 +167,7 @@ const SettingsScreen = ({
 
   const PremiumPickerWrapper = ({ children, isLocked }) => {
     if (isLocked) { 
-        // إصلاح الخطأ: إزالة المسافات حول children
-        return ( 
-            <TouchableOpacity onPress={handlePremiumFeaturePress} style={dynamicStyles.disabledOverlay}>
-                {children}
-            </TouchableOpacity> 
-        ); 
+        return ( <TouchableOpacity onPress={handlePremiumFeaturePress} style={dynamicStyles.disabledOverlay}>{children}</TouchableOpacity> ); 
     }
     return children;
   };
@@ -158,17 +175,9 @@ const SettingsScreen = ({
   return (
     <ScrollView style={dynamicStyles.outerContainer} contentContainerStyle={dynamicStyles.scrollContentContainer} keyboardShouldPersistTaps="handled" key={`${selectedLanguage}-${isDarkMode}-${isUserPremium}`} >
       <View style={dynamicStyles.container}>
-        
-        {/* الهيدر المعدل مع أيقونة السهم */}
         <View style={dynamicStyles.header}>
           <TouchableOpacity onPress={handleGoBack} style={dynamicStyles.backButtonWrapper}>
-             <Icon 
-                name="arrow-back" 
-                size={24}  // 1. صغرنا الحجم من 30 إلى 24
-                // 2. غيرنا اللون ليطابق لون العنوان (غامق في الفاتح، وفاتح في الداكن)
-                color={isDarkMode ? '#e0e0e0' : '#004d40'} 
-                style={selectedLanguage === 'ar' ? { transform: [{ scaleX: -1 }] } : {}}
-              />
+             <Icon name="arrow-back" size={24} color={isDarkMode ? '#e0e0e0' : '#004d40'} style={selectedLanguage === 'ar' ? { transform: [{ scaleX: -1 }] } : {}} />
           </TouchableOpacity>
           <Text style={dynamicStyles.title}>{t.settingsTitle}</Text>
           <View style={dynamicStyles.headerPlaceholder} />

@@ -1,7 +1,7 @@
-﻿// water.js (الكود النهائي والكامل مع حساب الإحصائيات والأنماط)
+﻿// water.js (الكود المصحح)
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput, FlatList, SafeAreaView,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput, SafeAreaView,
   Platform, I18nManager, Alert, Image, ActivityIndicator, AppState,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -87,16 +87,13 @@ const WaterTrackingScreen = ({ language: propLanguage, isDarkMode: propIsDarkMod
                     return { date, total, target: data.targetAmount || 2000 };
                 }).filter(Boolean).sort((a, b) => new Date(b.date) - new Date(a.date));
 
-                // حساب المتوسط
                 const totalIntake = dailyTotals.reduce((sum, day) => sum + day.total, 0);
                 const avg = dailyTotals.length > 0 ? totalIntake / dailyTotals.length : 0;
                 setDailyAverage(Math.round(avg));
                 
-                // حساب الأيام المتتالية (Streak)
                 let currentStreak = 0;
                 let currentDateCheck = new Date();
 
-                // إذا لم يتم تحقيق هدف اليوم، ابدأ العد من الأمس
                 const todayData = dailyTotals.find(d => d.date === todayDateString);
                 if (!todayData || todayData.total < todayData.target) {
                     currentDateCheck.setDate(currentDateCheck.getDate() - 1);
@@ -110,7 +107,7 @@ const WaterTrackingScreen = ({ language: propLanguage, isDarkMode: propIsDarkMod
                         currentStreak++;
                         currentDateCheck.setDate(currentDateCheck.getDate() - 1);
                     } else {
-                        break; // توقف السلسلة
+                        break;
                     }
                 }
                 setStreak(currentStreak);
@@ -192,8 +189,8 @@ const WaterTrackingScreen = ({ language: propLanguage, isDarkMode: propIsDarkMod
   const displayCurrentAmount = useMemo(() => (Math.min(currentAmount, targetAmount)), [currentAmount, targetAmount]);
   const selectedWaterFillGifIndex = useMemo(() => { if (targetAmount <= 0 || currentAmount <= 0) return 0; if (currentAmount >= targetAmount) return NUM_WATER_FILL_GIFS - 1; const numberOfActualWaterLevels = NUM_WATER_FILL_GIFS - 1; const percentage = (currentAmount / targetAmount) * 100; const segmentSize = 100 / numberOfActualWaterLevels; let waterLevelIndex = Math.floor(percentage / segmentSize); waterLevelIndex = Math.min(waterLevelIndex, numberOfActualWaterLevels - 1); let gifIndex = waterLevelIndex + 1; gifIndex = Math.min(gifIndex, NUM_WATER_FILL_GIFS - 1); if (currentAmount > 0 && gifIndex === 0) gifIndex = 1; return gifIndex; }, [currentAmount, targetAmount]);
   const currentWaterFillGif = waterFillGifSources[selectedWaterFillGifIndex];
+  
   const renderHistoryItem = useCallback(({ item }) => (<View style={currentStyles.historyItem}><Text style={currentStyles.historyTextAmount}>{item.amount.toLocaleString(activeTranslation.code === 'ar' ? 'ar-EG' : 'en-US')} {activeTranslation.progressText}</Text><Text style={currentStyles.historyTextTime}>{item.time}</Text></View>), [currentStyles, activeTranslation.code, activeTranslation.progressText]);
-  const keyExtractor = useCallback((item) => item.id, []);
   const ListEmptyComponent = useMemo(() => (<Text style={currentStyles.emptyHistoryText}>{activeTranslation.emptyHistory}</Text>), [currentStyles.emptyHistoryText, activeTranslation.emptyHistory]);
   
   if (!isInitialized) {
@@ -221,7 +218,24 @@ const WaterTrackingScreen = ({ language: propLanguage, isDarkMode: propIsDarkMod
             <View style={currentStyles.stat}><Text style={currentStyles.statValue}>{currentAmount.toLocaleString(activeTranslation.code === 'ar' ? 'ar-EG' : 'en-US')}</Text><Text style={currentStyles.statLabel}>{activeTranslation.todayTotal}</Text></View>
           </View>
           <Text style={currentStyles.recordLabel}>{activeTranslation.recordLabel}</Text>
-          <FlatList style={currentStyles.historyList} contentContainerStyle={currentStyles.historyListContent} data={waterHistory} renderItem={renderHistoryItem} keyExtractor={keyExtractor} ListEmptyComponent={ListEmptyComponent} nestedScrollEnabled={true} initialNumToRender={10} maxToRenderPerBatch={5} windowSize={10}/>
+          
+          {/* تم استبدال FlatList هنا بـ ScrollView داخلية */}
+          <ScrollView 
+            style={currentStyles.historyList} 
+            contentContainerStyle={currentStyles.historyListContent}
+            nestedScrollEnabled={true}
+          >
+            {waterHistory.length === 0 ? (
+                ListEmptyComponent
+            ) : (
+                waterHistory.slice().reverse().map((item) => (
+                    <View key={item.id}>
+                        {renderHistoryItem({ item })}
+                    </View>
+                ))
+            )}
+          </ScrollView>
+
           <TouchableOpacity onPress={resetData} style={currentStyles.resetButton}><Text style={currentStyles.resetButtonText}>{activeTranslation.resetBtn}</Text></TouchableOpacity>
         </View>
       </ScrollView>
@@ -259,8 +273,11 @@ const lightStyles = StyleSheet.create({
   statValue: { fontSize: 20, fontWeight: 'bold', color: '#388e3c', marginBottom: 4 },
   statLabel: { fontSize: 12, color: '#757575', textAlign: 'center' },
   recordLabel: { fontSize: 18, fontWeight: 'bold', color: '#4caf50', marginBottom: 10, marginLeft: 5, textAlign: I18nManager.isRTL ? 'right' : 'left' },
+  
+  // Updated Styles for ScrollView list
   historyList: { maxHeight: 180, marginBottom: 20, borderRadius: 5 },
   historyListContent: { paddingBottom: 10 },
+  
   historyItem: { flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row', justifyContent: 'space-between', paddingVertical: 12, paddingHorizontal: 10, borderBottomColor: '#e0e0e0', borderBottomWidth: 1, backgroundColor: '#ffffff' },
   historyTextAmount: { color: '#333', fontSize: 15, fontWeight: '500' },
   historyTextTime: { color: '#666', fontSize: 14 },

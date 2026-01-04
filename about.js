@@ -6,37 +6,35 @@ import {
     StyleSheet,
     TouchableOpacity,
     Platform,
-    StatusBar // Recommended for safe area handling
+    StatusBar,
+    Linking 
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons'; 
 
-/**
- * AboutScreen Component
- * Displays information about the application.
- *
- * Props:
- * - navigation: React Navigation navigation object (optional, if needed for other actions).
- * - language (string): The current language code ('ar' or 'en'). Defaults to 'ar'.
- * - darkMode (boolean): Flag to indicate if dark mode is enabled.
- * - goBack (function): REQUIRED. A function passed from the parent component
- *                       that handles the navigation back action (e.g., navigation.goBack()).
- */
-// <<< التعديل الأول: تم تغيير اسم الخاصية هنا
 const AboutScreen = ({ navigation, language: currentLanguage = 'ar', darkMode = false, goBack }) => {
 
-    // Local state for language, initialized by the prop
     const [languageState, setLanguageState] = useState(currentLanguage);
-
-    // Determine styles based on darkMode prop
     const styles = darkMode ? darkStyles : lightStyles;
+    
+    // تحديد لون الأيقونة بناءً على الوضع (مشابه للكود الثاني)
+    const contactIconColor = darkMode ? '#66BB6A' : '#1b5e20';
 
-    // --- Effects ---
-
-    // Update local language if the prop changes from the parent
     useEffect(() => {
         setLanguageState(currentLanguage);
     }, [currentLanguage]);
 
-    // --- Translations ---
+    const handleEmailPress = async () => {
+        const email = 'optifitstudio0@gmail.com';
+        const url = `mailto:${email}`;
+        
+        const canOpen = await Linking.canOpenURL(url);
+        if (canOpen) {
+            await Linking.openURL(url);
+        } else {
+            console.log("Cannot open email app");
+        }
+    };
+
     const translations = {
         'ar': {
             'aboutTitle': 'حول التطبيق',
@@ -54,7 +52,7 @@ const AboutScreen = ({ navigation, language: currentLanguage = 'ar', darkMode = 
             'usageTitle': 'كيفية الاستخدام',
             'usageDescription': 'ابدأ بإدخال وزنك الحالي وتحديد هدفك. استخدم شريط التمرير (أو أي طريقة إدخال أخرى متاحة) لتحديث وزنك اليومي ومراقبة تقدمك على الرسوم البيانية. تابع النصائح اليومية وسجل بياناتك بانتظام لتحقيق أفضل النتائج.',
             'developerInfoTitle': 'معلومات المطور',
-            'developerInfo': 'تم تطوير هذا التطبيق بواسطة استوديو اوبتيفيت. لمزيد من المعلومات أو الدعم، يرجى التواصل عبر optifitstudio0@gmail.com.',
+            'developerInfo': 'تم تطوير هذا التطبيق بواسطة استوديو اوبتيفيت. لمزيد من المعلومات أو الدعم، يرجى التواصل عبر: ',
             'versionInfo': 'الإصدار: 1.0.0',
             'backButton': 'رجوع'
         },
@@ -74,16 +72,17 @@ const AboutScreen = ({ navigation, language: currentLanguage = 'ar', darkMode = 
             'usageTitle': 'How to Use',
             'usageDescription': 'Start by entering your current weight and setting your goal. Use the slider (or other available input methods) to update your daily weight and monitor your progress on the charts. Follow daily tips and log your data regularly for the best results.',
             'developerInfoTitle': 'Developer Information',
-            'developerInfo': 'This application was developed by optifit studio. For more information or support, please contact us at optifitstudio0@gmail.com.',
+            'developerInfo': 'This application was developed by optifit studio. For more information or support, please contact us at: ',
             'versionInfo': 'Version: 1.0.0',
             'backButton': 'Back'
         }
     };
 
-    // Use the local language state for display, falling back to English if needed
     const translation = translations[languageState] || translations['en'];
 
-    // --- Render ---
+    const arrowIconName = languageState === 'ar' ? 'arrow-forward' : 'arrow-back';
+    const arrowColor = darkMode ? '#ffffff' : '#388e3c';
+
     return (
         <ScrollView
             style={styles.container}
@@ -92,26 +91,26 @@ const AboutScreen = ({ navigation, language: currentLanguage = 'ar', darkMode = 
         >
             <View style={styles.innerContainer}>
 
-                {/* --- Custom Header Section --- */}
+                {/* --- Header --- */}
                 <View style={styles.header}>
-                    {/* <<< التعديل الثاني: تم تغيير الدالة التي يتم استدعاؤها هنا */}
                     <TouchableOpacity
-                        onPress={goBack} // Execute the passed function on press
+                        onPress={goBack} 
                         style={styles.headerBackButton}
                         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
-                        <Text style={styles.headerBackButtonText}>←</Text>
+                        <Ionicons 
+                            name={arrowIconName} 
+                            size={32} 
+                            color={arrowColor} 
+                        />
                     </TouchableOpacity>
 
-                    {/* Title Text */}
                     <Text style={styles.title}>{translation.aboutTitle}</Text>
 
-                    {/* Placeholder View to help center the title with flexbox */}
                     <View style={styles.headerPlaceholder} />
                 </View>
 
-                {/* --- Content Sections --- */}
-
+                {/* --- Content --- */}
                 <View style={styles.section}>
                     <Text style={styles.subtitle}>{translation.goalTitle}</Text>
                     <Text style={styles.paragraph}>{translation.goalDescription}</Text>
@@ -133,19 +132,24 @@ const AboutScreen = ({ navigation, language: currentLanguage = 'ar', darkMode = 
 
                  <View style={styles.section}>
                     <Text style={styles.subtitle}>{translation.developerInfoTitle}</Text>
-                    <Text style={styles.paragraph}>{translation.developerInfo}</Text>
+                    <Text style={styles.paragraph}>
+                        {translation.developerInfo}
+                    </Text>
+
+                    {/* إضافة زر الإيميل بتصميم مشابه للكود الثاني */}
+                    <TouchableOpacity 
+                        style={[
+                            styles.contactItem, 
+                            { flexDirection: languageState === 'ar' ? 'row-reverse' : 'row' }
+                        ]} 
+                        onPress={handleEmailPress}
+                    >
+                        <Ionicons name="mail-outline" size={24} color={contactIconColor} />
+                        <Text style={styles.contactText}>optifitstudio0@gmail.com</Text>
+                    </TouchableOpacity>
+
                     <Text style={[styles.paragraph, styles.versionText]}>{translation.versionInfo}</Text>
                 </View>
-
-                {/* --- Optional Bottom Back Button (Commented Out) --- */}
-                {/*
-                <TouchableOpacity
-                    onPress={goBack} // <<< التعديل الثالث: تم التعديل هنا أيضاً للاتساق
-                    style={styles.bottomBackButton}
-                >
-                    <Text style={styles.bottomBackButtonText}>{translation.backButton}</Text>
-                </TouchableOpacity>
-                */}
 
             </View>
         </ScrollView>
@@ -183,12 +187,7 @@ const lightStyles = StyleSheet.create({
         marginBottom: 30,
     },
     headerBackButton: {
-        padding: 5,
-    },
-    headerBackButtonText: {
-        fontSize: 28,
-        color: '#388e3c',
-        fontWeight: 'bold',
+        padding: 5, 
     },
     title: {
         color: '#388e3c',
@@ -196,8 +195,8 @@ const lightStyles = StyleSheet.create({
         fontWeight: 'bold',
     },
     headerPlaceholder: {
-        width: 30,
-        height: 30,
+        width: 32, 
+        height: 32,
     },
     section: {
         marginBottom: 25,
@@ -231,19 +230,21 @@ const lightStyles = StyleSheet.create({
         fontSize: 14,
         color: '#555',
     },
-    bottomBackButton: {
-        backgroundColor: '#388e3c',
-        borderRadius: 8,
-        paddingVertical: 12,
-        paddingHorizontal: 30,
-        alignItems: 'center',
-        marginTop: 20,
-        alignSelf: 'center',
+    // ستايل زر التواصل (فاتح)
+    contactItem: {
+        alignItems: 'center', 
+        marginTop: 15, 
+        backgroundColor: '#e8f5e9', // contactBg light
+        paddingVertical: 10, 
+        paddingHorizontal: 15, 
+        borderRadius: 8, 
+        alignSelf: 'flex-start',
     },
-    bottomBackButtonText: {
-        color: 'white',
-        fontSize: 16,
-        fontWeight: 'bold',
+    contactText: { 
+        fontSize: 16, 
+        color: '#1b5e20', // contactText light
+        fontWeight: '500', 
+        marginHorizontal: 10 
     },
 });
 
@@ -278,19 +279,14 @@ const darkStyles = StyleSheet.create({
     headerBackButton: {
         padding: 5,
     },
-    headerBackButtonText: {
-        fontSize: 28,
-        color: '#ffffff',
-        fontWeight: 'bold',
-    },
     title: {
         color: '#ffffff',
         fontSize: 24,
         fontWeight: 'bold',
     },
     headerPlaceholder: {
-        width: 30,
-        height: 30,
+        width: 32,
+        height: 32,
     },
     section: {
         marginBottom: 25,
@@ -324,19 +320,21 @@ const darkStyles = StyleSheet.create({
         fontSize: 14,
         color: '#aaa',
     },
-    bottomBackButton: {
-        backgroundColor: '#bb86fc',
-        borderRadius: 8,
-        paddingVertical: 12,
-        paddingHorizontal: 30,
-        alignItems: 'center',
-        marginTop: 20,
-        alignSelf: 'center',
+    // ستايل زر التواصل (داكن)
+    contactItem: {
+        alignItems: 'center', 
+        marginTop: 15, 
+        backgroundColor: '#2C2C2C', // contactBg dark
+        paddingVertical: 10, 
+        paddingHorizontal: 15, 
+        borderRadius: 8, 
+        alignSelf: 'flex-start',
     },
-    bottomBackButtonText: {
-        color: '#121212',
-        fontSize: 16,
-        fontWeight: 'bold',
+    contactText: { 
+        fontSize: 16, 
+        color: '#66BB6A', // contactText dark
+        fontWeight: '500', 
+        marginHorizontal: 10 
     },
 });
 
