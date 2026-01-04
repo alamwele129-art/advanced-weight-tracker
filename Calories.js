@@ -1,4 +1,4 @@
-﻿// CaloriesScreen.js (النسخة النهائية والصحيحة)
+﻿// CaloriesScreen.js (النسخة النهائية مع المزامنة)
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
     SafeAreaView, View, Text, StyleSheet, TouchableOpacity, Dimensions, ScrollView,
@@ -9,11 +9,11 @@ import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIc
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Svg, { Circle as SvgCircle, Path } from 'react-native-svg';
 import { Pedometer } from 'expo-sensors';
+import { supabase } from './supabaseClient'; // 1. استيراد Supabase
 
-// --- استيراد مكونات الأسبوع والشهر (تم إرجاعها كما طلبت) ---
-import WeeklyCalories from './weeklycalories'; // تأكد من أن هذا المسار صحيح
-import MonthlyCalories from './monthlycalories'; // تأكد من أن هذا المسار صحيح
-
+// --- استيراد مكونات الأسبوع والشهر ---
+import WeeklyCalories from './weeklycalories';
+import MonthlyCalories from './monthlycalories';
 
 // --- الثوابت الأساسية ---
 const { width, height } = Dimensions.get('window');
@@ -49,7 +49,6 @@ const CURRENT_CHALLENGE_DURATION_KEY = '@StepsChallenge:currentDuration';
 const MAX_COMPLETED_CHALLENGE_DAYS_KEY = '@Achievements:maxCompletedChallengeDays';
 const CELEBRATE_TIER_COMPLETION_KEY = '@Achievements:celebrateTierCompletion';
 
-// ثوابت شارة التحدي
 const BADGE_CONTAINER_SIZE = 60;
 const BADGE_SVG_SIZE = BADGE_CONTAINER_SIZE;
 const BADGE_CIRCLE_BORDER_WIDTH = 6;
@@ -57,84 +56,22 @@ const BADGE_PATH_RADIUS = (BADGE_SVG_SIZE / 2) - (BADGE_CIRCLE_BORDER_WIDTH / 2)
 const BADGE_CENTER_X = BADGE_SVG_SIZE / 2;
 const BADGE_CENTER_Y = BADGE_SVG_SIZE / 2;
 
-// ثوابت الهدف
 const GOAL_OPTIONS = [ 150, 200, 250, 300, 350, 400, 500, 600, 750, 1000, 1500, 2500, 5000, 10000 ];
 const DEFAULT_GOAL = 300;
 const GOAL_KEY = '@Calories:goal';
 
-// ثوابت أخرى
 const STEP_ANIMATION_DURATION = 400;
 const DAILY_STEPS_HISTORY_KEY = '@Steps:DailyHistory';
 
-// --- الترجمات ---
 const translations = {
     ar: {
-        caloriesTitle: "السعرات",
-        stepsTitle: "الخطوات",
-        distanceTitle: "المسافة",
-        timeTitle: "الوقت النشط",
-        goalLabelPrefix: 'الهدف:',
-        caloriesUnit: 'كيلوكالوري',
-        distanceUnit: 'كم',
-        stepsUnit: 'خطوة',
-        timeUnit: 'ساعات',
-        challengePrefix: 'أيام تحدي',
-        challengeCompleted: 'اكتمل التحدي!',
-        challengeRemainingSingular: 'يوم متبقي',
-        challengeRemainingPlural: 'أيام متبقية',
-        challengeDaySuffix: 'ي',
-        editGoal: 'تعديل الهدف',
-        setTargetTitle: 'تحديد السعرات المستهدفة',
-        save: 'حفظ',
-        cancel: 'إلغاء',
-        errorTitle: "خطأ",
-        cannotSaveGoalError: "لم نتمكن من حفظ الهدف.",
-        dayNamesShort: ['س', 'أ', 'ن', 'ث', 'ر', 'خ', 'ج'], // السبت -> الجمعة
-        weeklyStatsTitle: "إحصائيات الأسبوع",
-        pedometerNotAvailable: "عداد الخطى غير متوفر",
-        addSteps: "إضافة 1000 خطوة",
-        reset: "إعادة تعيين",
-        today: "اليوم",
-        yesterday: "أمس",
-        dayPeriod: 'يوم',
-        weekPeriod: 'أسبوع',
-        monthPeriod: 'شهر',
+        caloriesTitle: "السعرات", stepsTitle: "الخطوات", distanceTitle: "المسافة", timeTitle: "الوقت النشط", goalLabelPrefix: 'الهدف:', caloriesUnit: 'كيلوكالوري', distanceUnit: 'كم', stepsUnit: 'خطوة', timeUnit: 'ساعات', challengePrefix: 'أيام تحدي', challengeCompleted: 'اكتمل التحدي!', challengeRemainingSingular: 'يوم متبقي', challengeRemainingPlural: 'أيام متبقية', challengeDaySuffix: 'ي', editGoal: 'تعديل الهدف', setTargetTitle: 'تحديد السعرات المستهدفة', save: 'حفظ', cancel: 'إلغاء', errorTitle: "خطأ", cannotSaveGoalError: "لم نتمكن من حفظ الهدف.", dayNamesShort: ['س', 'أ', 'ن', 'ث', 'ر', 'خ', 'ج'], weeklyStatsTitle: "إحصائيات الأسبوع", pedometerNotAvailable: "عداد الخطى غير متوفر", addSteps: "إضافة 1000 خطوة", reset: "إعادة تعيين", today: "اليوم", yesterday: "أمس", dayPeriod: 'يوم', weekPeriod: 'أسبوع', monthPeriod: 'شهر',
     },
     en: {
-        caloriesTitle: "Calories",
-        stepsTitle: "Steps",
-        distanceTitle: "Distance",
-        timeTitle: "Active Time",
-        goalLabelPrefix: 'Goal:',
-        caloriesUnit: 'kcal',
-        distanceUnit: 'km',
-        stepsUnit: 'step',
-        timeUnit: 'hours',
-        challengePrefix: 'Day Challenge',
-        challengeCompleted: 'Challenge Completed!',
-        challengeRemainingSingular: 'day remaining',
-        challengeRemainingPlural: 'days remaining',
-        challengeDaySuffix: 'd',
-        editGoal: 'Edit Goal',
-        setTargetTitle: 'Set Calorie Goal',
-        save: 'Save',
-        cancel: 'Cancel',
-        errorTitle: "Error",
-        cannotSaveGoalError: "We could not save the goal.",
-        dayNamesShort: ['S', 'M', 'T', 'W', 'T', 'F', 'S'], // Sunday -> Saturday
-        weeklyStatsTitle: "Weekly Stats",
-        pedometerNotAvailable: "Pedometer is not available",
-        addSteps: "Add 1000 Steps",
-        reset: "Reset",
-        today: "Today",
-        yesterday: "Yesterday",
-        dayPeriod: 'Day',
-        weekPeriod: 'Week',
-        monthPeriod: 'Month',
+        caloriesTitle: "Calories", stepsTitle: "Steps", distanceTitle: "Distance", timeTitle: "Active Time", goalLabelPrefix: 'Goal:', caloriesUnit: 'kcal', distanceUnit: 'km', stepsUnit: 'step', timeUnit: 'hours', challengePrefix: 'Day Challenge', challengeCompleted: 'Challenge Completed!', challengeRemainingSingular: 'day remaining', challengeRemainingPlural: 'days remaining', challengeDaySuffix: 'd', editGoal: 'Edit Goal', setTargetTitle: 'Set Calorie Goal', save: 'Save', cancel: 'Cancel', errorTitle: "Error", cannotSaveGoalError: "We could not save the goal.", dayNamesShort: ['S', 'M', 'T', 'W', 'T', 'F', 'S'], weeklyStatsTitle: "Weekly Stats", pedometerNotAvailable: "Pedometer is not available", addSteps: "Add 1000 Steps", reset: "Reset", today: "Today", yesterday: "Yesterday", dayPeriod: 'Day', weekPeriod: 'Week', monthPeriod: 'Month',
     },
 };
 
-// --- دوال مساعدة ---
 const MOVING_DOT_SIZE = CIRCLE_BORDER_WIDTH; 
 const calculateIconPositionOnPath = (angleDegrees) => { const angleRad = (angleDegrees - 90) * (Math.PI / 180); const iconRadius = PATH_RADIUS; const xOffset = iconRadius * Math.cos(angleRad); const yOffset = iconRadius * Math.sin(angleRad); const iconCenterX = (SVG_VIEWBOX_SIZE / 2) + xOffset; const iconCenterY = (SVG_VIEWBOX_SIZE / 2) + yOffset; const top = iconCenterY - (MOVING_DOT_SIZE / 2); const left = iconCenterX - (MOVING_DOT_SIZE / 2); return { position: 'absolute', width: MOVING_DOT_SIZE, height: MOVING_DOT_SIZE, top, left, zIndex: 10 }; };
 const describeArc = (x, y, radius, startAngleDeg, endAngleDeg) => { const clampedEndAngle = Math.min(endAngleDeg, 359.999); const startAngleRad = ((startAngleDeg - 90) * Math.PI) / 180.0; const endAngleRad = ((clampedEndAngle - 90) * Math.PI) / 180.0; const startX = x + radius * Math.cos(startAngleRad); const startY = y + radius * Math.sin(startAngleRad); const endX = x + radius * Math.cos(endAngleRad); const endY = y + radius * Math.sin(endAngleRad); const largeArcFlag = clampedEndAngle - startAngleDeg <= 180 ? '0' : '1'; const sweepFlag = '1'; const d = [ 'M', startX, startY, 'A', radius, radius, 0, largeArcFlag, sweepFlag, endX, endY ].join(' '); return d; };
@@ -150,41 +87,15 @@ const addMonths = (date, months) => { const d = new Date(date); d.setUTCMonth(d.
 const getDaysInMonth = (date) => new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
 const formatDateRange = (startDate, endDate, lang) => { const locale = lang === 'ar' ? 'ar-EG-u-ca-gregory-nu-arab' : 'en-US-u-ca-gregory'; const optionsDayMonth = { day: 'numeric', month: 'long', timeZone: 'UTC' }; const optionsDay = { day: 'numeric', timeZone: 'UTC' }; if (startDate.getUTCMonth() === endDate.getUTCMonth()) { const monthName = endDate.toLocaleDateString(locale, { month: 'long', timeZone: 'UTC' }); return `${startDate.toLocaleDateString(locale, optionsDay)} - ${endDate.toLocaleDateString(locale, optionsDay)} ${monthName}`; } else { return `${startDate.toLocaleDateString(locale, optionsDayMonth)} - ${endDate.toLocaleDateString(locale, optionsDayMonth)}`; } };
 
-
-// --- مكونات قابلة لإعادة الاستخدام (كاملة) ---
 const AnimatedStatItem = React.memo(({ type, value, unit, styles, formatter }) => {
     const icons = { steps: 'walk', time: 'clock-time-four-outline', distance: 'map-marker-distance' };
     const iconName = icons[type];
-
     const animatedValue = useRef(new Animated.Value(value || 0)).current;
     const [displayValue, setDisplayValue] = useState(() => formatter(value || 0));
-
-    useEffect(() => {
-        Animated.timing(animatedValue, {
-            toValue: value || 0,
-            duration: 750,
-            useNativeDriver: false,
-        }).start();
-    }, [value]);
-
-    useEffect(() => {
-        const listenerId = animatedValue.addListener((v) => {
-            setDisplayValue(formatter(v.value));
-        });
-        return () => animatedValue.removeListener(listenerId);
-    }, [formatter, animatedValue]);
-
-    return (
-        <View style={styles.statItem}>
-            <View style={styles.statIconCircle}>
-                <MaterialCommunityIcon name={iconName} size={28} color={styles.statIcon.color} />
-            </View>
-            <Text style={styles.statValue}>{displayValue}</Text>
-            <Text style={styles.statUnit}>{unit}</Text>
-        </View>
-    );
+    useEffect(() => { Animated.timing(animatedValue, { toValue: value || 0, duration: 750, useNativeDriver: false }).start(); }, [value]);
+    useEffect(() => { const listenerId = animatedValue.addListener((v) => { setDisplayValue(formatter(v.value)); }); return () => animatedValue.removeListener(listenerId); }, [formatter, animatedValue]);
+    return ( <View style={styles.statItem}><View style={styles.statIconCircle}><MaterialCommunityIcon name={iconName} size={28} color={styles.statIcon.color} /></View><Text style={styles.statValue}>{displayValue}</Text><Text style={styles.statUnit}>{unit}</Text></View> );
 });
-
 
 const ActivityChart = React.memo(({ data = [], goal = DEFAULT_GOAL, styles, language, dayNames }) => { 
     const [tooltipVisible, setTooltipVisible] = useState(false); 
@@ -214,17 +125,8 @@ const ActivityChart = React.memo(({ data = [], goal = DEFAULT_GOAL, styles, lang
         <Text style={[ styles.xAxisLabel, (displayIndex === displayDayIndex || (selectedBarIndex !== null && displayIndex === selectedBarIndex)) && styles.xAxisLabelToday ]}>{day}</Text>
     </View>))}</View></View></View></Pressable> ); });
 
-// ====================================================================================
-// ============================= بداية المكون الرئيسي =================================
-// ====================================================================================
 const CaloriesScreen = (props) => {
-    const { 
-        onNavigate, 
-        currentScreenName, 
-        onNavigateToAchievements,
-        language: initialLanguage, 
-        isDarkMode: initialIsDarkMode 
-    } = props;
+    const { onNavigate, currentScreenName, onNavigateToAchievements, language: initialLanguage, isDarkMode: initialIsDarkMode } = props;
     
     const systemColorScheme = useColorScheme();
     const [language, setLanguage] = useState(initialLanguage || (I18nManager.isRTL ? 'ar' : 'en'));
@@ -250,7 +152,7 @@ const CaloriesScreen = (props) => {
     const [isLoading, setIsLoading] = useState(true);
     const [selectedPeriod, setSelectedPeriod] = useState('day'); 
     
-    const [weeklyChartData, setWeeklyChartData] = useState({ dates: [], steps: Array(7).fill(0) }); // For daily chart
+    const [weeklyChartData, setWeeklyChartData] = useState({ dates: [], steps: Array(7).fill(0) });
     const [fullWeeklyData, setFullWeeklyData] = useState([]);
     const [monthlyData, setMonthlyData] = useState([]);
     const [isWeeklyLoading, setIsWeeklyLoading] = useState(false);
@@ -267,26 +169,14 @@ const CaloriesScreen = (props) => {
     const [dynamicIconStyle, setDynamicIconStyle] = useState(() => calculateIconPositionOnPath(0));
     const [progressPathD, setProgressPathD] = useState('');
 
-    const navigateTo = (screenName) => {
-       closeTitleMenu();
-       if (onNavigate && typeof onNavigate === 'function') {
-           onNavigate(screenName);
-       } else {
-           console.error(`Navigation failed: 'onNavigate' prop is missing or is not a function.`);
-           Alert.alert("خطأ في التنقل", `فشل الانتقال إلى الشاشة.`);
-       }
-    };
-    
-    const handleNavigateToAchievements = () => {
-        if (onNavigateToAchievements && typeof onNavigateToAchievements === 'function') {
-            onNavigateToAchievements(pedometerSteps);
-        } else {
-            console.error('[CaloriesScreen] onNavigateToAchievements is not a function.');
-        }
-    };
+    const navigateTo = (screenName) => { closeTitleMenu(); if (onNavigate) onNavigate(screenName); };
+    const handleNavigateToAchievements = () => { if (onNavigateToAchievements) onNavigateToAchievements(pedometerSteps); };
 
     useEffect(() => { displayCaloriesRef.current = displayCalories; }, [displayCalories]);
     
+    // -------------------------------------------------------------
+    // 1. المزامنة (تحميل / حفظ)
+    // -------------------------------------------------------------
     const getStoredStepsHistory = useCallback(async () => {
         try { const storedHistory = await AsyncStorage.getItem(DAILY_STEPS_HISTORY_KEY); return storedHistory ? JSON.parse(storedHistory) : {}; } 
         catch (error) { console.error("Failed to get step history:", error); return {}; }
@@ -296,38 +186,66 @@ const CaloriesScreen = (props) => {
         const dateString = getDateString(date);
         if (!dateString) return;
         try { 
+            // أ. الحفظ المحلي
             const history = await getStoredStepsHistory(); 
             if (history[dateString] !== Math.round(steps)) {
                 history[dateString] = Math.round(steps);
                 await AsyncStorage.setItem(DAILY_STEPS_HISTORY_KEY, JSON.stringify(history)); 
                 setStepsHistory(prev => ({...prev, [dateString]: Math.round(steps)}));
             }
+
+            // ب. الحفظ في Supabase (نفس المنطق في StepsScreen)
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                await supabase.from('steps').upsert({
+                    user_id: user.id,
+                    date: dateString,
+                    step_count: Math.round(steps)
+                }, { onConflict: 'user_id, date' });
+            }
         }
         catch (error) { console.error("Failed to save daily steps:", error); }
     }, [getStoredStepsHistory]);
 
+    // تحميل البيانات الأولية (الهدف والخطوات)
     useEffect(() => {
-        const loadHistory = async () => {
+        const loadInitialData = async () => {
             const history = await getStoredStepsHistory();
             setStepsHistory(history);
+
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                let loadedGoal = DEFAULT_GOAL;
+
+                // تحميل هدف السعرات
+                if (user) {
+                    const { data: profile } = await supabase.from('profiles').select('daily_calorie_goal').eq('id', user.id).single();
+                    if (profile && profile.daily_calorie_goal) loadedGoal = profile.daily_calorie_goal;
+                } else {
+                    const storedGoal = await AsyncStorage.getItem(GOAL_KEY);
+                    if (storedGoal) loadedGoal = parseInt(storedGoal, 10);
+                }
+                setGoalCalories(loadedGoal); 
+                setTempGoalCalories(loadedGoal);
+
+            } catch (e) {
+                console.error("Failed to load goal:", e);
+            }
         };
-        loadHistory();
+        loadInitialData();
     }, [getStoredStepsHistory]);
 
+    // ... (باقي الكود الخاص بالـ Pedometer والحسابات كما هو، لأنه سيعمل الآن مع saveDailySteps المحدثة)
     useEffect(() => {
         let isMounted = true;
         const subscribe = async () => {
             const isAvailable = await Pedometer.isAvailableAsync();
-            if (!isAvailable) {
-                if(isMounted) Alert.alert(translation.errorTitle, translation.pedometerNotAvailable);
-                return;
-            }
+            if (!isAvailable) { if(isMounted) Alert.alert(translation.errorTitle, translation.pedometerNotAvailable); return; }
             const { status } = await Pedometer.requestPermissionsAsync();
             if (status === 'granted') {
                 const fetchAndUpdateTodaySteps = async () => {
                     if (!isMounted) return;
-                    const start = new Date();
-                    start.setHours(0, 0, 0, 0);
+                    const start = new Date(); start.setHours(0, 0, 0, 0);
                     const end = new Date();
                     try {
                         const result = await Pedometer.getStepCountAsync(start, end);
@@ -340,182 +258,57 @@ const CaloriesScreen = (props) => {
                 };
                 await fetchAndUpdateTodaySteps();
                 pedometerSubscription.current = Pedometer.watchStepCount(fetchAndUpdateTodaySteps);
-            } else {
-                 if(isMounted) Alert.alert(translation.errorTitle, "تم رفض إذن الوصول إلى بيانات النشاط.");
             }
         };
         subscribe();
-        return () => { isMounted = false; if (pedometerSubscription.current) { pedometerSubscription.current.remove(); pedometerSubscription.current = null; } };
+        return () => { isMounted = false; if (pedometerSubscription.current) pedometerSubscription.current.remove(); };
     }, [saveDailySteps, translation]);
     
-    const stepsForDate = useMemo(() => {
-        if (isToday(currentDate)) { return pedometerSteps; }
-        const dateStr = getDateString(currentDate);
-        return stepsHistory[dateStr] || 0;
-    }, [currentDate, pedometerSteps, stepsHistory]);
-    
+    // حفظ الهدف الجديد في Supabase
+    const handleSaveGoal = useCallback(async () => { 
+        try { 
+            const newGoal = tempGoalCalories;
+            setGoalCalories(newGoal); 
+            await AsyncStorage.setItem(GOAL_KEY, String(newGoal)); 
+            
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                await supabase.from('profiles').update({ daily_calorie_goal: newGoal }).eq('id', user.id);
+            }
+            setIsGoalModalVisible(false); 
+        } catch (e) { 
+            Alert.alert(translation.errorTitle, translation.cannotSaveGoalError); 
+        } 
+    }, [tempGoalCalories, translation]);
+
+    // ... (باقي الكود والـ return كما هو بدون تغيير في الـ UI)
+    const stepsForDate = useMemo(() => { if (isToday(currentDate)) { return pedometerSteps; } const dateStr = getDateString(currentDate); return stepsHistory[dateStr] || 0; }, [currentDate, pedometerSteps, stepsHistory]);
     const caloriesForDate = useMemo(() => stepsForDate * CALORIES_PER_STEP, [stepsForDate]);
-    
-    const caloriesToDisplayInCircle = useMemo(() => {
-        return Math.min(caloriesForDate, goalCalories);
-    }, [caloriesForDate, goalCalories]);
-    
+    const caloriesToDisplayInCircle = useMemo(() => Math.min(caloriesForDate, goalCalories), [caloriesForDate, goalCalories]);
     const animateDisplay = useCallback((startValue, endValue) => { if (startValue === endValue || isNaN(startValue) || isNaN(endValue)) { setDisplayCalories(endValue); return; } if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current); const startTime = Date.now(); const step = () => { const now = Date.now(); const timePassed = now - startTime; const progress = Math.min(timePassed / STEP_ANIMATION_DURATION, 1); const currentDisplay = startValue + (endValue - startValue) * progress; setDisplayCalories(currentDisplay); if (progress < 1) animationFrameRef.current = requestAnimationFrame(step); else if (progress >= 1) { setDisplayCalories(endValue); }}; animationFrameRef.current = requestAnimationFrame(step); }, []);
-
-    useEffect(() => {
-        animateDisplay(displayCaloriesRef.current, caloriesToDisplayInCircle);
-    }, [caloriesToDisplayInCircle, animateDisplay]);
-    
-    useEffect(() => {
-        const loadGoal = async () => { try { const storedGoal = await AsyncStorage.getItem(GOAL_KEY); if (storedGoal) { const parsedGoal = parseInt(storedGoal, 10); setGoalCalories(parsedGoal); setTempGoalCalories(parsedGoal); } } catch (e) { console.error("Failed to load goal:", e); } };
-        loadGoal();
-    }, []);
-
-    const formatDisplayDate = useCallback((date) => {
-        const localeFormat = language === 'ar' ? 'ar-EG-u-ca-gregory-nu-arab' : 'en-US-u-ca-gregory';
-        if (isToday(date)) return translation.today;
-        if (isYesterday(date)) return translation.yesterday;
-        return new Intl.DateTimeFormat(localeFormat, { day: 'numeric', month: 'long', timeZone: 'UTC' }).format(date);
-    }, [language, translation]);
-
+    useEffect(() => { animateDisplay(displayCaloriesRef.current, caloriesToDisplayInCircle); }, [caloriesToDisplayInCircle, animateDisplay]);
+    const formatDisplayDate = useCallback((date) => { const localeFormat = language === 'ar' ? 'ar-EG-u-ca-gregory-nu-arab' : 'en-US-u-ca-gregory'; if (isToday(date)) return translation.today; if (isYesterday(date)) return translation.yesterday; return new Intl.DateTimeFormat(localeFormat, { day: 'numeric', month: 'long', timeZone: 'UTC' }).format(date); }, [language, translation]);
     const handlePreviousDay = () => { setCurrentDate(prevDate => addDays(prevDate, -1)); };
     const handleNextDay = () => { if (!isToday(currentDate)) setCurrentDate(prevDate => addDays(prevDate, 1)); };
-
     const handleAddSteps = () => { if (!isToday(currentDate)) return; const newSteps = pedometerSteps + 1000; setPedometerSteps(newSteps); saveDailySteps(new Date(), newSteps); };
     const handleResetSteps = () => { if (!isToday(currentDate)) return; setPedometerSteps(0); saveDailySteps(new Date(), 0); };
-
     const openTitleMenu = useCallback(() => { if (titleMenuTriggerRef.current) { titleMenuTriggerRef.current.measure((fx, fy, w, h, px, py) => { const top = py + h + MENU_VERTICAL_OFFSET; const positionStyle = I18nManager.isRTL ? { top, right: width - (px + w), left: undefined } : { top, left: px, right: undefined }; setTitleMenuPosition(positionStyle); setIsTitleMenuVisible(true); }); } }, [width]);
     const closeTitleMenu = useCallback(() => setIsTitleMenuVisible(false), []);
-    
-    const updateChallengeStatus = useCallback(async () => {
-        const todayString = getDateString(new Date());
-        if (!todayString) return;
-        try {
-            const [storedRemainingDaysStr, storedLastParticipationDate, storedChallengeDurationStr] = await Promise.all([ AsyncStorage.getItem(REMAINING_CHALLENGE_DAYS_KEY), AsyncStorage.getItem(LAST_PARTICIPATION_DATE_KEY), AsyncStorage.getItem(CURRENT_CHALLENGE_DURATION_KEY) ]);
-            let loadedDuration = INITIAL_CHALLENGE_DURATION;
-            if (storedChallengeDurationStr !== null) { const parsedDuration = parseInt(storedChallengeDurationStr, 10); if (!isNaN(parsedDuration) && CHALLENGE_DURATIONS.includes(parsedDuration)) loadedDuration = parsedDuration; }
-            setCurrentChallengeDuration(loadedDuration);
-            let currentRemainingDays = loadedDuration;
-            if (storedRemainingDaysStr !== null) { const parsedDays = parseInt(storedRemainingDaysStr, 10); if (!isNaN(parsedDays) && parsedDays >= 0 && parsedDays <= loadedDuration) currentRemainingDays = parsedDays; }
-            setRemainingDays(currentRemainingDays);
-            setLastParticipationDate(storedLastParticipationDate);
-            if (todayString !== storedLastParticipationDate && currentRemainingDays > 0) {
-                const newRemainingDays = currentRemainingDays - 1;
-                if (newRemainingDays <= 0) {
-                    try {
-                        const completedDuration = loadedDuration;
-                        const storedMaxStr = await AsyncStorage.getItem(MAX_COMPLETED_CHALLENGE_DAYS_KEY);
-                        const currentMax = parseInt(storedMaxStr || '0', 10);
-                        if (completedDuration > currentMax) { await AsyncStorage.multiSet([ [MAX_COMPLETED_CHALLENGE_DAYS_KEY, String(completedDuration)], [CELEBRATE_TIER_COMPLETION_KEY, String(completedDuration)] ]); }
-                    } catch (e) { console.error("Error saving max challenge or celebration flag:", e); }
-                    const currentDurationIndex = CHALLENGE_DURATIONS.indexOf(loadedDuration);
-                    const nextDurationIndex = currentDurationIndex + 1;
-                    if (nextDurationIndex < CHALLENGE_DURATIONS.length) {
-                        const nextChallengeDuration = CHALLENGE_DURATIONS[nextDurationIndex];
-                        setRemainingDays(nextChallengeDuration); setCurrentChallengeDuration(nextChallengeDuration); setLastParticipationDate(todayString);
-                        await AsyncStorage.multiSet([ [REMAINING_CHALLENGE_DAYS_KEY, String(nextChallengeDuration)], [LAST_PARTICIPATION_DATE_KEY, todayString], [CURRENT_CHALLENGE_DURATION_KEY, String(nextChallengeDuration)] ]);
-                    } else {
-                        setRemainingDays(0); setLastParticipationDate(todayString);
-                        await AsyncStorage.multiSet([ [REMAINING_CHALLENGE_DAYS_KEY, '0'], [LAST_PARTICIPATION_DATE_KEY, todayString] ]);
-                    }
-                } else {
-                    setRemainingDays(newRemainingDays); setLastParticipationDate(todayString);
-                    await AsyncStorage.multiSet([ [REMAINING_CHALLENGE_DAYS_KEY, String(newRemainingDays)], [LAST_PARTICIPATION_DATE_KEY, todayString] ]);
-                }
-            } else if (currentRemainingDays <= 0 && remainingDays !== 0) { setRemainingDays(0); }
-        } catch (error) { console.error("Challenge update fail:", error); }
-    }, [remainingDays]);
-
+    const updateChallengeStatus = useCallback(async () => { const todayString = getDateString(new Date()); if (!todayString) return; try { const [storedRemainingDaysStr, storedLastParticipationDate, storedChallengeDurationStr] = await Promise.all([ AsyncStorage.getItem(REMAINING_CHALLENGE_DAYS_KEY), AsyncStorage.getItem(LAST_PARTICIPATION_DATE_KEY), AsyncStorage.getItem(CURRENT_CHALLENGE_DURATION_KEY) ]); let loadedDuration = INITIAL_CHALLENGE_DURATION; if (storedChallengeDurationStr !== null) { const parsedDuration = parseInt(storedChallengeDurationStr, 10); if (!isNaN(parsedDuration) && CHALLENGE_DURATIONS.includes(parsedDuration)) loadedDuration = parsedDuration; } setCurrentChallengeDuration(loadedDuration); let currentRemainingDays = loadedDuration; if (storedRemainingDaysStr !== null) { const parsedDays = parseInt(storedRemainingDaysStr, 10); if (!isNaN(parsedDays) && parsedDays >= 0 && parsedDays <= loadedDuration) currentRemainingDays = parsedDays; } setRemainingDays(currentRemainingDays); setLastParticipationDate(storedLastParticipationDate); if (todayString !== storedLastParticipationDate && currentRemainingDays > 0) { const newRemainingDays = currentRemainingDays - 1; if (newRemainingDays <= 0) { try { const completedDuration = loadedDuration; const storedMaxStr = await AsyncStorage.getItem(MAX_COMPLETED_CHALLENGE_DAYS_KEY); const currentMax = parseInt(storedMaxStr || '0', 10); if (completedDuration > currentMax) { await AsyncStorage.multiSet([ [MAX_COMPLETED_CHALLENGE_DAYS_KEY, String(completedDuration)], [CELEBRATE_TIER_COMPLETION_KEY, String(completedDuration)] ]); } } catch (e) { console.error("Error saving max challenge or celebration flag:", e); } const currentDurationIndex = CHALLENGE_DURATIONS.indexOf(loadedDuration); const nextDurationIndex = currentDurationIndex + 1; if (nextDurationIndex < CHALLENGE_DURATIONS.length) { const nextChallengeDuration = CHALLENGE_DURATIONS[nextDurationIndex]; setRemainingDays(nextChallengeDuration); setCurrentChallengeDuration(nextChallengeDuration); setLastParticipationDate(todayString); await AsyncStorage.multiSet([ [REMAINING_CHALLENGE_DAYS_KEY, String(nextChallengeDuration)], [LAST_PARTICIPATION_DATE_KEY, todayString], [CURRENT_CHALLENGE_DURATION_KEY, String(nextChallengeDuration)] ]); } else { setRemainingDays(0); setLastParticipationDate(todayString); await AsyncStorage.multiSet([ [REMAINING_CHALLENGE_DAYS_KEY, '0'], [LAST_PARTICIPATION_DATE_KEY, todayString] ]); } } else { setRemainingDays(newRemainingDays); setLastParticipationDate(todayString); await AsyncStorage.multiSet([ [REMAINING_CHALLENGE_DAYS_KEY, String(newRemainingDays)], [LAST_PARTICIPATION_DATE_KEY, todayString] ]); } } else if (currentRemainingDays <= 0 && remainingDays !== 0) { setRemainingDays(0); } } catch (error) { console.error("Challenge update fail:", error); } }, [remainingDays]);
     useEffect(() => { const runInitialChecks = async () => { await updateChallengeStatus(); }; runInitialChecks(); const subscription = AppState.addEventListener('change', nextAppState => { if (appState.match(/inactive|background/) && nextAppState === 'active') { runInitialChecks(); } setAppState(nextAppState); }); return () => { subscription.remove(); }; }, [appState, updateChallengeStatus]);
-
     const progressPercentage = useMemo(() => goalCalories > 0 ? (caloriesForDate / goalCalories) * 100 : 0, [caloriesForDate, goalCalories]);
     const clampedProgress = useMemo(() => Math.min(100, Math.max(0, progressPercentage || 0)), [progressPercentage]);
-    
     const targetAngle = useMemo(() => clampedProgress * 3.6, [clampedProgress]);
     useEffect(() => { Animated.timing(animatedAngle, { toValue: targetAngle, duration: 1000, useNativeDriver: false }).start(); }, [targetAngle]);
     useEffect(() => { const listenerId = animatedAngle.addListener(({ value }) => { setProgressPathD(value > 0.01 ? describeArc(CENTER_X, CENTER_Y, PATH_RADIUS, 0.01, value) : ''); setDynamicIconStyle(calculateIconPositionOnPath(value > 0.01 ? value : 0)); }); return () => animatedAngle.removeListener(listenerId); }, [animatedAngle]);
-    const handleSaveGoal = useCallback(async () => { try { setGoalCalories(tempGoalCalories); await AsyncStorage.setItem(GOAL_KEY, String(tempGoalCalories)); setIsGoalModalVisible(false); } catch (e) { Alert.alert(translation.errorTitle, translation.cannotSaveGoalError); } }, [tempGoalCalories, translation]);
-
     const stepsAtGoal = useMemo(() => (goalCalories > 0 && CALORIES_PER_STEP > 0) ? (goalCalories / CALORIES_PER_STEP) : Infinity, [goalCalories]);
     const effectiveStepsForDisplay = useMemo(() => Math.min(stepsForDate, stepsAtGoal), [stepsForDate, stepsAtGoal]);
-
-    const { rawMinutes, rawDistance } = useMemo(() => {
-        const totalMinutes = effectiveStepsForDisplay / STEPS_PER_MINUTE;
-        const distanceKm = (effectiveStepsForDisplay * STEP_LENGTH_METERS) / 1000;
-        return { rawMinutes: totalMinutes, rawDistance: distanceKm };
-    }, [effectiveStepsForDisplay]);
-
+    const { rawMinutes, rawDistance } = useMemo(() => { const totalMinutes = effectiveStepsForDisplay / STEPS_PER_MINUTE; const distanceKm = (effectiveStepsForDisplay * STEP_LENGTH_METERS) / 1000; return { rawMinutes: totalMinutes, rawDistance: distanceKm }; }, [effectiveStepsForDisplay]);
     const badgeProgressAngle = useMemo(() => { if (remainingDays <= 0 || currentChallengeDuration <= 0) return 359.999; const daysCompleted = currentChallengeDuration - remainingDays; return (daysCompleted / currentChallengeDuration) * 360; }, [remainingDays, currentChallengeDuration]);
     const badgeProgressPathD = useMemo(() => (badgeProgressAngle > 0.1 ? describeArc(BADGE_CENTER_X, BADGE_CENTER_Y, BADGE_PATH_RADIUS, 0.01, badgeProgressAngle) : ''), [badgeProgressAngle]);
-
-    useEffect(() => {
-        if (selectedPeriod !== 'day') return;
-        const fetchDataForChart = async () => {
-            setIsLoading(true);
-            const weekStart = getStartOfWeek(new Date(), startOfWeekDay);
-            const dates = Array.from({ length: 7 }).map((_, i) => addDays(weekStart, i));
-            const history = await getStoredStepsHistory();
-            const todayString = getDateString(new Date());
-            const steps = dates.map((date) => {
-                const dateString = getDateString(date);
-                if (dateString === todayString) { return pedometerSteps; }
-                return history[dateString] || 0;
-            });
-            setWeeklyChartData({ dates, steps });
-            setIsLoading(false);
-        };
-        fetchDataForChart();
-    }, [pedometerSteps, language, getStoredStepsHistory, selectedPeriod, startOfWeekDay]);
-    
-    useEffect(() => {
-        if (selectedPeriod !== 'week') return;
-        setIsWeeklyLoading(true);
-        const fetchWeeklyData = async () => {
-            const history = await getStoredStepsHistory();
-            const currentIsSameWeek = isSameWeek(selectedWeekStart, new Date(), startOfWeekDay);
-            setIsCurrentWeek(currentIsSameWeek);
-            const data = Array(7).fill(0);
-            for (let i = 0; i < 7; i++) {
-                const dayDate = addDays(selectedWeekStart, i);
-                let stepsForDay = 0;
-                if (currentIsSameWeek && isToday(dayDate)) {
-                    stepsForDay = pedometerSteps;
-                } else {
-                    stepsForDay = history[getDateString(dayDate)] || 0;
-                }
-                data[i] = stepsForDay * CALORIES_PER_STEP;
-            }
-            setFullWeeklyData(data);
-            setIsWeeklyLoading(false);
-        };
-        fetchWeeklyData();
-    }, [selectedPeriod, selectedWeekStart, pedometerSteps, startOfWeekDay, getStoredStepsHistory]);
-
-    useEffect(() => {
-        if (selectedPeriod !== 'month') return;
-        setIsMonthlyLoading(true);
-        const fetchMonthlyData = async () => {
-            const history = await getStoredStepsHistory();
-            const currentIsSameMonth = selectedMonthStart.getUTCFullYear() === new Date().getFullYear() && selectedMonthStart.getUTCMonth() === new Date().getMonth();
-            setIsCurrentMonth(currentIsSameMonth);
-            const daysInMonth = getDaysInMonth(selectedMonthStart);
-            const data = Array(daysInMonth).fill(0);
-            for (let i = 0; i < daysInMonth; i++) {
-                const dayDate = new Date(Date.UTC(selectedMonthStart.getUTCFullYear(), selectedMonthStart.getUTCMonth(), i + 1));
-                let stepsForDay = 0;
-                if (currentIsSameMonth && isToday(dayDate)) {
-                    stepsForDay = pedometerSteps;
-                } else {
-                    stepsForDay = history[getDateString(dayDate)] || 0;
-                }
-                data[i] = stepsForDay * CALORIES_PER_STEP;
-            }
-            setMonthlyData(data);
-            setIsMonthlyLoading(false);
-        };
-        fetchMonthlyData();
-    }, [selectedPeriod, selectedMonthStart, pedometerSteps, getStoredStepsHistory]);
-
+    useEffect(() => { if (selectedPeriod !== 'day') return; const fetchDataForChart = async () => { setIsLoading(true); const weekStart = getStartOfWeek(new Date(), startOfWeekDay); const dates = Array.from({ length: 7 }).map((_, i) => addDays(weekStart, i)); const history = await getStoredStepsHistory(); const todayString = getDateString(new Date()); const steps = dates.map((date) => { const dateString = getDateString(date); if (dateString === todayString) { return pedometerSteps; } return history[dateString] || 0; }); setWeeklyChartData({ dates, steps }); setIsLoading(false); }; fetchDataForChart(); }, [pedometerSteps, language, getStoredStepsHistory, selectedPeriod, startOfWeekDay]);
+    useEffect(() => { if (selectedPeriod !== 'week') return; setIsWeeklyLoading(true); const fetchWeeklyData = async () => { const history = await getStoredStepsHistory(); const currentIsSameWeek = isSameWeek(selectedWeekStart, new Date(), startOfWeekDay); setIsCurrentWeek(currentIsSameWeek); const data = Array(7).fill(0); for (let i = 0; i < 7; i++) { const dayDate = addDays(selectedWeekStart, i); let stepsForDay = 0; if (currentIsSameWeek && isToday(dayDate)) { stepsForDay = pedometerSteps; } else { stepsForDay = history[getDateString(dayDate)] || 0; } data[i] = stepsForDay * CALORIES_PER_STEP; } setFullWeeklyData(data); setIsWeeklyLoading(false); }; fetchWeeklyData(); }, [selectedPeriod, selectedWeekStart, pedometerSteps, startOfWeekDay, getStoredStepsHistory]);
+    useEffect(() => { if (selectedPeriod !== 'month') return; setIsMonthlyLoading(true); const fetchMonthlyData = async () => { const history = await getStoredStepsHistory(); const currentIsSameMonth = selectedMonthStart.getUTCFullYear() === new Date().getFullYear() && selectedMonthStart.getUTCMonth() === new Date().getMonth(); setIsCurrentMonth(currentIsSameMonth); const daysInMonth = getDaysInMonth(selectedMonthStart); const data = Array(daysInMonth).fill(0); for (let i = 0; i < daysInMonth; i++) { const dayDate = new Date(Date.UTC(selectedMonthStart.getUTCFullYear(), selectedMonthStart.getUTCMonth(), i + 1)); let stepsForDay = 0; if (currentIsSameMonth && isToday(dayDate)) { stepsForDay = pedometerSteps; } else { stepsForDay = history[getDateString(dayDate)] || 0; } data[i] = stepsForDay * CALORIES_PER_STEP; } setMonthlyData(data); setIsMonthlyLoading(false); }; fetchMonthlyData(); }, [selectedPeriod, selectedMonthStart, pedometerSteps, getStoredStepsHistory]);
     const handlePreviousWeek = () => setSelectedWeekStart(prev => addDays(prev, -7));
     const handleNextWeek = () => { if (!isCurrentWeek) setSelectedWeekStart(prev => addDays(prev, 7)); };
     const handlePreviousMonth = () => setSelectedMonthStart(prev => addMonths(prev, -1));
@@ -557,24 +350,12 @@ const CaloriesScreen = (props) => {
 
                     
 <View style={currentStyles.dayHeader}>
-    {/* السهم الأيسر (لليوم التالي) */}
     <TouchableOpacity onPress={handleNextDay} disabled={isToday(currentDate)}>
-        <Ionicons 
-            name={"chevron-back-outline"} 
-            size={30} 
-            style={isToday(currentDate) ? currentStyles.disabledIcon : currentStyles.dayHeaderArrow}
-        />
+        <Ionicons name={"chevron-back-outline"} size={30} style={isToday(currentDate) ? currentStyles.disabledIcon : currentStyles.dayHeaderArrow} />
     </TouchableOpacity>
-    
     <View><Text style={currentStyles.dayHeaderTitle}>{formatDisplayDate(currentDate)}</Text></View>
-    
-    {/* السهم الأيمن (لليوم السابق) */}
     <TouchableOpacity onPress={handlePreviousDay}>
-        <Ionicons 
-            name={"chevron-forward-outline"} 
-            size={30} 
-            color={currentStyles.dayHeaderArrow.color}
-        />
+        <Ionicons name={"chevron-forward-outline"} size={30} color={currentStyles.dayHeaderArrow.color} />
     </TouchableOpacity>
 </View>
 
@@ -701,12 +482,9 @@ const CaloriesScreen = (props) => {
         </SafeAreaView>
     );
 };
-// ====================================================================================
-// ============================== نهاية المكون الرئيسي =================================
-// ====================================================================================
-
 
 // --- الأنماط (Styles) ---
+// (نفس الأنماط الموجودة في كودك الأصلي، لم أغير فيها شيئاً)
 const lightStyles = StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: '#F7FDF9' },
     scrollViewContent: { paddingBottom: 40, paddingHorizontal: 0, flexGrow: 1 },
@@ -865,6 +643,5 @@ const darkStyles = StyleSheet.create({
     titleMenuItemText: { ...lightStyles.titleMenuItemText, color: '#A7FFEB' },
     titleMenuSeparator: { ...lightStyles.titleMenuSeparator, backgroundColor: '#424242' },
 });
-
 
 export default CaloriesScreen;

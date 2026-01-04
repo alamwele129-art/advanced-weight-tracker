@@ -8,11 +8,11 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Picker from 'react-native-wheel-picker-expo';
 import { Pedometer } from 'expo-sensors';
+import { supabase } from './supabaseClient'; // 1. استيراد Supabase
 
-// --- استيراد مكونات الأسبوع والشهر من ملفاتها الخاصة ---
+// --- استيراد مكونات الأسبوع والشهر ---
 import WeeklyDistance from './WeeklyDistance'; 
 import MonthlyDistance from './monthlydistance';
-
 
 // --- الثوابت ---
 const { width } = Dimensions.get('window');
@@ -29,9 +29,9 @@ const CHART_HEIGHT = 200; const ICON_SIZE = 20; const CALORIES_PER_STEP = 0.04; 
 const LAST_PARTICIPATION_DATE_KEY = '@StepsChallenge:lastParticipationDate';
 const REMAINING_CHALLENGE_DAYS_KEY = '@StepsChallenge:remainingDays';
 const CURRENT_CHALLENGE_DURATION_KEY = '@StepsChallenge:currentDuration';
-const DAILY_DISTANCE_HISTORY_KEY = '@DistanceScreen:DailyHistory';
-const APP_LANGUAGE_KEY = '@App:language';
-const APP_DARK_MODE_KEY = '@App:darkMode';
+const DAILY_DISTANCE_HISTORY_KEY = '@DistanceScreen:DailyHistory'; // سنستخدم تاريخ الخطوات ونحوله لمسافة
+const DAILY_STEPS_HISTORY_KEY = '@Steps:DailyHistory'; // المصدر الرئيسي للبيانات
+const GOAL_KEY = '@Distance:goal';
 
 // --- كائن الترجمة ---
 const translations = {
@@ -43,6 +43,7 @@ const translations = {
         weeklyChartTitle: 'إحصائيات الأسبوع (كم)', testButton: 'اختبار (+0.5 كم)', resetButton: 'إعادة',
         menuSteps: 'الخطوات', menuDistance: 'المسافة', menuCalories: 'السعرات', menuActiveTime: 'الوقت النشط',
         dayNamesShort: ['س', 'أ', 'ن', 'ث', 'ر', 'خ', 'ج'],
+        errorTitle: "خطأ", pedometerNotAvailable: "عداد الخطى غير متوفر", cannotSaveGoalError: "لم نتمكن من حفظ الهدف."
     },
     en: {
         headerTitle: 'Distance', today: 'Today', week: 'Week', month: 'Month', yesterday: 'Yesterday', goalPrefix: 'Goal', kmUnit: 'km', miUnit: 'mi',
@@ -52,6 +53,7 @@ const translations = {
         weeklyChartTitle: 'Weekly Stats (km)', testButton: 'Test (+0.5 km)', resetButton: 'Reset',
         menuSteps: 'Steps', menuDistance: 'Distance', menuCalories: 'Calories', menuActiveTime: 'Active Time',
         dayNamesShort: ['S', 'M', 'T', 'W', 'T', 'F', 'S'],
+        errorTitle: "Error", pedometerNotAvailable: "Pedometer not available", cannotSaveGoalError: "Could not save goal."
     }
 };
 
@@ -69,14 +71,12 @@ const getStartOfMonth = (date) => { const d = new Date(date); d.setUTCHours(0, 0
 const addMonths = (date, months) => { const d = new Date(date); d.setUTCMonth(d.getUTCMonth() + months); return d; };
 const formatDateRange = (startDate, endDate, lang) => { const locale = lang === 'ar' ? 'ar-EG-u-ca-gregory-nu-arab' : 'en-US-u-ca-gregory'; const optionsDayMonth = { day: 'numeric', month: 'long', timeZone: 'UTC' }; const optionsDay = { day: 'numeric', timeZone: 'UTC' }; if (startDate.getUTCMonth() === endDate.getUTCMonth()) { const monthName = endDate.toLocaleDateString(locale, { month: 'long', timeZone: 'UTC' }); return `${startDate.toLocaleDateString(locale, optionsDay)} - ${endDate.toLocaleDateString(locale, optionsDay)} ${monthName}`; } else { return `${startDate.toLocaleDateString(locale, optionsDayMonth)} - ${endDate.toLocaleDateString(locale, optionsDayMonth)}`; } };
 const getDaysInMonth = (date) => new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
-// --- نهاية الدوال المساعدة ---
 
 // --- المكونات الفرعية ---
 const GoalModal = ({ visible, onClose, onSave, currentValue, currentUnit, translation, styles }) => { const [tempValue, setTempValue] = useState(currentValue); const [tempUnit, setTempUnit] = useState(currentUnit); const distanceValues = Array.from({ length: 120 }, (_, i) => ((i + 1) * 0.5).toFixed(1)); const unitValues = [translation.kmUnit, translation.miUnit]; useEffect(() => { if (visible) { setTempValue(currentValue); setTempUnit(currentUnit); } }, [visible, currentValue, currentUnit]); const handleSave = () => { onSave(tempValue, tempUnit); }; return ( <Modal animationType="fade" transparent={true} visible={visible} onRequestClose={onClose}><View style={styles.modalOverlay}><View style={styles.modalCard}><Text style={styles.modalTitle}>{translation.goalModalTitle}</Text><View style={styles.pickersContainer}><Picker height={180} initialSelectedIndex={distanceValues.indexOf(tempValue.toFixed(1))} items={distanceValues.map(val => ({ label: val, value: val }))} onChange={({ item }) => setTempValue(parseFloat(item.value))} renderItem={(item, i, isSelected) => ( <Text style={isSelected ? styles.selectedPickerItemText : styles.pickerItemText}>{item.label}</Text> )} haptics /><Picker height={180} width={120} initialSelectedIndex={unitValues.indexOf(tempUnit)} items={unitValues.map(val => ({ label: val, value: val }))} onChange={({ item }) => setTempUnit(item.value)} renderItem={(item, i, isSelected) => ( <Text style={isSelected ? styles.selectedPickerItemText : styles.pickerItemText}>{item.label}</Text> )} haptics /></View><View style={styles.buttonRow}><TouchableOpacity style={[styles.modalButton, styles.cancelButton]} onPress={onClose}><Text style={styles.cancelButtonText}>{translation.cancel}</Text></TouchableOpacity><TouchableOpacity style={[styles.modalButton, styles.saveButton]} onPress={handleSave}><Text style={styles.saveButtonText}>{translation.save}</Text></TouchableOpacity></View></View></View></Modal> ); };
 const AnimatedStatCard = ({ iconName, value, label, formatter, styles }) => { const animatedValue = useRef(new Animated.Value(value || 0)).current; const [displayValue, setDisplayValue] = useState(() => formatter(value || 0)); useEffect(() => { Animated.timing(animatedValue, { toValue: value || 0, duration: 750, useNativeDriver: false }).start(); }, [value]); useEffect(() => { const listenerId = animatedValue.addListener((v) => { setDisplayValue(formatter(v.value)); }); return () => { animatedValue.removeListener(listenerId); }; }, [formatter, animatedValue]); return ( <View style={styles.statCard}><View style={styles.iconContainer}><Icon name={iconName} size={24} color={styles.animatedStatIcon.color} /></View><Text style={styles.statValue}>{displayValue}</Text><Text style={styles.statLabel}>{label}</Text></View> ); };
 const ChallengeCard = ({ onPress, currentChallengeDuration, remainingDays, translation, styles }) => { const daysCompleted = currentChallengeDuration - remainingDays; const badgeProgressAngle = remainingDays <= 0 || currentChallengeDuration <= 0 ? 359.999 : remainingDays >= currentChallengeDuration ? 0 : (daysCompleted / currentChallengeDuration) * 360; const badgeProgressPathD = describeArc(BADGE_CENTER_X, BADGE_CENTER_Y, BADGE_PATH_RADIUS, 0.01, badgeProgressAngle); const subText = remainingDays > 0 ? `${remainingDays.toLocaleString(I18nManager.isRTL ? 'ar-EG' : 'en-US')} ${remainingDays === 1 ? translation.challengeRemainingSingular : translation.challengeRemainingPlural}` : translation.challengeCompleted; const mainText = `${currentChallengeDuration.toLocaleString(I18nManager.isRTL ? 'ar-EG' : 'en-US')} ${translation.challengePrefix}`; return ( <TouchableOpacity style={styles.challengeCardWrapper} onPress={onPress} activeOpacity={0.8}><View style={styles.summaryCard}><View style={styles.badgeContainer}><Svg height={BADGE_SVG_SIZE} width={BADGE_SVG_SIZE} viewBox={`0 0 ${BADGE_SVG_SIZE} ${BADGE_SVG_SIZE}`}><Circle cx={BADGE_CENTER_X} cy={BADGE_CENTER_Y} r={BADGE_PATH_RADIUS} stroke={styles.badgeBackgroundCircle.stroke} strokeWidth={BADGE_CIRCLE_BORDER_WIDTH} fill="none" /><Path d={badgeProgressPathD} stroke={styles.badgeProgressCircle.stroke} strokeWidth={BADGE_CIRCLE_BORDER_WIDTH} fill="none" strokeLinecap="round" /></Svg><View style={styles.badgeTextContainer}><Text style={styles.badgeText}>{remainingDays > 0 ? `${remainingDays.toLocaleString(I18nManager.isRTL ? 'ar-EG' : 'en-US')}${translation.challengeDaySuffix}` : '✓'}</Text></View></View><View style={styles.summaryTextContainer}><Text style={styles.summaryMainText}>{mainText}</Text><Text style={styles.summarySubText}>{subText}</Text></View><Ionicons name={I18nManager.isRTL ? "chevron-back" : "chevron-forward"} size={24} color={styles.summaryChevron.color} /></View></TouchableOpacity> ); };
 const DistanceWeeklyChart = ({ weeklyDistanceData, goalDistance, onTestIncrement, onResetData, translation, styles, language }) => { const [tooltipVisible, setTooltipVisible] = useState(false); const [selectedBarIndex, setSelectedBarIndex] = useState(null); const [selectedBarValue, setSelectedBarValue] = useState(null); const days = translation.dayNamesShort; const today = new Date(); const startOfWeekDay = language === 'ar' ? 6 : 0; const jsDayIndex = today.getDay(); const displayDayIndex = (jsDayIndex - startOfWeekDay + 7) % 7; const { yAxisMax, yAxisLabels } = useMemo(() => { const dataMax = Math.max(...weeklyDistanceData, goalDistance, 1); const roundedMax = Math.ceil(dataMax); const labels = [0, roundedMax * 0.25, roundedMax * 0.5, roundedMax * 0.75, roundedMax].map(v => parseFloat(v.toFixed(1))); return { yAxisMax: roundedMax, yAxisLabels: [...new Set(labels)].sort((a,b) => b-a) }; }, [weeklyDistanceData, goalDistance]); const handleBarPress = useCallback((index, value) => { const numericValue = value || 0; if (tooltipVisible && selectedBarIndex === index) { setTooltipVisible(false); } else if (numericValue > 0) { setTooltipVisible(true); setSelectedBarIndex(index); setSelectedBarValue(numericValue); } else { setTooltipVisible(false); } }, [tooltipVisible, selectedBarIndex]); const handleOutsidePress = useCallback(() => { if (tooltipVisible) { setTooltipVisible(false); } }, [tooltipVisible]); return ( <Pressable style={styles.card} onPress={handleOutsidePress}><View style={styles.chartHeader}><Text style={styles.chartTitle}>{translation.weeklyChartTitle}</Text></View><View style={styles.testButtonsContainer}><TouchableOpacity onPress={onTestIncrement} style={styles.testButton}><Text style={styles.testButtonText}>{translation.testButton}</Text></TouchableOpacity><TouchableOpacity onPress={onResetData} style={styles.testButton}><Text style={styles.testButtonText}>{translation.resetButton}</Text></TouchableOpacity></View><View style={styles.chartAreaContainer}><View style={styles.yAxisLabels}>{yAxisLabels.map(label => <Text key={label} style={styles.axisLabelY}>{label}</Text>)}</View><View style={styles.chartContent}><View style={styles.barsAndLabelsContainer}>{days.map((dayName, index) => { const value = weeklyDistanceData[index] || 0; const barHeight = yAxisMax > 0 ? Math.min(CHART_HEIGHT, (value / yAxisMax) * CHART_HEIGHT) : 0; const isCurrentDay = index === displayDayIndex; const isSelected = selectedBarIndex === index; return ( <View key={index} style={styles.barColumn}>{tooltipVisible && isSelected && selectedBarValue !== null && ( <View style={[styles.tooltipPositioner, { bottom: barHeight + 30 }]}><View style={styles.tooltipBox}><Text style={styles.tooltipText}>{selectedBarValue.toFixed(1)} {translation.kmUnit}</Text></View><View style={styles.tooltipArrow} /></View> )}<Pressable onPress={(e) => { e.stopPropagation(); handleBarPress(index, value); }} hitSlop={10}><View style={[styles.bar, { height: barHeight }, isCurrentDay && styles.barToday, isSelected && value > 0 && styles.selectedBar, value >= goalDistance && styles.barGoalAchieved ]} /></Pressable><Text style={[styles.axisLabelX, isCurrentDay && styles.activeDayLabel]}>{dayName}</Text></View> );})}</View></View></View></Pressable> ); };
-// --- نهاية المكونات الفرعية ---
 
 // --- الشاشة الرئيسية ---
 const DistanceScreen = (props) => {
@@ -93,7 +93,9 @@ const DistanceScreen = (props) => {
   const [selectedPeriod, setSelectedPeriod] = useState('day');
   const periods = useMemo(() => [translation.today, translation.week, translation.month], [translation]);
   
-  const [actualDistance, setActualDistance] = useState(0.00);
+  const [pedometerSteps, setPedometerSteps] = useState(0); // عدد الخطوات الفعلي
+  const [stepsHistory, setStepsHistory] = useState({}); // سجل الخطوات
+  
   const [isModalVisible, setModalVisible] = useState(false);
   const [goalDistance, setGoalDistance] = useState(3.0);
   const [goalUnit, setGoalUnit] = useState(translation.kmUnit);
@@ -121,19 +123,109 @@ const DistanceScreen = (props) => {
   const [remainingDays, setRemainingDays] = useState(INITIAL_CHALLENGE_DURATION);
   const [appState, setAppState] = useState(AppState.currentState);
 
-  useEffect(() => { const loadAppPreferences = async () => { /* ... */ }; if (initialLanguage === undefined || initialIsDarkMode === undefined) { loadAppPreferences(); } }, []);
+  const getStoredStepsHistory = useCallback(async () => {
+        try { const storedHistory = await AsyncStorage.getItem(DAILY_STEPS_HISTORY_KEY); return storedHistory ? JSON.parse(storedHistory) : {}; } 
+        catch (error) { console.error("Failed to get step history:", error); return {}; }
+  }, []);
 
-  const saveDistanceForDate = useCallback(async (date, distance) => { const dateString = getDateString(date); if (!dateString) return; try { const storedHistory = await AsyncStorage.getItem(DAILY_DISTANCE_HISTORY_KEY); let history = storedHistory ? JSON.parse(storedHistory) : {}; history[dateString] = Math.max(0, distance); await AsyncStorage.setItem(DAILY_DISTANCE_HISTORY_KEY, JSON.stringify(history)); } catch (e) { console.error("Failed to save distance to history:", e); } }, []);
-  const getStoredDistanceHistory = useCallback(async () => { try { const storedHistory = await AsyncStorage.getItem(DAILY_DISTANCE_HISTORY_KEY); return storedHistory ? JSON.parse(storedHistory) : {}; } catch (e) { console.error("Failed to get distance history:", e); return {}; } }, []);
+  const saveDailySteps = useCallback(async (date, steps) => {
+      const dateString = getDateString(date);
+      if (!dateString) return;
+      try { 
+          const history = await getStoredStepsHistory(); 
+          if (history[dateString] !== Math.round(steps)) {
+              history[dateString] = Math.round(steps);
+              await AsyncStorage.setItem(DAILY_STEPS_HISTORY_KEY, JSON.stringify(history)); 
+              setStepsHistory(prev => ({...prev, [dateString]: Math.round(steps)}));
+          }
+          // المزامنة مع Supabase (نفس المنطق الموحد)
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+              await supabase.from('steps').upsert({
+                  user_id: user.id,
+                  date: dateString,
+                  step_count: Math.round(steps)
+              }, { onConflict: 'user_id, date' });
+          }
+      }
+      catch (error) { console.error("Failed to save daily steps:", error); }
+  }, [getStoredStepsHistory]);
+
   const updateChallengeStatus = useCallback(async () => { const todayString = getDateString(new Date()); if (!todayString) return; try { const [storedRemainingDaysStr, storedLastParticipationDate, storedChallengeDurationStr] = await Promise.all([AsyncStorage.getItem(REMAINING_CHALLENGE_DAYS_KEY), AsyncStorage.getItem(LAST_PARTICIPATION_DATE_KEY), AsyncStorage.getItem(CURRENT_CHALLENGE_DURATION_KEY)]); let loadedDuration = INITIAL_CHALLENGE_DURATION; if (storedChallengeDurationStr !== null) { const parsedDuration = parseInt(storedChallengeDurationStr, 10); if (!isNaN(parsedDuration) && CHALLENGE_DURATIONS.includes(parsedDuration)) loadedDuration = parsedDuration; } setCurrentChallengeDuration(loadedDuration); let currentRemainingDays = loadedDuration; if (storedRemainingDaysStr !== null) { const parsedDays = parseInt(storedRemainingDaysStr, 10); if (!isNaN(parsedDays) && parsedDays >= 0 && parsedDays <= loadedDuration) currentRemainingDays = parsedDays; } setRemainingDays(currentRemainingDays); if (todayString !== storedLastParticipationDate && currentRemainingDays > 0) { const newRemainingDays = currentRemainingDays - 1; if (newRemainingDays <= 0) { const currentDurationIndex = CHALLENGE_DURATIONS.indexOf(loadedDuration); const nextDurationIndex = currentDurationIndex + 1; if (nextDurationIndex < CHALLENGE_DURATIONS.length) { const nextChallengeDuration = CHALLENGE_DURATIONS[nextDurationIndex]; setRemainingDays(nextChallengeDuration); setCurrentChallengeDuration(nextChallengeDuration); await AsyncStorage.multiSet([[REMAINING_CHALLENGE_DAYS_KEY, String(nextChallengeDuration)], [LAST_PARTICIPATION_DATE_KEY, todayString], [CURRENT_CHALLENGE_DURATION_KEY, String(nextChallengeDuration)]]); } else { setRemainingDays(0); await AsyncStorage.multiSet([[REMAINING_CHALLENGE_DAYS_KEY, '0'], [LAST_PARTICIPATION_DATE_KEY, todayString]]); } } else { setRemainingDays(newRemainingDays); await AsyncStorage.multiSet([[REMAINING_CHALLENGE_DAYS_KEY, String(newRemainingDays)], [LAST_PARTICIPATION_DATE_KEY, todayString]]); } } else if (currentRemainingDays <= 0 && remainingDays !== 0) { setRemainingDays(0); } } catch (error) { console.error("Challenge update fail:", error); } }, []);
-  useEffect(() => { const loadInitialData = async () => { if (selectedPeriod === 'day') { if (isToday(currentDate)) { const history = await getStoredDistanceHistory(); const todayStr = getDateString(new Date()); const savedTodayDistance = history[todayStr] || 0; setActualDistance(savedTodayDistance); } else { const history = await getStoredDistanceHistory(); const dateStr = getDateString(currentDate); setActualDistance(history[dateStr] || 0); } } }; loadInitialData(); }, [currentDate, selectedPeriod, getStoredDistanceHistory]);
-  useEffect(() => { if (selectedPeriod === 'week') { setIsWeeklyLoading(true); const fetchWeeklyData = async () => { const history = await getStoredDistanceHistory(); const currentIsSameWeek = isSameWeek(selectedWeekStart, new Date(), startOfWeekDay); setIsCurrentWeek(currentIsSameWeek); const data = Array(7).fill(0); for (let i = 0; i < 7; i++) { const dayDate = addDays(selectedWeekStart, i); if (currentIsSameWeek && isToday(dayDate)) { data[i] = actualDistance; } else { data[i] = history[getDateString(dayDate)] || 0; } } setWeeklyData(data); setIsWeeklyLoading(false); }; fetchWeeklyData(); } }, [selectedPeriod, selectedWeekStart, actualDistance, startOfWeekDay, getStoredDistanceHistory]);
-  useEffect(() => { if (selectedPeriod === 'month') { setIsMonthlyLoading(true); const fetchMonthlyData = async () => { const history = await getStoredDistanceHistory(); const currentIsSameMonth = selectedMonthStart.getUTCFullYear() === new Date().getFullYear() && selectedMonthStart.getUTCMonth() === new Date().getMonth(); setIsCurrentMonth(currentIsSameMonth); const daysInMonth = getDaysInMonth(selectedMonthStart); const data = Array(daysInMonth).fill(0); for (let i = 0; i < daysInMonth; i++) { const dayDate = new Date(Date.UTC(selectedMonthStart.getUTCFullYear(), selectedMonthStart.getUTCMonth(), i + 1)); if (currentIsSameMonth && isToday(dayDate)) { data[i] = actualDistance; } else { data[i] = history[getDateString(dayDate)] || 0; } } setMonthlyData(data); setIsMonthlyLoading(false); }; fetchMonthlyData(); } }, [selectedPeriod, selectedMonthStart, actualDistance, getStoredDistanceHistory]);
-  useEffect(() => { const subscribeToPedometer = async () => { const isAvailable = await Pedometer.isAvailableAsync(); if (!isAvailable) return; const { status } = await Pedometer.requestPermissionsAsync(); if (status !== 'granted') return; const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0); const updateDistance = (steps) => { const distanceInKm = (steps * STEP_LENGTH_METERS) / 1000; setActualDistance(distanceInKm); saveDistanceForDate(new Date(), distanceInKm); }; pedometerSubscription.current = Pedometer.watchStepCount(() => { Pedometer.getStepCountAsync(startOfDay, new Date()).then( dailyResult => updateDistance(dailyResult.steps), error => console.error("Pedometer watch error:", error) ); }); }; if (isToday(currentDate)) { subscribeToPedometer(); } return () => pedometerSubscription.current?.remove(); }, [currentDate, saveDistanceForDate]);
-  useEffect(() => { const fetchDailyChartData = async () => { const history = await getStoredDistanceHistory(); const weekStart = getStartOfWeek(currentDate, startOfWeekDay); const data = Array(7).fill(0); for(let i=0; i<7; i++) { const day = addDays(weekStart, i); const distanceForDay = history[getDateString(day)] || 0; data[i] = Math.min(distanceForDay, goalDistance); } if (isSameWeek(currentDate, new Date(), startOfWeekDay)) { const todayIndex = (new Date().getDay() - startOfWeekDay + 7) % 7; data[todayIndex] = Math.min(actualDistance, goalDistance); } setDailyChartData(data); }; if(selectedPeriod === 'day') { fetchDailyChartData(); } }, [currentDate, actualDistance, selectedPeriod, goalDistance, startOfWeekDay, getStoredDistanceHistory]);
 
+  // تحميل البيانات الأولية
+  useEffect(() => {
+        const loadInitialData = async () => {
+            const history = await getStoredStepsHistory();
+            setStepsHistory(history);
+
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                let loadedGoal = 3.0; // الافتراضي 3 كم
+
+                // تحميل هدف المسافة
+                if (user) {
+                    const { data: profile } = await supabase.from('profiles').select('daily_distance_goal').eq('id', user.id).single();
+                    if (profile && profile.daily_distance_goal) loadedGoal = profile.daily_distance_goal;
+                } else {
+                    const storedGoal = await AsyncStorage.getItem(GOAL_KEY);
+                    if (storedGoal) loadedGoal = parseFloat(storedGoal);
+                }
+                setGoalDistance(loadedGoal);
+
+            } catch (e) {
+                console.error("Failed to load goal:", e);
+            }
+        };
+        loadInitialData();
+  }, [getStoredStepsHistory]);
+
+  // الاشتراك في العداد
+  useEffect(() => {
+        let isMounted = true;
+        const subscribe = async () => {
+            const isAvailable = await Pedometer.isAvailableAsync();
+            if (!isAvailable || !isMounted) return;
+            const { status } = await Pedometer.requestPermissionsAsync();
+            if (status === 'granted') {
+                const fetchAndUpdateTodaySteps = async () => {
+                    if (!isMounted) return;
+                    const start = new Date(); start.setHours(0, 0, 0, 0);
+                    const end = new Date();
+                    try {
+                        const result = await Pedometer.getStepCountAsync(start, end);
+                        if (isMounted && result) {
+                            const newSteps = result.steps || 0;
+                            setPedometerSteps(newSteps);
+                            saveDailySteps(new Date(), newSteps);
+                        }
+                    } catch (error) { console.error("Could not fetch step count:", error); }
+                };
+                await fetchAndUpdateTodaySteps();
+                pedometerSubscription.current = Pedometer.watchStepCount(fetchAndUpdateTodaySteps);
+            }
+        };
+        subscribe();
+        return () => { isMounted = false; if (pedometerSubscription.current) pedometerSubscription.current.remove(); };
+  }, [saveDailySteps]);
+
+  // حساب المسافة الحالية بناءً على الخطوات
+  const currentStepsCount = useMemo(() => {
+      if (isToday(currentDate)) { return pedometerSteps; }
+      const dateStr = getDateString(currentDate);
+      return stepsHistory[dateStr] || 0;
+  }, [currentDate, pedometerSteps, stepsHistory]);
+
+  const actualDistance = useMemo(() => (currentStepsCount * STEP_LENGTH_METERS) / 1000, [currentStepsCount]);
+  
   const distanceForDisplay = useMemo(() => Math.min(actualDistance, goalDistance), [actualDistance, goalDistance]);
-  const { rawSteps, rawCalories, rawMinutes } = useMemo(() => { const dist = distanceForDisplay; if (dist <= 0) return { rawSteps: 0, rawCalories: 0, rawMinutes: 0 }; const meters = dist * 1000; const steps = meters / STEP_LENGTH_METERS; const cals = steps * CALORIES_PER_STEP; const mins = steps / STEPS_PER_MINUTE; return { rawSteps: steps, rawCalories: cals, rawMinutes: mins }; }, [distanceForDisplay]);
+  const { rawSteps, rawCalories, rawMinutes } = useMemo(() => { 
+        return { 
+            rawSteps: currentStepsCount, 
+            rawCalories: currentStepsCount * CALORIES_PER_STEP, 
+            rawMinutes: currentStepsCount / STEPS_PER_MINUTE 
+        }; 
+  }, [currentStepsCount]);
   
   const locale = useMemo(() => language === 'ar' ? 'ar-EG' : 'en-US', [language]);
   const formatDisplayDate = useCallback((date) => { if (isToday(date)) return translation.today; if (isYesterday(date)) return translation.yesterday; const localeFormat = language === 'ar' ? 'ar-EG-u-ca-gregory-nu-arab' : 'en-US-u-ca-gregory'; return new Intl.DateTimeFormat(localeFormat, { day: 'numeric', month: 'long', timeZone: 'UTC' }).format(date); }, [language, translation]);
@@ -144,9 +236,28 @@ const DistanceScreen = (props) => {
   const handleNextWeek = () => { if (!isCurrentWeek) setSelectedWeekStart(prev => addDays(prev, 7)); };
   const handlePreviousMonth = () => setSelectedMonthStart(prev => addMonths(prev, -1));
   const handleNextMonth = () => { if (!isCurrentMonth) setSelectedMonthStart(prev => addMonths(prev, 1)); };
-  const handleTestIncrement = useCallback(() => { if (!isToday(currentDate)) return; const newDistance = actualDistance + 0.5; setActualDistance(newDistance); saveDistanceForDate(currentDate, newDistance);}, [actualDistance, currentDate, saveDistanceForDate]);
-  const handleResetData = useCallback(() => { if (!isToday(currentDate)) return; setActualDistance(0); saveDistanceForDate(currentDate, 0); }, [currentDate, saveDistanceForDate]);
-  const handleSaveGoal = (newDistance, newUnit) => { setGoalDistance(newDistance); setGoalUnit(newUnit); setModalVisible(false); };
+  
+  const handleTestIncrement = useCallback(() => { if (!isToday(currentDate)) return; const newSteps = pedometerSteps + 656; setPedometerSteps(newSteps); saveDailySteps(new Date(), newSteps); }, [pedometerSteps, currentDate, saveDailySteps]);
+  const handleResetData = useCallback(() => { if (!isToday(currentDate)) return; setPedometerSteps(0); saveDailySteps(new Date(), 0); }, [currentDate, saveDailySteps]);
+  
+  // حفظ الهدف الجديد
+  const handleSaveGoal = async (newDistance, newUnit) => { 
+      try {
+          const distVal = parseFloat(newDistance);
+          setGoalDistance(distVal); 
+          setGoalUnit(newUnit); 
+          setModalVisible(false);
+          await AsyncStorage.setItem(GOAL_KEY, String(distVal));
+
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+              await supabase.from('profiles').update({ daily_distance_goal: distVal }).eq('id', user.id);
+          }
+      } catch (e) {
+          Alert.alert(translation.errorTitle, translation.cannotSaveGoalError);
+      }
+  };
+
   const handleNavigateToAchievements = () => { if (onNavigateToAchievements) onNavigateToAchievements(Math.round(rawSteps)); };
   const openTitleMenu = useCallback(() => { titleMenuTriggerRef.current.measure((fx, fy, w, h, px, py) => { const top = py + h + MENU_VERTICAL_OFFSET; const positionStyle = I18nManager.isRTL ? { top, right: width - (px + w) } : { top, left: px }; setTitleMenuPosition(positionStyle); setIsTitleMenuVisible(true); }); }, [width]);
   const closeTitleMenu = useCallback(() => setIsTitleMenuVisible(false), []);
@@ -160,6 +271,60 @@ const DistanceScreen = (props) => {
   useEffect(() => { const listenerId = animatedDistance.addListener((v) => { setDisplayDistanceText(v.value.toLocaleString(locale, {minimumFractionDigits: 2, maximumFractionDigits: 2})); }); return () => { animatedDistance.removeListener(listenerId); }; }, [locale]);
   useEffect(() => { const runInitialChecks = async () => { await updateChallengeStatus(); }; runInitialChecks(); const sub = AppState.addEventListener('change', s => {if (s === 'active') runInitialChecks()}); return () => sub.remove() }, [updateChallengeStatus]);
   
+  // تجهيز بيانات الرسم البياني الأسبوعي
+  useEffect(() => { 
+      if(selectedPeriod === 'day') { 
+          const weekStart = getStartOfWeek(currentDate, startOfWeekDay); 
+          const data = Array(7).fill(0); 
+          for(let i=0; i<7; i++) { 
+              const day = addDays(weekStart, i); 
+              const dayStr = getDateString(day);
+              let steps = stepsHistory[dayStr] || 0;
+              if (isToday(day)) steps = pedometerSteps;
+              const dist = (steps * STEP_LENGTH_METERS) / 1000;
+              data[i] = Math.min(dist, goalDistance); 
+          } 
+          setDailyChartData(data); 
+      } 
+  }, [currentDate, pedometerSteps, stepsHistory, selectedPeriod, goalDistance, startOfWeekDay]);
+
+  // تجهيز بيانات الأسبوع
+  useEffect(() => { 
+      if (selectedPeriod === 'week') { 
+          setIsWeeklyLoading(true); 
+          const currentIsSameWeek = isSameWeek(selectedWeekStart, new Date(), startOfWeekDay); 
+          setIsCurrentWeek(currentIsSameWeek); 
+          const data = Array(7).fill(0); 
+          for (let i = 0; i < 7; i++) { 
+              const dayDate = addDays(selectedWeekStart, i); 
+              let steps = stepsHistory[getDateString(dayDate)] || 0;
+              if (currentIsSameWeek && isToday(dayDate)) steps = pedometerSteps;
+              data[i] = (steps * STEP_LENGTH_METERS) / 1000;
+          } 
+          setWeeklyData(data); 
+          setIsWeeklyLoading(false); 
+      } 
+  }, [selectedPeriod, selectedWeekStart, pedometerSteps, stepsHistory, startOfWeekDay]);
+
+  // تجهيز بيانات الشهر
+  useEffect(() => { 
+      if (selectedPeriod === 'month') { 
+          setIsMonthlyLoading(true); 
+          const currentIsSameMonth = selectedMonthStart.getUTCFullYear() === new Date().getFullYear() && selectedMonthStart.getUTCMonth() === new Date().getMonth(); 
+          setIsCurrentMonth(currentIsSameMonth); 
+          const daysInMonth = getDaysInMonth(selectedMonthStart); 
+          const data = Array(daysInMonth).fill(0); 
+          for (let i = 0; i < daysInMonth; i++) { 
+              const dayDate = new Date(Date.UTC(selectedMonthStart.getUTCFullYear(), selectedMonthStart.getUTCMonth(), i + 1)); 
+              let steps = stepsHistory[getDateString(dayDate)] || 0;
+              if (currentIsSameMonth && isToday(dayDate)) steps = pedometerSteps;
+              data[i] = (steps * STEP_LENGTH_METERS) / 1000;
+          } 
+          setMonthlyData(data); 
+          setIsMonthlyLoading(false); 
+      } 
+  }, [selectedPeriod, selectedMonthStart, pedometerSteps, stepsHistory]);
+
   const handlePeriodSelection = (period) => {
     if (period === translation.today) setSelectedPeriod('day');
     else if (period === translation.week) setSelectedPeriod('week');
@@ -330,7 +495,7 @@ const darkStyles = StyleSheet.create({
   dateNavigatorArrow: { color: '#80CBC4'},
   dateText: { ...lightStyles.dateText, color: '#80CBC4' },
   disabledIcon: { color: '#004D40' },
-  progressCircleBackground: { stroke: '#333333' },
+  progressCircleBackground: { stroke: "#333333" },
   progressCircleForeground: { stroke: '#80CBC4' },
   progressText: { ...lightStyles.progressText, color: '#80CBC4' },
   goalText: { ...lightStyles.goalText, color: '#B0B0B0' },

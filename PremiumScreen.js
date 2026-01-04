@@ -17,10 +17,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
+import { supabase } from './supabaseClient'; // تأكد إن المسار ده صح لملف supabaseClient
 
 const USER_SUBSCRIPTION_DATA_KEY = '@App:userSubscriptionData';
 
-// --- Subscription Check Logic (Mock) ---
+// --- Subscription Check Logic (Local Check) ---
 const checkSubscriptionStatus = async () => {
   try {
     const subscriptionDataString = await AsyncStorage.getItem(USER_SUBSCRIPTION_DATA_KEY);
@@ -66,16 +67,19 @@ const translations = {
     
     // Purchase & Restore Alerts
     purchase_success_title: "نجاح!",
-    purchase_success_message: "تهانينا! تم فتح جميع الميزات المميزة.\n\nنصيحة: قم بإنشاء حساب الآن لضمان حفظ بياناتك واشتراكك إذا غيرت هاتفك.",
+    purchase_success_message: "تهانينا! تم فتح جميع الميزات المميزة.\n\nتم حفظ اشتراكك بنجاح.",
     purchase_continue: "متابعة",
     purchase_error_title: "خطأ",
     purchase_error_message: "حدث خطأ ما. يرجى المحاولة مرة أخرى.",
+    login_required_title: "تنبيه",
+    login_required_message: "ننصح بتسجيل الدخول قبل الشراء لضمان حفظ اشتراكك ومزامنته مع أجهزتك الأخرى.",
     
     restore_purchase: "استعادة المشتريات",
     restore_success_title: "تمت الاستعادة",
-    restore_success_message: "تم استعادة اشتراكك بنجاح.",
+    restore_success_message: "تم استعادة اشتراكك بنجاح من الخادم.",
     restore_empty_title: "لا يوجد اشتراك",
-    restore_empty_message: "لم نتمكن من العثور على اشتراك فعال مرتبط بهذا الحساب.",
+    restore_empty_message: "لم نتمكن من العثور على اشتراك فعال لهذا الحساب.",
+    restore_login_required: "يرجى تسجيل الدخول لاستعادة اشتراكك.",
 
     already_premium_title: "أنت مشترك بالفعل!",
     already_premium_subtitle: "جميع الميزات المميزة متاحة لك. استمر في رحلتك الصحية!",
@@ -105,16 +109,19 @@ const translations = {
     
     // Purchase & Restore Alerts
     purchase_success_title: "Success!",
-    purchase_success_message: "Congratulations! All premium features are now unlocked.\n\nTip: Create an account now to back up your data and subscription.",
+    purchase_success_message: "Congratulations! All premium features are now unlocked.\n\nYour subscription is synced.",
     purchase_continue: "Continue",
     purchase_error_title: "Error",
     purchase_error_message: "Something went wrong. Please try again.",
+    login_required_title: "Notice",
+    login_required_message: "We recommend logging in before purchasing to ensure your subscription syncs across devices.",
     
     restore_purchase: "Restore Purchase",
     restore_success_title: "Restored",
-    restore_success_message: "Your subscription has been restored successfully.",
+    restore_success_message: "Your subscription has been restored successfully from the server.",
     restore_empty_title: "No Subscription",
     restore_empty_message: "We couldn't find an active subscription linked to this account.",
+    restore_login_required: "Please log in to restore your subscription.",
 
     already_premium_title: "You're Already a Premium Member!",
     already_premium_subtitle: "All premium features are available to you. Keep up the great work!",
@@ -159,7 +166,7 @@ const PremiumScreen = ({ language: propLanguage, darkMode: propDarkMode }) => {
   const [isAlreadyPremium, setIsAlreadyPremium] = useState(null);
   const [selectedPlan, setSelectedPlan] = useState('annually');
   const [useTrial, setUseTrial] = useState(false);
-  const [isLoading, setIsLoading] = useState(false); // Added for restore loading state
+  const [isLoading, setIsLoading] = useState(false); 
 
   const shimmerTranslateX = useRef(new Animated.Value(-150)).current;
   const isTrialActiveRef = useRef(useTrial);
@@ -208,14 +215,21 @@ const PremiumScreen = ({ language: propLanguage, darkMode: propDarkMode }) => {
   const handleTrialToggle = () => setUseTrial(p => !p);
   const handleCloseOrBack = () => navigation.goBack();
 
-  // --- Purchase Logic ---
+  // ---------------------------------------------------------
+  // 1. PURCHASE LOGIC (UPDATED FOR SYNC)
+  // ---------------------------------------------------------
   const handlePurchase = async () => {
+    setIsLoading(true);
     try {
-      const now = Date.now();
-      let expiryTimestamp;
-      const DAY_IN_MS = 24 * 60 * 60 * 1000;
+      // 1. Check if user is logged in
+      const { data: { user } } = await supabase.auth.getUser();
 
-      // Mocking subscription duration
+      // If needed: Simulate Payment Processing Here (Success)
+      
+      const now = Date.now();
+      const DAY_IN_MS = 24 * 60 * 60 * 1000;
+      let expiryTimestamp;
+
       if (useTrial) {
         expiryTimestamp = now + (7 * DAY_IN_MS);
       } else if (selectedPlan === 'monthly') {
@@ -224,58 +238,86 @@ const PremiumScreen = ({ language: propLanguage, darkMode: propDarkMode }) => {
         expiryTimestamp = now + (365 * DAY_IN_MS);
       }
 
+      // 2. Sync with Supabase if User Exists
+      if (user) {
+          const { error } = await supabase
+            .from('profiles')
+            .update({ is_subscribed: true })
+            .eq('id', user.id);
+          
+          if (error) console.log("Failed to sync subscription to cloud:", error);
+      }
+
+      // 3. Save Locally (Source of Truth for Offline)
       const subscriptionData = {
         isPremium: true,
         expiryDate: expiryTimestamp,
       };
 
       await AsyncStorage.setItem(USER_SUBSCRIPTION_DATA_KEY, JSON.stringify(subscriptionData));
-      
       setIsAlreadyPremium(true); 
       
-      // Updated Alert with Guest Advice
       Alert.alert(
         t.purchase_success_title,
-        t.purchase_success_message, // Includes advice to create account
+        t.purchase_success_message, 
         [ { text: t.purchase_continue, onPress: () => navigation.goBack() } ],
         { cancelable: false }
       );
 
     } catch (e) {
+      console.error(e);
       Alert.alert(t.purchase_error_title, t.purchase_error_message);
+    } finally {
+        setIsLoading(false);
     }
   };
 
-  // --- Restore Purchase Logic (NEW) ---
+  // ---------------------------------------------------------
+  // 2. RESTORE LOGIC (UPDATED FOR SYNC)
+  // ---------------------------------------------------------
   const handleRestorePurchase = async () => {
     setIsLoading(true);
-    setTimeout(async () => {
-        // In a real app, you would call RNIap.getAvailablePurchases() here
-        // For this mock, we just simulate a check.
-        
-        try {
-            // NOTE: In production, check your payment provider receipt here.
-            // If valid, save to AsyncStorage and setIsAlreadyPremium(true)
-            
-            // Simulating "No previous purchase found" for the template
-            // Or change to true to test the success message
-            const foundPurchase = false; 
+    try {
+        // 1. Must be logged in to restore from our DB
+        const { data: { user } } = await supabase.auth.getUser();
 
-            setIsLoading(false);
-
-            if (foundPurchase) {
-                 await AsyncStorage.setItem(USER_SUBSCRIPTION_DATA_KEY, JSON.stringify({ isPremium: true, expiryDate: Date.now() + 10000000 }));
-                 setIsAlreadyPremium(true);
-                 Alert.alert(t.restore_success_title, t.restore_success_message);
-            } else {
-                 Alert.alert(t.restore_empty_title, t.restore_empty_message);
-            }
-
-        } catch (e) {
-            setIsLoading(false);
-            Alert.alert(t.purchase_error_title, t.purchase_error_message);
+        if (!user) {
+             setIsLoading(false);
+             Alert.alert(t.purchase_error_title, t.restore_login_required);
+             return;
         }
-    }, 1500); // Fake delay
+
+        // 2. Query Supabase
+        const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('is_subscribed')
+            .eq('id', user.id)
+            .single();
+
+        if (error) {
+            console.log("Restore error:", error);
+            throw error;
+        }
+
+        // 3. Check Subscription Status
+        if (profile && profile.is_subscribed) {
+             // 4. Activate Locally
+             // We give a long expiry date since we confirmed with server
+             const oneYearFromNow = Date.now() + (365 * 24 * 60 * 60 * 1000);
+             await AsyncStorage.setItem(USER_SUBSCRIPTION_DATA_KEY, JSON.stringify({ isPremium: true, expiryDate: oneYearFromNow }));
+             
+             setIsAlreadyPremium(true);
+             Alert.alert(t.restore_success_title, t.restore_success_message);
+        } else {
+             Alert.alert(t.restore_empty_title, t.restore_empty_message);
+        }
+
+    } catch (e) {
+        setIsLoading(false);
+        Alert.alert(t.purchase_error_title, t.purchase_error_message);
+    } finally {
+        setIsLoading(false);
+    }
   };
   
   const isMonthlySelected = selectedPlan === 'monthly';
@@ -348,7 +390,7 @@ const PremiumScreen = ({ language: propLanguage, darkMode: propDarkMode }) => {
           </TouchableOpacity>
         </View>
         
-        <TouchableOpacity style={styles.upgradeButton} onPress={handlePurchase}>
+        <TouchableOpacity style={styles.upgradeButton} onPress={handlePurchase} disabled={isLoading}>
           {useTrial && (
             <AnimatedLinearGradient
               colors={['transparent', theme.shimmerEffectColor, 'transparent']}
@@ -357,7 +399,11 @@ const PremiumScreen = ({ language: propLanguage, darkMode: propDarkMode }) => {
               style={[ styles.shimmerEffect, { transform: [{ translateX: shimmerTranslateX }] }]} 
             />
           )}
-          <Text style={styles.upgradeButtonText}>{useTrial ? t.button_use_trial : t.button_upgrade}</Text>
+          {isLoading ? (
+             <ActivityIndicator color={theme.primaryText} />
+          ) : (
+             <Text style={styles.upgradeButtonText}>{useTrial ? t.button_use_trial : t.button_upgrade}</Text>
+          )}
         </TouchableOpacity>
         
         <View style={styles.trialContainer}>
@@ -367,7 +413,7 @@ const PremiumScreen = ({ language: propLanguage, darkMode: propDarkMode }) => {
             </Pressable>
         </View>
 
-        {/* RESTORE PURCHASE BUTTON (ADDED) */}
+        {/* RESTORE PURCHASE BUTTON */}
         <TouchableOpacity style={styles.restoreButton} onPress={handleRestorePurchase} disabled={isLoading}>
             {isLoading ? (
                 <ActivityIndicator size="small" color={theme.subtleText} />
@@ -430,11 +476,10 @@ const getStyles = (themeMode) => {
     checkboxBase: { width: 24, height: 24, justifyContent: 'center', alignItems: 'center', borderRadius: 4, borderWidth: 2, borderColor: theme.primary, backgroundColor: 'transparent' },
     checkboxChecked: { backgroundColor: theme.primary, borderColor: theme.primary },
     
-    // NEW Styles for Restore Button
     restoreButton: { marginTop: 15, padding: 10, alignItems: 'center' },
     restoreButtonText: { fontSize: 14, color: theme.subtleText, textDecorationLine: 'underline' },
 
-    footerText: { fontSize: 12, color: theme.subtleText, textAlign: 'center', marginTop: 10 }, // Reduced top margin
+    footerText: { fontSize: 12, color: theme.subtleText, textAlign: 'center', marginTop: 10 },
     alreadyPremiumContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 30, },
     alreadyPremiumIcon: { color: theme.primary, marginBottom: 25, },
     alreadyPremiumTitle: { fontSize: 24, fontWeight: 'bold', color: theme.text, textAlign: 'center', marginBottom: 15, },

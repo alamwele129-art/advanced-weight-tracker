@@ -16,8 +16,8 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Picker } from '@react-native-picker/picker';
 import { useFocusEffect } from '@react-navigation/native';
-// 1. استيراد مكتبة التحديثات (لازم تكون سطبتها بالأمر اللي فوق)
 import * as Updates from 'expo-updates';
+import { supabase } from './supabaseClient'; // 1. استيراد Supabase
 
 const USER_SETTINGS_KEY = '@Settings:generalSettings';
 const USER_PROFILE_DATA_KEY = '@Profile:userProfileData';
@@ -75,10 +75,10 @@ const SettingsScreen = ({
 
   const translations = {
     ar: {
-      settingsTitle: 'الإعدادات', usernameLabel: 'اسم المستخدم:', heightLabel: 'الطول (سم):', weightGoalLabel: 'هدف الوزن (كجم):', languageLabel: 'اللغة:', notificationsLabel: 'الإشعارات:', notificationsOn: 'تشغيل', notificationsOff: 'إيقاف', saveButton: 'حفظ الإعدادات', modalMessage: 'تم حفظ الإعدادات بنجاح!', modalButton: 'موافق', darkModeLabel: 'الوضع الداكن:', backArrow: '←', saveErrorTitle: 'خطأ', saveErrorMessage: 'فشل حفظ الإعدادات.', loadErrorTitle: 'خطأ', loadErrorMessage: 'فشل تحميل الإعدادات.', placeholderUsername: 'أدخل اسم المستخدم', placeholderHeight: 'أدخل الطول', placeholderWeightGoal: 'أدخل الوزن المستهدف', languageChangeAlertTitle: "تغيير اللغة", languageChangeAlertMessage: "تم تحديث إعدادات اللغة. سيتم إعادة تشغيل التطبيق الآن.", premiumFeature: 'ميزة مميزة', upgradePrompt: 'هذه الميزة متاحة فقط للمشتركين. هل ترغب بالترقية الآن؟', upgrade: 'ترقية', cancel: 'إلغاء',
+      settingsTitle: 'الإعدادات', usernameLabel: 'اسم المستخدم:', heightLabel: 'الطول (سم):', weightGoalLabel: 'هدف الوزن (كجم):', languageLabel: 'اللغة:', notificationsLabel: 'الإشعارات:', notificationsOn: 'تشغيل', notificationsOff: 'إيقاف', saveButton: 'حفظ الإعدادات', modalMessage: 'تم حفظ الإعدادات ومزامنتها بنجاح!', modalButton: 'موافق', darkModeLabel: 'الوضع الداكن:', backArrow: '←', saveErrorTitle: 'خطأ', saveErrorMessage: 'فشل حفظ الإعدادات.', loadErrorTitle: 'خطأ', loadErrorMessage: 'فشل تحميل الإعدادات.', placeholderUsername: 'أدخل اسم المستخدم', placeholderHeight: 'أدخل الطول', placeholderWeightGoal: 'أدخل الوزن المستهدف', languageChangeAlertTitle: "تغيير اللغة", languageChangeAlertMessage: "تم تحديث إعدادات اللغة. سيتم إعادة تشغيل التطبيق الآن.", premiumFeature: 'ميزة مميزة', upgradePrompt: 'هذه الميزة متاحة فقط للمشتركين. هل ترغب بالترقية الآن؟', upgrade: 'ترقية', cancel: 'إلغاء',
     },
     en: {
-      settingsTitle: 'Settings', usernameLabel: 'Username:', heightLabel: 'Height (cm):', weightGoalLabel: 'Weight Goal (kg):', languageLabel: 'Language:', notificationsLabel: 'Notifications:', notificationsOn: 'On', notificationsOff: 'Off', saveButton: 'Save Settings', modalMessage: 'Settings saved successfully!', modalButton: 'OK', darkModeLabel: 'Dark Mode:', backArrow: '←', saveErrorTitle: 'Error', saveErrorMessage: 'Failed to save settings.', loadErrorTitle: 'Error', loadErrorMessage: 'Failed to load settings.', placeholderUsername: 'Enter username', placeholderHeight: 'Enter height', placeholderWeightGoal: 'Enter weight goal', languageChangeAlertTitle: "Language Change", languageChangeAlertMessage: "Language settings updated. The app will restart now.", premiumFeature: 'Premium Feature', upgradePrompt: 'This feature is available for premium users only. Would you like to upgrade now?', upgrade: 'Upgrade', cancel: 'Cancel',
+      settingsTitle: 'Settings', usernameLabel: 'Username:', heightLabel: 'Height (cm):', weightGoalLabel: 'Weight Goal (kg):', languageLabel: 'Language:', notificationsLabel: 'Notifications:', notificationsOn: 'On', notificationsOff: 'Off', saveButton: 'Save Settings', modalMessage: 'Settings saved & synced successfully!', modalButton: 'OK', darkModeLabel: 'Dark Mode:', backArrow: '←', saveErrorTitle: 'Error', saveErrorMessage: 'Failed to save settings.', loadErrorTitle: 'Error', loadErrorMessage: 'Failed to load settings.', placeholderUsername: 'Enter username', placeholderHeight: 'Enter height', placeholderWeightGoal: 'Enter weight goal', languageChangeAlertTitle: "Language Change", languageChangeAlertMessage: "Language settings updated. The app will restart now.", premiumFeature: 'Premium Feature', upgradePrompt: 'This feature is available for premium users only. Would you like to upgrade now?', upgrade: 'Upgrade', cancel: 'Cancel',
     }
   };
   
@@ -111,10 +111,25 @@ const SettingsScreen = ({
       const generalSettings = { height: height, weightGoal: weightGoal, notifications: notifications };
       const profileData = { username: username };
       
+      // 1. الحفظ المحلي (AsyncStorage)
       await AsyncStorage.setItem(USER_SETTINGS_KEY, JSON.stringify(generalSettings));
       await AsyncStorage.setItem(USER_PROFILE_DATA_KEY, JSON.stringify(profileData));
 
-      // --- منطق تغيير اللغة وإعادة التشغيل ---
+      // 2. المزامنة مع Supabase (Update Cloud)
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+          const updates = {
+              full_name: username,
+              height: height ? parseFloat(height) : null,
+              weight_goal: weightGoal ? parseFloat(weightGoal) : null,
+              updated_at: new Date(),
+          };
+          
+          const { error } = await supabase.from('profiles').update(updates).eq('id', user.id);
+          if (error) console.log("Error syncing settings to Supabase:", error);
+      }
+
+      // --- منطق تغيير اللغة ---
       if (selectedLanguage !== languageProp) {
           await AsyncStorage.setItem('appLanguage', selectedLanguage);
           
@@ -128,19 +143,13 @@ const SettingsScreen = ({
               [{
                   text: t.modalButton,
                   onPress: async () => {
-                      try {
-                          // هنا بنستخدم المكتبة لعمل ريستارت
-                          await Updates.reloadAsync();
-                      } catch (e) {
-                          console.log("Reload failed", e);
-                      }
+                      try { await Updates.reloadAsync(); } catch (e) { console.log("Reload failed", e); }
                   }
               }],
               { cancelable: false }
           );
           return; 
       }
-      // ------------------------------------
 
       if (toggleDarkModeProp && isDarkMode !== darkModeProp) { await toggleDarkModeProp(isDarkMode); }
       if (updateGoalWeightInParent) { updateGoalWeightInParent(weightGoal); }

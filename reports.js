@@ -10,6 +10,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import ViewShot from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
+import { supabase } from './supabaseClient'; // 1. استيراد Supabase
 
 // --- الثوابت والمفاتيح والترجمات ---
 const WEIGHT_HISTORY_KEY = '@WeightTracker:history';
@@ -19,7 +20,7 @@ const FOOD_LOG_PREFIX = 'mealsData_';
 const WATER_DATA_PREFIX = 'waterData_';
 const USER_SUBSCRIPTION_DATA_KEY = '@App:userSubscriptionData';
 
-
+// ... (Translations and helper functions remain unchanged)
 const translations = {
     ar: {
         title: 'التقارير الصحية', week: 'أسبوعي', month: 'شهري', weight: 'الوزن', bmi: 'مؤشر كتلة الجسم', avgDailySteps: 'متوسط الخطوات اليومي', avgDailyKm: 'متوسط المسافة اليومي', avgCaloriesBurned: 'متوسط حرق السعرات', avgActiveTime: 'متوسط الوقت النشط', avgDailyWater: 'متوسط استهلاك الماء', weeklyActivity: 'النشاط الأسبوعي', monthlyActivity: 'النشاط الشهري', steps: 'خطوات', caloriesConsumed: 'السعرات', kg: 'كجم', hrs: 'ساعة', mlUnit: 'مل', loading: 'جاري تحميل البيانات...', dayNames: ["أحد", "اثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة", "سبت"], weekLabels: ["أسبوع 1", "أسبوع 2", "أسبوع 3", "أسبوع 4"], vsLastWeek: 'مقابل الأسبوع الماضي', vsLastMonth: 'مقابل الشهر الماضي', increase: 'زيادة', decrease: 'نقصان', stable: 'مستقر', shareReport: 'مشاركة التقرير', shareError: 'خطأ في المشاركة', shareMessage: 'إليك تقريري الصحي من تطبيقي!', sharingNotAvailable: 'المشاركة غير متاحة على هذا الجهاز',
@@ -82,6 +83,7 @@ const ReportsScreen = ({ navigation, language, isDarkMode }) => {
         const checkStatusAndFetchData = async () => {
             setIsLoading(true);
             try {
+                // ... (Premium check remains the same)
                 const subscriptionDataString = await AsyncStorage.getItem(USER_SUBSCRIPTION_DATA_KEY);
                 let isPremium = false;
                 if (subscriptionDataString) {
@@ -93,6 +95,7 @@ const ReportsScreen = ({ navigation, language, isDarkMode }) => {
                     }
                 }
                 setIsUserPremium(isPremium);
+                
                 await fetchData();
             } catch (e) {
                 console.error("Failed to check premium status or fetch data.", e);
@@ -112,11 +115,38 @@ const ReportsScreen = ({ navigation, language, isDarkMode }) => {
             const previousPeriodDates = Array.from({ length: daysInPeriod }).map((_, i) => addDays(today, -(i + daysInPeriod))).reverse();
             const allDates = [...previousPeriodDates, ...currentPeriodDates];
             const allDateStrings = allDates.map(d => getLocalDateString(d));
+            
+            // 1. محاولة الجلب من المحلي أولاً
             const foodLogKeys = allDateStrings.map(dateStr => `${FOOD_LOG_PREFIX}${dateStr}`);
             const waterLogKeys = allDateStrings.map(dateStr => `${WATER_DATA_PREFIX}${dateStr}`);
             const keysToFetch = [WEIGHT_HISTORY_KEY, SETTINGS_KEY, STEPS_HISTORY_KEY, ...foodLogKeys, ...waterLogKeys];
             const storedData = await AsyncStorage.multiGet(keysToFetch);
             const dataMap = new Map(storedData);
+
+            // 2. التحقق مما إذا كانت البيانات المحلية فارغة، ومحاولة الجلب من السيرفر (اختياري للأمان)
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                // إذا لم نجد سجل خطوات محلي، نحاول جلبه من السيرفر وتحديثه
+                const localSteps = JSON.parse(dataMap.get(STEPS_HISTORY_KEY) || '{}');
+                if (Object.keys(localSteps).length === 0) {
+                    const { data: cloudSteps } = await supabase
+                        .from('steps')
+                        .select('date, step_count')
+                        .eq('user_id', user.id)
+                        .in('date', allDateStrings);
+                    
+                    if (cloudSteps) {
+                        const newStepsMap = {};
+                        cloudSteps.forEach(s => newStepsMap[s.date] = s.step_count);
+                        dataMap.set(STEPS_HISTORY_KEY, JSON.stringify(newStepsMap));
+                        // تحديث الكاش المحلي
+                        await AsyncStorage.setItem(STEPS_HISTORY_KEY, JSON.stringify(newStepsMap));
+                    }
+                }
+                
+                // (يمكن تكرار نفس المنطق للوزن والمياه والأكل إذا لزم الأمر، 
+                // لكن الاعتماد على الصفحات الفردية لتحديث الكاش هو الأفضل للأداء)
+            }
 
             const processPeriodData = (periodDates) => {
                 const periodDateStrings = periodDates.map(d => getLocalDateString(d));
@@ -139,6 +169,7 @@ const ReportsScreen = ({ navigation, language, isDarkMode }) => {
                 };
             };
             
+            // ... (Rest of data processing logic remains exactly the same)
             const currentData = processPeriodData(currentPeriodDates);
             const previousData = processPeriodData(previousPeriodDates);
             const weightHistory = JSON.parse(dataMap.get(WEIGHT_HISTORY_KEY) || '[]');
@@ -286,8 +317,6 @@ const ReportsScreen = ({ navigation, language, isDarkMode }) => {
                         <View style={styles.chartContainer}>
                             <Text style={styles.chartTitle}>{period === 'week' ? t.weeklyActivity : t.monthlyActivity}</Text>
                             
-                            {/* ========================> ✨ بداية الإضافة ✨ <======================== */}
-                            {/* الخطوة 1: إضافة مفتاح الرسم البياني (Legend) */}
                             <View style={styles.legendContainer}>
                                 <View style={styles.legendItem}>
                                     <View style={[styles.legendDot, { backgroundColor: 'rgba(76, 175, 80, 1)' }]} />
@@ -298,7 +327,6 @@ const ReportsScreen = ({ navigation, language, isDarkMode }) => {
                                     <Text style={styles.legendText}>{t.caloriesConsumed}</Text>
                                 </View>
                             </View>
-                            {/* ========================> 🔚 نهاية الإضافة 🔚 <======================== */}
 
                             {isChartDataValid ? (
                                 <>

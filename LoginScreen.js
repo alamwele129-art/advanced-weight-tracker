@@ -78,7 +78,7 @@ const translations = {
   },
 };
 
-// تعريف المفاتيح المستخدمة في التطبيق لتجنب الأخطاء الإملائية
+// تعريف المفاتيح المستخدمة في التطبيق
 const USER_PROFILE_DATA_KEY = '@Profile:userProfileData';
 const LOGGED_IN_EMAIL_KEY = 'loggedInUserEmail';
 const USER_SUBSCRIPTION_STATUS_KEY = '@App:userSubscriptionStatus';
@@ -100,7 +100,6 @@ const LoginScreen = ({ language = 'ar', isDarkMode = false }) => {
   const passwordInputRef = useRef(null);
 
   useEffect(() => {
-    // Force RTL layout if language is Arabic
     I18nManager.forceRTL(language === 'ar');
     if (isFocused) { setActiveTab('Login'); }
   }, [isFocused, language]);
@@ -110,14 +109,20 @@ const LoginScreen = ({ language = 'ar', isDarkMode = false }) => {
     if (tabName === 'SignUp') { navigation.navigate('SignUp'); }
   };
 
+  // ---------------------------------------------------------
+  // دالة تسجيل الدخول المعدلة (مع المزامنة)
+  // ---------------------------------------------------------
   const handleLogin = async () => {
     Keyboard.dismiss();
-    await supabase.auth.signOut();
+    await supabase.auth.signOut(); // ضمان خروج أي جلسة قديمة
+    
     if (!email || !password) {
       return Alert.alert(translation.errorTitle, translation.errorEmptyFields);
     }
+
     setIsLoading(true);
     try {
+      // 1. تسجيل الدخول الأساسي (Authentication)
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
       if (error) {
@@ -132,14 +137,54 @@ const LoginScreen = ({ language = 'ar', isDarkMode = false }) => {
       }
 
       if (data.user) {
-        const username = data.user.user_metadata?.full_name || 'User';
-        const profileData = { username: username, profileImageUrl: null };
+        console.log('User authenticated. Starting Sync...');
+        const userId = data.user.id;
 
+        // 2. المزامنة: جلب بيانات البروفايل من قاعدة البيانات (Supabase Database)
+        // ملاحظة: تأكد من وجود جدول اسمه 'profiles' في Supabase مربوط بالـ id
+        let remoteProfile = null;
+        try {
+            const { data: profileData, error: profileError } = await supabase
+                .from('profiles') // <--- اسم الجدول في الداتا بيز
+                .select('*') // هات كل الأعمدة (الاسم، الصورة، حالة الاشتراك)
+                .eq('id', userId)
+                .single();
+            
+            if (!profileError && profileData) {
+                remoteProfile = profileData;
+            }
+        } catch (fetchError) {
+            console.log('Error fetching profile from DB, falling back to metadata', fetchError);
+        }
+
+        // 3. تحضير البيانات للحفظ المحلي
+        // الأولوية للبيانات اللي جاية من الداتا بيز، لو مفيش بناخد من الـ Metadata
+        const usernameToSave = remoteProfile?.full_name || remoteProfile?.username || data.user.user_metadata?.full_name || 'User';
+        const imageToSave = remoteProfile?.avatar_url || remoteProfile?.profile_image || null;
+        
+        // تجهيز أوبجكت البروفايل
+        const profileDataToStore = { 
+            username: usernameToSave, 
+            profileImageUrl: imageToSave 
+        };
+
+        // 4. الحفظ في ذاكرة الهاتف (AsyncStorage)
         await AsyncStorage.setItem(LOGGED_IN_EMAIL_KEY, data.user.email);
-        await AsyncStorage.setItem(USER_PROFILE_DATA_KEY, JSON.stringify(profileData));
-        await AsyncStorage.removeItem(USER_SUBSCRIPTION_STATUS_KEY);
+        await AsyncStorage.setItem(USER_PROFILE_DATA_KEY, JSON.stringify(profileDataToStore));
 
-        console.log('Login successful & data saved. Navigating...');
+        // 5. مزامنة حالة الاشتراك (عضو مميز)
+        // افترضنا ان العمود في الداتا بيز اسمه is_vip أو is_subscribed
+        const isSubscribed = remoteProfile?.is_vip || remoteProfile?.is_subscribed || false;
+        
+        if (isSubscribed) {
+            await AsyncStorage.setItem(USER_SUBSCRIPTION_STATUS_KEY, 'active'); // تفعيل العضوية محلياً
+        } else {
+            await AsyncStorage.removeItem(USER_SUBSCRIPTION_STATUS_KEY); // إلغاء العضوية محلياً
+        }
+
+        console.log('Login successful & Data Synced. Navigating...');
+        
+        // الانتقال للصفحة الرئيسية وتصفير الستاك عشان ميرجعش للوجين
         navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name: 'Weight' }] }));
       }
     } catch (err) {
@@ -150,7 +195,7 @@ const LoginScreen = ({ language = 'ar', isDarkMode = false }) => {
   };
   
   const handleSocialLogin = async (provider) => {
-    // ... (This function remains unchanged, but you can add loading states)
+    // يمكنك إضافة نفس منطق المزامنة هنا بعد نجاح السوشيال لوجين
   };
 
   const handleForgotPassword = () => {

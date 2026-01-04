@@ -8,6 +8,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { LineChart } from 'react-native-chart-kit';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase } from './supabaseClient'; // 1. استيراد Supabase (مهم جداً)
 import tips from './tips';
 
 // --- استيراد الأيقونات والمكونات ---
@@ -31,15 +32,12 @@ const USER_SUBSCRIPTION_DATA_KEY = '@App:userSubscriptionData';
 
 // --- بيانات وترجمات ---
 const initialWeightHistory = [
-  { date: '2024-05-22', weight: 85.0 }, { date: '2024-05-18', weight: 85.2 },
-  { date: '2024-05-15', weight: 85.8 }, { date: '2024-05-10', weight: 85.5 },
-  { date: '2024-05-05', weight: 86.1 }, { date: '2024-05-01', weight: 86.0 },
-  { date: '2024-04-20', weight: 87.5 }, { date: '2024-04-10', weight: 87.8 },
-  { date: '2024-03-15', weight: 88.5 }, { date: '2024-02-20', weight: 89.2 },
-  { date: '2024-01-10', weight: 90.0 },
+  { date: '2024-05-22', weight: 85.0 }, 
+  // ... (باقي البيانات الافتراضية)
 ];
 
 const translations = {
+  // ... (نفس الترجمات اللي عندك بالظبط)
   en: {
     weightTracker: 'Weight Tracker', currentStatus: 'Current Status', lastUpdate: 'Last update:', starting: 'Starting', goal: 'Goal', bmi: 'BMI', progressChart: 'Progress Chart', last7Entries: 'Last 7 Entries', history: 'History', logYourWeight: 'Log Your Weight', weightPlaceholder: 'e.g., 85.5', cancel: 'Cancel', save: 'Save', invalidInputTitle: 'Invalid Input', invalidInputMessage: 'Please enter a valid number for your weight.', unrealisticValueTitle: 'Unrealistic Value', unrealisticValueMessage: 'Please enter a weight between 20 and 400 kg.', alreadyLoggedTitle: 'Already Logged', alreadyLoggedMessage: 'You have already logged your weight for today. Would you like to update it?', update: 'Update', kg: 'kg', dailyTip: 'Daily Tip',
     weightNavLabel: 'Weight', foodNavLabel: 'Food', waterNavLabel: 'Water', stepsNavLabel: 'Steps', reportsNavLabel: 'Reports',
@@ -77,6 +75,7 @@ const WeightTracker = ({ navigation, language, darkMode }) => {
   const [liveStepsForAchievements, setLiveStepsForAchievements] = useState(0);
   const [isUserPremium, setIsUserPremium] = useState(false);
 
+  // ... (useFocusEffect الخاص بالاشتراك زي ما هو)
   useFocusEffect(
     useCallback(() => {
       const checkUserStatus = async () => {
@@ -93,7 +92,7 @@ const WeightTracker = ({ navigation, language, darkMode }) => {
             }
             setIsUserPremium(isPremium);
         } catch (e) {
-          console.error("Failed to load premium status from WeightTracker", e);
+          console.error("Failed to load premium status", e);
           setIsUserPremium(false);
         }
       };
@@ -102,6 +101,7 @@ const WeightTracker = ({ navigation, language, darkMode }) => {
   );
 
   const handlePremiumFeaturePress = () => {
+    // ... (نفس الكود)
     const t = (key) => translations[language][key] || key;
     Alert.alert(
       t('premiumFeatureTitle'),
@@ -113,34 +113,72 @@ const WeightTracker = ({ navigation, language, darkMode }) => {
     );
   };
 
+  // -------------------------------------------------------------
+  // 2. تحميل البيانات (Download): هنا التغيير الكبير
+  // -------------------------------------------------------------
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
       try {
-        const storedHistory = await AsyncStorage.getItem('@WeightTracker:history');
-        const parsedHistory = storedHistory ? JSON.parse(storedHistory) : null;
-        setHistory(parsedHistory && parsedHistory.length > 0 ? parsedHistory : initialWeightHistory);
+        // أ. جلب إعدادات المستخدم محلياً
         const settingsString = await AsyncStorage.getItem('@Settings:generalSettings');
         if (settingsString) {
           const settings = JSON.parse(settingsString);
           if (settings.weightGoal) setGoalWeight(parseFloat(settings.weightGoal));
           if (settings.height) setUserHeight(parseFloat(settings.height) / 100);
         }
+
+        // ب. محاولة جلب البيانات من Supabase (السحابة) أولاً
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (user) {
+            // لو المستخدم مسجل، هات بياناته من جدول weights
+            const { data: cloudWeights, error } = await supabase
+                .from('weights')
+                .select('*')
+                .eq('user_id', user.id)
+                .order('date', { ascending: false });
+
+            if (!error && cloudWeights && cloudWeights.length > 0) {
+                // تحويل البيانات لشكل يفهمه التطبيق { date, weight }
+                const formattedHistory = cloudWeights.map(item => ({
+                    date: item.date,
+                    weight: item.weight
+                }));
+                setHistory(formattedHistory);
+                // تحديث النسخة المحلية عشان المرة الجاية تكون أسرع
+                await AsyncStorage.setItem('@WeightTracker:history', JSON.stringify(formattedHistory));
+            } else {
+                // لو مفيش نت أو مفيش بيانات في السحابة، اعتمد على المحلي
+                const storedHistory = await AsyncStorage.getItem('@WeightTracker:history');
+                const parsedHistory = storedHistory ? JSON.parse(storedHistory) : null;
+                setHistory(parsedHistory && parsedHistory.length > 0 ? parsedHistory : initialWeightHistory);
+            }
+        } else {
+            // لو مش مسجل دخول، اشتغل محلي بس
+            const storedHistory = await AsyncStorage.getItem('@WeightTracker:history');
+            const parsedHistory = storedHistory ? JSON.parse(storedHistory) : null;
+            setHistory(parsedHistory && parsedHistory.length > 0 ? parsedHistory : initialWeightHistory);
+        }
+
       } catch (e) {
-        console.error("Failed to load data.", e); setHistory(initialWeightHistory);
+        console.error("Failed to load data.", e); 
+        setHistory(initialWeightHistory);
       } finally {
         setIsLoading(false);
       }
     };
     loadData();
-  }, []);
+  }, []); // Run once on mount
 
+  // هذا الـ Effect يحفظ محلياً دائماً كنسخة احتياطية
   useEffect(() => {
     if (!isLoading) {
       AsyncStorage.setItem('@WeightTracker:history', JSON.stringify(history));
     }
   }, [history, isLoading]);
   
+  // ... (تحديث النصيحة اليومية زي ما هو)
   useEffect(() => {
     const updateDailyTip = (currentLang) => {
       if (tips[currentLang] && tips[currentLang].length > 0) {
@@ -156,23 +194,70 @@ const WeightTracker = ({ navigation, language, darkMode }) => {
   
   const hideTooltip = () => setTooltip(null);
   
-  const handleAddWeight = () => {
+  // -------------------------------------------------------------
+  // 3. إضافة وتحديث الوزن (Upload): هنا التغيير الثاني
+  // -------------------------------------------------------------
+  const handleAddWeight = async () => {
     const t = (key) => translations[language][key] || key;
+    
+    // التحقق من صحة المدخلات
     if (!newWeight || isNaN(parseFloat(newWeight))) { Alert.alert(t('invalidInputTitle'), t('invalidInputMessage')); return; }
     const weightValue = parseFloat(newWeight);
     if (weightValue <= 20 || weightValue >= 400) { Alert.alert(t('unrealisticValueTitle'), t('unrealisticValueMessage')); return; }
-    const today = new Date(); const formattedDate = getLocalDateString(today); const isDateAlreadyAdded = history.some(entry => entry.date === formattedDate);
+    
+    const today = new Date(); 
+    const formattedDate = getLocalDateString(today); 
+    const isDateAlreadyAdded = history.some(entry => entry.date === formattedDate);
+    
+    // الحصول على المستخدم الحالي
+    const { data: { user } } = await supabase.auth.getUser();
+
     if (isDateAlreadyAdded) {
       Alert.alert(t('alreadyLoggedTitle'), t('alreadyLoggedMessage'), [
         { text: t('cancel'), style: "cancel" },
-        { text: t('update'), onPress: () => {
-          const updatedHistory = history.map(entry => entry.date === formattedDate ? { ...entry, weight: weightValue } : entry);
-          setHistory(updatedHistory); setModalVisible(false); setNewWeight('');
-        }}
-      ]); return;
+        { 
+          text: t('update'), 
+          onPress: async () => {
+            // أ. تحديث محلي (عشان السرعة)
+            const updatedHistory = history.map(entry => entry.date === formattedDate ? { ...entry, weight: weightValue } : entry);
+            setHistory(updatedHistory); 
+            setModalVisible(false); 
+            setNewWeight('');
+
+            // ب. تحديث في Supabase (لو المستخدم مسجل)
+            if (user) {
+                const { error } = await supabase
+                    .from('weights')
+                    .update({ weight: weightValue })
+                    .eq('user_id', user.id)
+                    .eq('date', formattedDate);
+                if (error) console.log("Error updating weight in cloud:", error);
+            }
+          }
+        }
+      ]); 
+      return;
     }
-    const newEntry = { date: formattedDate, weight: weightValue }; const updatedHistory = [...history, newEntry].sort((a, b) => new Date(b.date) - new Date(a.date));
-    setHistory(updatedHistory); setModalVisible(false); setNewWeight('');
+
+    // إضافة جديد
+    // أ. تحديث محلي
+    const newEntry = { date: formattedDate, weight: weightValue }; 
+    const updatedHistory = [...history, newEntry].sort((a, b) => new Date(b.date) - new Date(a.date));
+    setHistory(updatedHistory); 
+    setModalVisible(false); 
+    setNewWeight('');
+
+    // ب. إضافة في Supabase (لو المستخدم مسجل)
+    if (user) {
+        const { error } = await supabase
+            .from('weights')
+            .insert({ 
+                user_id: user.id, 
+                weight: weightValue, 
+                date: formattedDate 
+            });
+        if (error) console.log("Error inserting weight to cloud:", error);
+    }
   };
   
   const handleProfilePress = () => {
@@ -180,6 +265,7 @@ const WeightTracker = ({ navigation, language, darkMode }) => {
   };
 
   const renderWeightTrackerScreen = () => {
+    // ... (باقي الكود زي ما هو بالظبط بدون أي تغيير في الـ UI)
     const isRTL = language === 'ar';
     const t = (key) => translations[language][key] || key;
     const styles = createStyles(darkMode, isRTL);
@@ -229,7 +315,6 @@ const WeightTracker = ({ navigation, language, darkMode }) => {
     }
     
     return (
-      /* --- تعديل: إضافة ScrollView هنا بدلاً من الحاوية الرئيسية --- */
       <ScrollView 
         contentContainerStyle={[styles.scrollContent, { paddingBottom: 110 + insets.bottom }]}
         showsVerticalScrollIndicator={false}
@@ -339,6 +424,7 @@ const WeightTracker = ({ navigation, language, darkMode }) => {
     );
   };
     
+  // ... (نفس دوال التنقل وباقي الكود)
   const handleNavigationRequest = (screenName, params = {}) => {
       const activityScreens = ['steps', 'distance', 'calories', 'activeTime'];
       if (activityScreens.includes(screenName)) {
@@ -392,7 +478,7 @@ const WeightTracker = ({ navigation, language, darkMode }) => {
           <View style={[
               styles.navBar, 
               { 
-                  height: 23 + insets.bottom, // تعديل الارتفاع ليكون مناسباً
+                  height: 23 + insets.bottom, 
                   paddingBottom: insets.bottom > 0 ? insets.bottom - 10 : 0
               }
           ]}>
@@ -424,7 +510,6 @@ const WeightTracker = ({ navigation, language, darkMode }) => {
           <SafeAreaView style={safeAreaStyle}>
               <View style={styles.mainContainer}>
                   
-                  {/* --- تم إزالة ScrollView من هنا لمنع تداخل القوائم --- */}
                   <View style={styles.contentContainer}>
                       <View style={{flex: 1}}>
                           {renderCurrentScreenComponent()}

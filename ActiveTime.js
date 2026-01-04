@@ -1,19 +1,8 @@
-﻿// ActiveTime.js (الكود الكامل مع تعديل توقف الرسم البياني عند الهدف)
+﻿// ActiveTime.js
 import React, {useState, useRef, useEffect, useCallback, useMemo} from 'react';
 import {
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-  TouchableOpacity,
-  Dimensions,
-  I18nManager,
-  Modal,
-  AppState,
-  Pressable,
-  Platform,
-  Animated,
+  SafeAreaView, ScrollView, StyleSheet, Text, View, TouchableOpacity, Dimensions,
+  I18nManager, Modal, AppState, Pressable, Platform, Animated, ActivityIndicator, useColorScheme
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Svg, {Circle, Path} from 'react-native-svg';
@@ -21,47 +10,17 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons'; 
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
-import { Pedometer } from 'expo-sensors';
+import { supabase } from './supabaseClient'; // استيراد Supabase
 
 import WeeklyTime from './weeklytime';
 import MonthlyTime from './monthlytime';
 
-// ... (Translations, Constants, Helper functions... etc remain the same)
-// ... كل الكود من هنا حتى المكون الرئيسي يبقى كما هو ...
 const translations = {
     ar: {
-        headerTitle: "الوقت النشط",
-        menuSteps: "الخطوات", menuDistance: "المسافة", menuCalories: "السعرات", menuActiveTime: "الوقت النشط",
-        tabDay: "يوم", tabWeek: "الأسبوع", tabMonth: "الشهر",
-        displayToday: "اليوم", displayYesterday: "أمس",
-        goalPrefix: "الهدف",
-        statSteps: "خطوة", statKcal: "كيلوكالوري", statKm: "كم",
-        challengePrefix: "أيام تحدي", challengeCompleted: "اكتمل التحدي!", challengeRemainingSingular: "يوم متبقي", challengeRemainingPlural: "أيام متبقية", challengeDaySuffix: "ي",
-        weekStatsTitle: "إحصائيات الأسبوع", 
-        weekStatsUnit: "(دقائق)", 
-        testButton: "اختبار (+5 دق)", 
-        resetButton: "إعادة", 
-        dayNamesShort: ['س', 'أ', 'ن', 'ث', 'ر', 'خ', 'ج'],
-        tooltipUnit: "دقيقة",
-        goalModalTitle: "هدف الوقت", goalModalHour: "ساعة", goalModalMinute: "دقيقة",
-        saveButton: "حفظ", cancelButton: "إلغاء",
+        headerTitle: "الوقت النشط", menuSteps: "الخطوات", menuDistance: "المسافة", menuCalories: "السعرات", menuActiveTime: "الوقت النشط", tabDay: "يوم", tabWeek: "الأسبوع", tabMonth: "الشهر", displayToday: "اليوم", displayYesterday: "أمس", goalPrefix: "الهدف", statSteps: "خطوة", statKcal: "كيلوكالوري", statKm: "كم", challengePrefix: "أيام تحدي", challengeCompleted: "اكتمل التحدي!", challengeRemainingSingular: "يوم متبقي", challengeRemainingPlural: "أيام متبقية", challengeDaySuffix: "ي", weekStatsTitle: "إحصائيات الأسبوع", weekStatsUnit: "(دقائق)", testButton: "اختبار (+5 دق)", resetButton: "إعادة", dayNamesShort: ['س', 'أ', 'ن', 'ث', 'ر', 'خ', 'ج'], tooltipUnit: "دقيقة", goalModalTitle: "هدف الوقت", goalModalHour: "ساعة", goalModalMinute: "دقيقة", saveButton: "حفظ", cancelButton: "إلغاء",
     },
     en: {
-        headerTitle: "Active Time",
-        menuSteps: "Steps", menuDistance: "Distance", menuCalories: "Calories", menuActiveTime: "Active Time",
-        tabDay: "Day", tabWeek: "Week", tabMonth: "Month",
-        displayToday: "Today", displayYesterday: "Yesterday",
-        goalPrefix: "Goal",
-        statSteps: "Step", statKcal: "Kcal", statKm: "Km",
-        challengePrefix: "Day Challenge", challengeCompleted: "Challenge Completed!", challengeRemainingSingular: "day remaining", challengeRemainingPlural: "days remaining", challengeDaySuffix: "d",
-        weekStatsTitle: "Weekly Stats", 
-        weekStatsUnit: "(minutes)", 
-        testButton: "Test (+5 min)",
-        resetButton: "Reset", 
-        dayNamesShort: ['S', 'M', 'T', 'W', 'T', 'F', 'S'],
-        tooltipUnit: "minute",
-        goalModalTitle: "Time Goal", goalModalHour: "Hour", goalModalMinute: "Minute",
-        saveButton: "Save", cancelButton: "Cancel",
+        headerTitle: "Active Time", menuSteps: "Steps", menuDistance: "Distance", menuCalories: "Calories", menuActiveTime: "Active Time", tabDay: "Day", tabWeek: "Week", tabMonth: "Month", displayToday: "Today", displayYesterday: "Yesterday", goalPrefix: "Goal", statSteps: "Step", statKcal: "Kcal", statKm: "Km", challengePrefix: "Day Challenge", challengeCompleted: "Challenge Completed!", challengeRemainingSingular: "day remaining", challengeRemainingPlural: "days remaining", challengeDaySuffix: "d", weekStatsTitle: "Weekly Stats", weekStatsUnit: "(minutes)", testButton: "Test (+5 min)", resetButton: "Reset", dayNamesShort: ['S', 'M', 'T', 'W', 'T', 'F', 'S'], tooltipUnit: "minute", goalModalTitle: "Time Goal", goalModalHour: "Hour", goalModalMinute: "Minute", saveButton: "Save", cancelButton: "Cancel",
     }
 };
 if (I18nManager.isRTL && !I18nManager.isRTLForced) { I18nManager.forceRTL(true); }
@@ -176,25 +135,59 @@ const ActiveTimeScreen = (props) => {
   const [timeHistory, setTimeHistory] = useState({});
   const activeTimeForDate = useMemo(() => { const dateStr = getDateString(currentDate); return timeHistory[dateStr] || 0; }, [timeHistory, currentDate]);
 
+  // 1. تحميل البيانات (مع المزامنة)
+  useEffect(() => {
+    const loadHistory = async () => {
+        const storedHistory = await AsyncStorage.getItem(DAILY_TIME_HISTORY_KEY);
+        let history = storedHistory ? JSON.parse(storedHistory) : {};
+        
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const todayStr = getDateString(new Date());
+                const { data: cloudData } = await supabase
+                    .from('active_time')
+                    .select('date, active_minutes')
+                    .eq('user_id', user.id);
+
+                if (cloudData) {
+                    cloudData.forEach(item => {
+                        history[item.date] = item.active_minutes;
+                    });
+                    await AsyncStorage.setItem(DAILY_TIME_HISTORY_KEY, JSON.stringify(history));
+                }
+            }
+        } catch (e) { console.error(e); }
+
+        setTimeHistory(history);
+    };
+    loadHistory();
+  }, []);
+
+  // 2. تحديث وحفظ البيانات (مع المزامنة)
   const updateAndSaveTime = useCallback(async (date, minutes) => {
     const dateString = getDateString(date);
     if (!dateString) return;
+    
     setTimeHistory(prevHistory => {
         const newHistory = { ...prevHistory, [dateString]: minutes };
         AsyncStorage.setItem(DAILY_TIME_HISTORY_KEY, JSON.stringify(newHistory));
         return newHistory;
     });
+
+    try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+            await supabase.from('active_time').upsert({
+                user_id: user.id,
+                date: dateString,
+                active_minutes: minutes
+            }, { onConflict: 'user_id, date' });
+        }
+    } catch (e) { console.error("Error syncing active time:", e); }
+
   }, []);
 
-  useEffect(() => {
-    const loadHistory = async () => {
-        const storedHistory = await AsyncStorage.getItem(DAILY_TIME_HISTORY_KEY);
-        setTimeHistory(storedHistory ? JSON.parse(storedHistory) : {});
-    };
-    loadHistory();
-  }, []);
-
-  // ========================== التعديل الرئيسي هنا ==========================
   const weeklyTimeData = useMemo(() => {
     const weekStart = getStartOfWeek(new Date(), startOfWeekDay);
     const newWeekData = Array(7).fill(0);
@@ -204,35 +197,28 @@ const ActiveTimeScreen = (props) => {
         const dayDate = addDays(new Date(weekStart), i);
         const dayDateString = getDateString(dayDate);
         const actualMinutes = timeHistory[dayDateString] || 0;
-
-        // إذا كان اليوم هو اليوم الحالي، قم بتطبيق نفس منطق التقييد بالهدف
         if (isToday(dayDate)) {
             newWeekData[i] = Math.min(actualMinutes, goalInMinutes > 0 ? goalInMinutes : Infinity);
         } else {
-            // للأيام الأخرى، اعرض الوقت الفعلي
             newWeekData[i] = actualMinutes;
         }
     }
     return newWeekData;
   }, [timeHistory, startOfWeekDay, goalHour, goalMinute]);
-  // ====================================================================
   
   const formatDisplayDate = useCallback((date) => { if (isToday(date)) return translation.displayToday; if (isYesterday(date)) return translation.displayYesterday; const locale = language === 'ar' ? 'ar-EG' : 'en-US'; return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long' }).format(date); }, [language, translation]);
   const handlePreviousDay = () => { setCurrentDate(prevDate => { const newDate = new Date(prevDate); newDate.setDate(newDate.getDate() - 1); return newDate; }); };
   const handleNextDay = () => { if (isToday(currentDate)) return; setCurrentDate(prevDate => { const newDate = new Date(prevDate); newDate.setDate(newDate.getDate() + 1); return newDate; }); };
   
   const handleTestIncrement = () => {
-    const today = new Date();
-    // تم تعديل الشرط ليعمل مع `currentDate` بدلاً من `today`
     if (!isToday(currentDate)) return; 
-    const dateString = getDateString(today);
+    const dateString = getDateString(currentDate);
     const currentTime = timeHistory[dateString] || 0;
     const newTime = currentTime + 5;
-    updateAndSaveTime(today, newTime);
+    updateAndSaveTime(currentDate, newTime);
   };
   
   const handleResetData = () => {
-    // تم تعديل الشرط ليعمل مع `currentDate` بدلاً من `today`
     if (!isToday(currentDate)) return;
     updateAndSaveTime(currentDate, 0);
   };
@@ -272,13 +258,7 @@ const ActiveTimeScreen = (props) => {
           <ScrollView contentContainerStyle={currentStyles.scrollContent} key={`day-${language}-${isDarkMode}`}> 
             <DayView goalHour={goalHour} goalMinute={goalMinute} onOpenGoalModal={() => setModalVisible(true)} activeTimeForDate={activeTimeForDate} currentDate={currentDate} onNextDay={handleNextDay} onPreviousDay={handlePreviousDay} formatDisplayDate={formatDisplayDate} currentStyles={currentStyles} translation={translation} language={language}/> 
             <ChallengeCard onPress={handleNavigateToAchievements} currentChallengeDuration={currentChallengeDuration} remainingDays={remainingDays} currentStyles={currentStyles} translation={translation} language={language} /> 
-            <WeekView 
-              weeklyTimeData={weeklyTimeData} 
-              onTestIncrement={handleTestIncrement}
-              onResetData={handleResetData}
-              currentStyles={currentStyles} 
-              translation={translation} 
-              language={language} />
+            <WeekView weeklyTimeData={weeklyTimeData} onTestIncrement={handleTestIncrement} onResetData={handleResetData} currentStyles={currentStyles} translation={translation} language={language} />
           </ScrollView> 
         )} 
 

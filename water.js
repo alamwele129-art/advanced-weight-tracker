@@ -1,11 +1,11 @@
-﻿// water.js (الكود المصحح)
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+﻿import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput, SafeAreaView,
   Platform, I18nManager, Alert, Image, ActivityIndicator, AppState,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
+import { supabase } from './supabaseClient'; // 1. استيراد Supabase
 
 // --- الثوابت ومسارات الأصول ---
 const WATER_DATA_PREFIX = 'waterData_';
@@ -68,6 +68,8 @@ const WaterTrackingScreen = ({ language: propLanguage, isDarkMode: propIsDarkMod
 
   useFocusEffect(
     useCallback(() => {
+        // حساب الإحصائيات (يمكن تطويره لاحقاً ليأخذ من Supabase مباشرة، 
+        // حالياً سنعتمد على المحلي للسرعة طالما البيانات تم تحميلها عند الفتح)
         const calculateStats = async () => {
             try {
                 const allKeys = await AsyncStorage.getAllKeys();
@@ -122,24 +124,78 @@ const WaterTrackingScreen = ({ language: propLanguage, isDarkMode: propIsDarkMod
     }, [todayDateString])
   );
   
+  // ---------------------------------------------------------
+  // 2. تحميل البيانات (Download from Supabase)
+  // ---------------------------------------------------------
   useEffect(() => {
     const initializeScreenData = async () => {
       setIsInitialized(false);
       try {
         const todayKey = `${WATER_DATA_PREFIX}${todayDateString}`;
-        const dataString = await AsyncStorage.getItem(todayKey);
-        if (dataString) {
-          const data = JSON.parse(dataString);
-          setTargetAmount(data.targetAmount || 2000);
-          const history = Array.isArray(data.waterHistory) ? data.waterHistory : [];
-          setWaterHistory(history);
-          const totalFromHistory = history.reduce((sum, entry) => sum + (entry.amount || 0), 0);
-          setCurrentAmount(totalFromHistory);
-        } else {
-          setTargetAmount(2000);
-          setCurrentAmount(0);
-          setWaterHistory([]);
+        
+        // أ. جلب الهدف (Target) من المحلي مبدئياً
+        let localTarget = 2000;
+        const localDataString = await AsyncStorage.getItem(todayKey);
+        if (localDataString) {
+             const parsed = JSON.parse(localDataString);
+             if (parsed.targetAmount) localTarget = parsed.targetAmount;
         }
+
+        // ب. محاولة الجلب من Supabase
+        const { data: { user } } = await supabase.auth.getUser();
+        let fetchedHistory = [];
+        let fetchedTotal = 0;
+
+        if (user) {
+            // جلب سجلات اليوم من جدول water_intake
+            const { data: cloudWater, error } = await supabase
+                .from('water_intake')
+                .select('*')
+                .eq('user_id', user.id)
+                .eq('date', todayDateString)
+                .order('created_at', { ascending: true });
+
+            if (!error && cloudWater && cloudWater.length > 0) {
+                // تحويل البيانات لشكل التطبيق
+                fetchedHistory = cloudWater.map(item => {
+                    // تحويل وقت السيرفر لوقت محلي للعرض
+                    const dateObj = new Date(item.created_at);
+                    const timeString = dateObj.toLocaleTimeString(
+                        activeTranslation.code === 'ar' ? 'ar-EG' : 'en-US', 
+                        { hour: '2-digit', minute: '2-digit' }
+                    );
+                    return {
+                        id: item.id,
+                        time: timeString,
+                        amount: item.amount_ml
+                    };
+                });
+                fetchedTotal = fetchedHistory.reduce((sum, item) => sum + item.amount, 0);
+
+                // تحديث النسخة المحلية (Sync Local Cache)
+                const dataToSave = { targetAmount: localTarget, waterHistory: fetchedHistory };
+                await AsyncStorage.setItem(todayKey, JSON.stringify(dataToSave));
+            } else {
+                // لو مفيش بيانات في السحابة لليوم ده، نعتمد على المحلي
+                if (localDataString) {
+                    const data = JSON.parse(localDataString);
+                    fetchedHistory = Array.isArray(data.waterHistory) ? data.waterHistory : [];
+                    fetchedTotal = fetchedHistory.reduce((sum, entry) => sum + (entry.amount || 0), 0);
+                }
+            }
+        } else {
+             // مستخدم زائر - استخدام المحلي فقط
+             if (localDataString) {
+                const data = JSON.parse(localDataString);
+                fetchedHistory = Array.isArray(data.waterHistory) ? data.waterHistory : [];
+                fetchedTotal = fetchedHistory.reduce((sum, entry) => sum + (entry.amount || 0), 0);
+            }
+        }
+
+        setTargetAmount(localTarget);
+        setWaterHistory(fetchedHistory);
+        setCurrentAmount(fetchedTotal);
+
       } catch (error) {
         console.error('WaterTrackingScreen: Error loading data:', error);
         setTargetAmount(2000); setCurrentAmount(0); setWaterHistory([]);
@@ -148,7 +204,7 @@ const WaterTrackingScreen = ({ language: propLanguage, isDarkMode: propIsDarkMod
       }
     };
     initializeScreenData();
-  }, [todayDateString]);
+  }, [todayDateString]); // Removed activeTranslation dependency to avoid loops
 
   const saveData = useCallback(async (dataToSave) => {
     if (!isInitialized) return;
@@ -162,17 +218,42 @@ const WaterTrackingScreen = ({ language: propLanguage, isDarkMode: propIsDarkMod
     } catch (error) { console.error('WaterTrackingScreen: Error saving data:', error); }
   }, [isInitialized, todayDateString]);
   
-  const addWater = useCallback((amount) => {
+  // ---------------------------------------------------------
+  // 3. إضافة ماء (Upload to Supabase)
+  // ---------------------------------------------------------
+  const addWater = useCallback(async (amount) => {
     if (currentAmount >= targetAmount) { Alert.alert(activeTranslation.goalReachedTitle, activeTranslation.goalReachedMessage); return; }
     const amountToAdd = Math.max(0, Number(amount));
     if (amountToAdd === 0 || isNaN(amountToAdd)) return;
-    const newEntry = { id: `${Date.now()}-${Math.random()}`, time: new Date().toLocaleTimeString(activeTranslation.code === 'ar' ? 'ar-EG' : 'en-US', { hour: '2-digit', minute: '2-digit' }), amount: amountToAdd };
+    
+    // أ. التحديث المحلي (UI + AsyncStorage)
+    const newEntry = { 
+        id: `${Date.now()}-${Math.random()}`, 
+        time: new Date().toLocaleTimeString(activeTranslation.code === 'ar' ? 'ar-EG' : 'en-US', { hour: '2-digit', minute: '2-digit' }), 
+        amount: amountToAdd 
+    };
     const updatedHistory = [...waterHistory, newEntry];
     const newCurrentAmount = currentAmount + amountToAdd;
+    
     setWaterHistory(updatedHistory); 
     setCurrentAmount(newCurrentAmount); 
     saveData({ targetAmount, waterHistory: updatedHistory });
-  }, [waterHistory, currentAmount, targetAmount, activeTranslation, saveData]);
+
+    // ب. التحديث في Supabase
+    try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+            await supabase.from('water_intake').insert({
+                user_id: user.id,
+                amount_ml: amountToAdd,
+                date: todayDateString
+            });
+        }
+    } catch (error) {
+        console.log("Error syncing water intake:", error);
+    }
+
+  }, [waterHistory, currentAmount, targetAmount, activeTranslation, saveData, todayDateString]);
 
   const addCustomWater = useCallback(() => {
     const amount = parseInt(customAmount, 10);
@@ -180,11 +261,29 @@ const WaterTrackingScreen = ({ language: propLanguage, isDarkMode: propIsDarkMod
     else { Alert.alert(activeTranslation.errorTitle, activeTranslation.invalidAmountError); setCustomAmount(''); }
   }, [customAmount, addWater, activeTranslation]);
   
-  const resetData = useCallback(() => {
+  // ---------------------------------------------------------
+  // 4. إعادة التعيين (Delete from Supabase)
+  // ---------------------------------------------------------
+  const resetData = useCallback(async () => {
+    // أ. المسح المحلي
     setCurrentAmount(0);
     setWaterHistory([]);
     saveData({ targetAmount, waterHistory: [] });
-  }, [targetAmount, saveData]);
+
+    // ب. المسح من Supabase لليوم الحالي
+    try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+            await supabase
+                .from('water_intake')
+                .delete()
+                .eq('user_id', user.id)
+                .eq('date', todayDateString);
+        }
+    } catch (error) {
+        console.log("Error resetting water data:", error);
+    }
+  }, [targetAmount, saveData, todayDateString]);
 
   const displayCurrentAmount = useMemo(() => (Math.min(currentAmount, targetAmount)), [currentAmount, targetAmount]);
   const selectedWaterFillGifIndex = useMemo(() => { if (targetAmount <= 0 || currentAmount <= 0) return 0; if (currentAmount >= targetAmount) return NUM_WATER_FILL_GIFS - 1; const numberOfActualWaterLevels = NUM_WATER_FILL_GIFS - 1; const percentage = (currentAmount / targetAmount) * 100; const segmentSize = 100 / numberOfActualWaterLevels; let waterLevelIndex = Math.floor(percentage / segmentSize); waterLevelIndex = Math.min(waterLevelIndex, numberOfActualWaterLevels - 1); let gifIndex = waterLevelIndex + 1; gifIndex = Math.min(gifIndex, NUM_WATER_FILL_GIFS - 1); if (currentAmount > 0 && gifIndex === 0) gifIndex = 1; return gifIndex; }, [currentAmount, targetAmount]);
@@ -219,7 +318,6 @@ const WaterTrackingScreen = ({ language: propLanguage, isDarkMode: propIsDarkMod
           </View>
           <Text style={currentStyles.recordLabel}>{activeTranslation.recordLabel}</Text>
           
-          {/* تم استبدال FlatList هنا بـ ScrollView داخلية */}
           <ScrollView 
             style={currentStyles.historyList} 
             contentContainerStyle={currentStyles.historyListContent}
@@ -274,7 +372,6 @@ const lightStyles = StyleSheet.create({
   statLabel: { fontSize: 12, color: '#757575', textAlign: 'center' },
   recordLabel: { fontSize: 18, fontWeight: 'bold', color: '#4caf50', marginBottom: 10, marginLeft: 5, textAlign: I18nManager.isRTL ? 'right' : 'left' },
   
-  // Updated Styles for ScrollView list
   historyList: { maxHeight: 180, marginBottom: 20, borderRadius: 5 },
   historyListContent: { paddingBottom: 10 },
   
