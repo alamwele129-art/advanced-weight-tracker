@@ -1,4 +1,4 @@
-﻿// CaloriesScreen.js (النسخة النهائية مع المزامنة)
+﻿// CaloriesScreen.js (النسخة المعدلة لتطابق تصميم المسافة)
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
     SafeAreaView, View, Text, StyleSheet, TouchableOpacity, Dimensions, ScrollView,
@@ -9,7 +9,7 @@ import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIc
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Svg, { Circle as SvgCircle, Path } from 'react-native-svg';
 import { Pedometer } from 'expo-sensors';
-import { supabase } from './supabaseClient'; // 1. استيراد Supabase
+import { supabase } from './supabaseClient';
 
 // --- استيراد مكونات الأسبوع والشهر ---
 import WeeklyCalories from './weeklycalories';
@@ -25,7 +25,6 @@ const PATH_RADIUS = (CIRCLE_SIZE / 2) - (CIRCLE_BORDER_WIDTH / 2);
 const CENTER_X = SVG_VIEWBOX_SIZE / 2;
 const CENTER_Y = SVG_VIEWBOX_SIZE / 2;
 const CALORIES_PER_STEP = 0.04;
-const STEP_LENGTH_METERS = 0.762;
 const STEPS_PER_MINUTE = 100;
 const MENU_VERTICAL_OFFSET = 5;
 
@@ -161,6 +160,8 @@ const CaloriesScreen = (props) => {
     const [selectedMonthStart, setSelectedMonthStart] = useState(() => getStartOfMonth(new Date()));
     const [isCurrentWeek, setIsCurrentWeek] = useState(true);
     const [isCurrentMonth, setIsCurrentMonth] = useState(true);
+    
+    const isViewingToday = useMemo(() => isToday(currentDate), [currentDate]);
 
     const animatedAngle = useRef(new Animated.Value(0)).current;
     const animationFrameRef = useRef(null);
@@ -174,9 +175,6 @@ const CaloriesScreen = (props) => {
 
     useEffect(() => { displayCaloriesRef.current = displayCalories; }, [displayCalories]);
     
-    // -------------------------------------------------------------
-    // 1. المزامنة (تحميل / حفظ)
-    // -------------------------------------------------------------
     const getStoredStepsHistory = useCallback(async () => {
         try { const storedHistory = await AsyncStorage.getItem(DAILY_STEPS_HISTORY_KEY); return storedHistory ? JSON.parse(storedHistory) : {}; } 
         catch (error) { console.error("Failed to get step history:", error); return {}; }
@@ -186,15 +184,12 @@ const CaloriesScreen = (props) => {
         const dateString = getDateString(date);
         if (!dateString) return;
         try { 
-            // أ. الحفظ المحلي
             const history = await getStoredStepsHistory(); 
             if (history[dateString] !== Math.round(steps)) {
                 history[dateString] = Math.round(steps);
                 await AsyncStorage.setItem(DAILY_STEPS_HISTORY_KEY, JSON.stringify(history)); 
                 setStepsHistory(prev => ({...prev, [dateString]: Math.round(steps)}));
             }
-
-            // ب. الحفظ في Supabase (نفس المنطق في StepsScreen)
             const { data: { user } } = await supabase.auth.getUser();
             if (user) {
                 await supabase.from('steps').upsert({
@@ -207,7 +202,6 @@ const CaloriesScreen = (props) => {
         catch (error) { console.error("Failed to save daily steps:", error); }
     }, [getStoredStepsHistory]);
 
-    // تحميل البيانات الأولية (الهدف والخطوات)
     useEffect(() => {
         const loadInitialData = async () => {
             const history = await getStoredStepsHistory();
@@ -216,8 +210,6 @@ const CaloriesScreen = (props) => {
             try {
                 const { data: { user } } = await supabase.auth.getUser();
                 let loadedGoal = DEFAULT_GOAL;
-
-                // تحميل هدف السعرات
                 if (user) {
                     const { data: profile } = await supabase.from('profiles').select('daily_calorie_goal').eq('id', user.id).single();
                     if (profile && profile.daily_calorie_goal) loadedGoal = profile.daily_calorie_goal;
@@ -235,7 +227,6 @@ const CaloriesScreen = (props) => {
         loadInitialData();
     }, [getStoredStepsHistory]);
 
-    // ... (باقي الكود الخاص بالـ Pedometer والحسابات كما هو، لأنه سيعمل الآن مع saveDailySteps المحدثة)
     useEffect(() => {
         let isMounted = true;
         const subscribe = async () => {
@@ -264,7 +255,6 @@ const CaloriesScreen = (props) => {
         return () => { isMounted = false; if (pedometerSubscription.current) pedometerSubscription.current.remove(); };
     }, [saveDailySteps, translation]);
     
-    // حفظ الهدف الجديد في Supabase
     const handleSaveGoal = useCallback(async () => { 
         try { 
             const newGoal = tempGoalCalories;
@@ -281,18 +271,20 @@ const CaloriesScreen = (props) => {
         } 
     }, [tempGoalCalories, translation]);
 
-    // ... (باقي الكود والـ return كما هو بدون تغيير في الـ UI)
     const stepsForDate = useMemo(() => { if (isToday(currentDate)) { return pedometerSteps; } const dateStr = getDateString(currentDate); return stepsHistory[dateStr] || 0; }, [currentDate, pedometerSteps, stepsHistory]);
     const caloriesForDate = useMemo(() => stepsForDate * CALORIES_PER_STEP, [stepsForDate]);
     const caloriesToDisplayInCircle = useMemo(() => Math.min(caloriesForDate, goalCalories), [caloriesForDate, goalCalories]);
     const animateDisplay = useCallback((startValue, endValue) => { if (startValue === endValue || isNaN(startValue) || isNaN(endValue)) { setDisplayCalories(endValue); return; } if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current); const startTime = Date.now(); const step = () => { const now = Date.now(); const timePassed = now - startTime; const progress = Math.min(timePassed / STEP_ANIMATION_DURATION, 1); const currentDisplay = startValue + (endValue - startValue) * progress; setDisplayCalories(currentDisplay); if (progress < 1) animationFrameRef.current = requestAnimationFrame(step); else if (progress >= 1) { setDisplayCalories(endValue); }}; animationFrameRef.current = requestAnimationFrame(step); }, []);
     useEffect(() => { animateDisplay(displayCaloriesRef.current, caloriesToDisplayInCircle); }, [caloriesToDisplayInCircle, animateDisplay]);
+    
+    // تنسيق التاريخ مثل صفحة المسافة
     const formatDisplayDate = useCallback((date) => { const localeFormat = language === 'ar' ? 'ar-EG-u-ca-gregory-nu-arab' : 'en-US-u-ca-gregory'; if (isToday(date)) return translation.today; if (isYesterday(date)) return translation.yesterday; return new Intl.DateTimeFormat(localeFormat, { day: 'numeric', month: 'long', timeZone: 'UTC' }).format(date); }, [language, translation]);
+    
     const handlePreviousDay = () => { setCurrentDate(prevDate => addDays(prevDate, -1)); };
     const handleNextDay = () => { if (!isToday(currentDate)) setCurrentDate(prevDate => addDays(prevDate, 1)); };
     const handleAddSteps = () => { if (!isToday(currentDate)) return; const newSteps = pedometerSteps + 1000; setPedometerSteps(newSteps); saveDailySteps(new Date(), newSteps); };
     const handleResetSteps = () => { if (!isToday(currentDate)) return; setPedometerSteps(0); saveDailySteps(new Date(), 0); };
-    const openTitleMenu = useCallback(() => { if (titleMenuTriggerRef.current) { titleMenuTriggerRef.current.measure((fx, fy, w, h, px, py) => { const top = py + h + MENU_VERTICAL_OFFSET; const positionStyle = I18nManager.isRTL ? { top, right: width - (px + w), left: undefined } : { top, left: px, right: undefined }; setTitleMenuPosition(positionStyle); setIsTitleMenuVisible(true); }); } }, [width]);
+    const openTitleMenu = useCallback(() => { if (titleMenuTriggerRef.current) { titleMenuTriggerRef.current.measure((fx, fy, w, h, px, py) => { const top = py + h - 25; const positionStyle = I18nManager.isRTL ? { top, right: width - (px + w) } : { top, left: px }; setTitleMenuPosition(positionStyle); setIsTitleMenuVisible(true); }); } }, [width]);
     const closeTitleMenu = useCallback(() => setIsTitleMenuVisible(false), []);
     const updateChallengeStatus = useCallback(async () => { const todayString = getDateString(new Date()); if (!todayString) return; try { const [storedRemainingDaysStr, storedLastParticipationDate, storedChallengeDurationStr] = await Promise.all([ AsyncStorage.getItem(REMAINING_CHALLENGE_DAYS_KEY), AsyncStorage.getItem(LAST_PARTICIPATION_DATE_KEY), AsyncStorage.getItem(CURRENT_CHALLENGE_DURATION_KEY) ]); let loadedDuration = INITIAL_CHALLENGE_DURATION; if (storedChallengeDurationStr !== null) { const parsedDuration = parseInt(storedChallengeDurationStr, 10); if (!isNaN(parsedDuration) && CHALLENGE_DURATIONS.includes(parsedDuration)) loadedDuration = parsedDuration; } setCurrentChallengeDuration(loadedDuration); let currentRemainingDays = loadedDuration; if (storedRemainingDaysStr !== null) { const parsedDays = parseInt(storedRemainingDaysStr, 10); if (!isNaN(parsedDays) && parsedDays >= 0 && parsedDays <= loadedDuration) currentRemainingDays = parsedDays; } setRemainingDays(currentRemainingDays); setLastParticipationDate(storedLastParticipationDate); if (todayString !== storedLastParticipationDate && currentRemainingDays > 0) { const newRemainingDays = currentRemainingDays - 1; if (newRemainingDays <= 0) { try { const completedDuration = loadedDuration; const storedMaxStr = await AsyncStorage.getItem(MAX_COMPLETED_CHALLENGE_DAYS_KEY); const currentMax = parseInt(storedMaxStr || '0', 10); if (completedDuration > currentMax) { await AsyncStorage.multiSet([ [MAX_COMPLETED_CHALLENGE_DAYS_KEY, String(completedDuration)], [CELEBRATE_TIER_COMPLETION_KEY, String(completedDuration)] ]); } } catch (e) { console.error("Error saving max challenge or celebration flag:", e); } const currentDurationIndex = CHALLENGE_DURATIONS.indexOf(loadedDuration); const nextDurationIndex = currentDurationIndex + 1; if (nextDurationIndex < CHALLENGE_DURATIONS.length) { const nextChallengeDuration = CHALLENGE_DURATIONS[nextDurationIndex]; setRemainingDays(nextChallengeDuration); setCurrentChallengeDuration(nextChallengeDuration); setLastParticipationDate(todayString); await AsyncStorage.multiSet([ [REMAINING_CHALLENGE_DAYS_KEY, String(nextChallengeDuration)], [LAST_PARTICIPATION_DATE_KEY, todayString], [CURRENT_CHALLENGE_DURATION_KEY, String(nextChallengeDuration)] ]); } else { setRemainingDays(0); setLastParticipationDate(todayString); await AsyncStorage.multiSet([ [REMAINING_CHALLENGE_DAYS_KEY, '0'], [LAST_PARTICIPATION_DATE_KEY, todayString] ]); } } else { setRemainingDays(newRemainingDays); setLastParticipationDate(todayString); await AsyncStorage.multiSet([ [REMAINING_CHALLENGE_DAYS_KEY, String(newRemainingDays)], [LAST_PARTICIPATION_DATE_KEY, todayString] ]); } } else if (currentRemainingDays <= 0 && remainingDays !== 0) { setRemainingDays(0); } } catch (error) { console.error("Challenge update fail:", error); } }, [remainingDays]);
     useEffect(() => { const runInitialChecks = async () => { await updateChallengeStatus(); }; runInitialChecks(); const subscription = AppState.addEventListener('change', nextAppState => { if (appState.match(/inactive|background/) && nextAppState === 'active') { runInitialChecks(); } setAppState(nextAppState); }); return () => { subscription.remove(); }; }, [appState, updateChallengeStatus]);
@@ -303,7 +295,7 @@ const CaloriesScreen = (props) => {
     useEffect(() => { const listenerId = animatedAngle.addListener(({ value }) => { setProgressPathD(value > 0.01 ? describeArc(CENTER_X, CENTER_Y, PATH_RADIUS, 0.01, value) : ''); setDynamicIconStyle(calculateIconPositionOnPath(value > 0.01 ? value : 0)); }); return () => animatedAngle.removeListener(listenerId); }, [animatedAngle]);
     const stepsAtGoal = useMemo(() => (goalCalories > 0 && CALORIES_PER_STEP > 0) ? (goalCalories / CALORIES_PER_STEP) : Infinity, [goalCalories]);
     const effectiveStepsForDisplay = useMemo(() => Math.min(stepsForDate, stepsAtGoal), [stepsForDate, stepsAtGoal]);
-    const { rawMinutes, rawDistance } = useMemo(() => { const totalMinutes = effectiveStepsForDisplay / STEPS_PER_MINUTE; const distanceKm = (effectiveStepsForDisplay * STEP_LENGTH_METERS) / 1000; return { rawMinutes: totalMinutes, rawDistance: distanceKm }; }, [effectiveStepsForDisplay]);
+    const { rawMinutes, rawDistance } = useMemo(() => { const totalMinutes = effectiveStepsForDisplay / STEPS_PER_MINUTE; const distanceKm = (effectiveStepsForDisplay * 0.762) / 1000; return { rawMinutes: totalMinutes, rawDistance: distanceKm }; }, [effectiveStepsForDisplay]);
     const badgeProgressAngle = useMemo(() => { if (remainingDays <= 0 || currentChallengeDuration <= 0) return 359.999; const daysCompleted = currentChallengeDuration - remainingDays; return (daysCompleted / currentChallengeDuration) * 360; }, [remainingDays, currentChallengeDuration]);
     const badgeProgressPathD = useMemo(() => (badgeProgressAngle > 0.1 ? describeArc(BADGE_CENTER_X, BADGE_CENTER_Y, BADGE_PATH_RADIUS, 0.01, badgeProgressAngle) : ''), [badgeProgressAngle]);
     useEffect(() => { if (selectedPeriod !== 'day') return; const fetchDataForChart = async () => { setIsLoading(true); const weekStart = getStartOfWeek(new Date(), startOfWeekDay); const dates = Array.from({ length: 7 }).map((_, i) => addDays(weekStart, i)); const history = await getStoredStepsHistory(); const todayString = getDateString(new Date()); const steps = dates.map((date) => { const dateString = getDateString(date); if (dateString === todayString) { return pedometerSteps; } return history[dateString] || 0; }); setWeeklyChartData({ dates, steps }); setIsLoading(false); }; fetchDataForChart(); }, [pedometerSteps, language, getStoredStepsHistory, selectedPeriod, startOfWeekDay]);
@@ -323,41 +315,58 @@ const CaloriesScreen = (props) => {
                 </TouchableOpacity>
             </View>
 
+            {/* تم تحديث محدد الفترة ليطابق صفحة المسافة */}
             <View style={currentStyles.periodSelectorContainer}>
-                <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'day' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('day')}>
-                    <Text style={[ currentStyles.periodText, selectedPeriod === 'day' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.dayPeriod}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'week' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('week')}>
-                    <Text style={[ currentStyles.periodText, selectedPeriod === 'week' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.weekPeriod}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'month' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('month')}>
-                    <Text style={[ currentStyles.periodText, selectedPeriod === 'month' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.monthPeriod}</Text>
-                </TouchableOpacity>
+                {language === 'ar' ? (
+                    <>
+                        <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'month' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('month')}>
+                            <Text style={[ currentStyles.periodText, selectedPeriod === 'month' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.monthPeriod}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'week' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('week')}>
+                            <Text style={[ currentStyles.periodText, selectedPeriod === 'week' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.weekPeriod}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'day' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('day')}>
+                            <Text style={[ currentStyles.periodText, selectedPeriod === 'day' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.dayPeriod}</Text>
+                        </TouchableOpacity>
+                    </>
+                ) : (
+                    <>
+                        <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'day' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('day')}>
+                            <Text style={[ currentStyles.periodText, selectedPeriod === 'day' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.dayPeriod}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'week' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('week')}>
+                            <Text style={[ currentStyles.periodText, selectedPeriod === 'week' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.weekPeriod}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'month' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('month')}>
+                            <Text style={[ currentStyles.periodText, selectedPeriod === 'month' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.monthPeriod}</Text>
+                        </TouchableOpacity>
+                    </>
+                )}
             </View>
             
             <ScrollView contentContainerStyle={currentStyles.scrollViewContent} showsVerticalScrollIndicator={false} key={`${selectedPeriod}-${language}-${isDarkMode}`}>
                 {selectedPeriod === 'day' && (
                     <>
+                         <View style={currentStyles.testButtonsContainer}>
+                            <TouchableOpacity style={currentStyles.testButton} onPress={handleAddSteps} disabled={!isToday(currentDate)}>
+                                <Text style={[currentStyles.testButtonText, !isToday(currentDate) && {color: '#BDBDBD'}]}>{translation.addSteps}</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={currentStyles.testButton} onPress={handleResetSteps} disabled={!isToday(currentDate)}>
+                                <Text style={[currentStyles.testButtonText, !isToday(currentDate) && {color: '#BDBDBD'}]}>{translation.reset}</Text>
+                            </TouchableOpacity>
+                        </View>
+                        
                         <View style={currentStyles.mainDisplayArea}>
-                             <View style={currentStyles.testButtonsContainer}>
-                                <TouchableOpacity style={currentStyles.testButton} onPress={handleAddSteps} disabled={!isToday(currentDate)}>
-                                    <Text style={[currentStyles.testButtonText, !isToday(currentDate) && {color: '#BDBDBD'}]}>{translation.addSteps}</Text>
+                            {/* تم تحديث شريط التنقل (Arrows and Days) ليطابق صفحة المسافة */}
+                            <View style={currentStyles.dayHeader}>
+                                <TouchableOpacity onPress={handleNextDay} disabled={isViewingToday}>
+                                    <Ionicons name={I18nManager.isRTL ? "chevron-forward-outline" : "chevron-back-outline"} size={28} color={isViewingToday ? currentStyles.dayHeaderArrowDisabled.color : currentStyles.dayHeaderArrow.color} />
                                 </TouchableOpacity>
-                                <TouchableOpacity style={currentStyles.testButton} onPress={handleResetSteps} disabled={!isToday(currentDate)}>
-                                    <Text style={[currentStyles.testButtonText, !isToday(currentDate) && {color: '#BDBDBD'}]}>{translation.reset}</Text>
+                                <Text style={currentStyles.dayHeaderText}>{formatDisplayDate(currentDate)}</Text>
+                                <TouchableOpacity onPress={handlePreviousDay}>
+                                    <Ionicons name={I18nManager.isRTL ? "chevron-back-outline" : "chevron-forward-outline"} size={28} color={currentStyles.dayHeaderArrow.color} />
                                 </TouchableOpacity>
                             </View>
-
-                    
-<View style={currentStyles.dayHeader}>
-    <TouchableOpacity onPress={handleNextDay} disabled={isToday(currentDate)}>
-        <Ionicons name={"chevron-back-outline"} size={30} style={isToday(currentDate) ? currentStyles.disabledIcon : currentStyles.dayHeaderArrow} />
-    </TouchableOpacity>
-    <View><Text style={currentStyles.dayHeaderTitle}>{formatDisplayDate(currentDate)}</Text></View>
-    <TouchableOpacity onPress={handlePreviousDay}>
-        <Ionicons name={"chevron-forward-outline"} size={30} color={currentStyles.dayHeaderArrow.color} />
-    </TouchableOpacity>
-</View>
 
                             <View style={currentStyles.circle}>
                                 <Svg height={SVG_VIEWBOX_SIZE} width={SVG_VIEWBOX_SIZE} viewBox={`0 0 ${SVG_VIEWBOX_SIZE} ${SVG_VIEWBOX_SIZE}`}>
@@ -401,7 +410,7 @@ const CaloriesScreen = (props) => {
                                     <Text style={currentStyles.summaryMainText}>{`${currentChallengeDuration.toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US')} ${translation.challengePrefix}`}</Text>
                                     <Text style={currentStyles.summarySubText}>{remainingDays > 0 ? `${remainingDays.toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US')} ${remainingDays === 1 ? translation.challengeRemainingSingular : translation.challengeRemainingPlural}` : translation.challengeCompleted}</Text>
                                 </View>
-                                <Ionicons name={I18nManager.isRTL ? "chevron-back" : "chevron-forward"} size={24} color={currentStyles.summaryChevron.color} />
+                                <Ionicons name={I18nManager.isRTL ? "chevron-forward" : "chevron-back"} size={24} color={currentStyles.summaryChevron.color} />
                             </View>
                         </TouchableOpacity>
 
@@ -471,7 +480,7 @@ const CaloriesScreen = (props) => {
             
             <Modal visible={isTitleMenuVisible} transparent={true} animationType="fade" onRequestClose={closeTitleMenu}>
                 <Pressable style={currentStyles.menuModalOverlay} onPress={closeTitleMenu}>
-                    <View style={[ currentStyles.titleMenuModalContent, { top: titleMenuPosition.top, left: I18nManager.isRTL ? undefined : titleMenuPosition.left, right: I18nManager.isRTL ? titleMenuPosition.right : undefined, } ]}>
+                    <View style={[ currentStyles.titleMenuModalContent, { top: titleMenuPosition.top, right: I18nManager.isRTL ? 20 : undefined, left: I18nManager.isRTL ? undefined : 20, } ]}>
                         <TouchableOpacity style={currentStyles.menuItemButton} onPress={() => navigateTo('steps')}><Text style={currentStyles.titleMenuItemText}>{translation.stepsTitle}</Text>{currentScreenName === 'steps' && <MaterialCommunityIcon name="check" size={22} color={currentStyles.titleMenuItemText.color} />}</TouchableOpacity><View style={currentStyles.titleMenuSeparator} />
                         <TouchableOpacity style={currentStyles.menuItemButton} onPress={() => navigateTo('distance')}><Text style={currentStyles.titleMenuItemText}>{translation.distanceTitle}</Text>{currentScreenName === 'distance' && <MaterialCommunityIcon name="check" size={22} color={currentStyles.titleMenuItemText.color} />}</TouchableOpacity><View style={currentStyles.titleMenuSeparator} />
                         <TouchableOpacity style={currentStyles.menuItemButton} onPress={() => navigateTo('calories')}><Text style={currentStyles.titleMenuItemText}>{translation.caloriesTitle}</Text>{currentScreenName === 'calories' && <MaterialCommunityIcon name="check" size={22} color={currentStyles.titleMenuItemText.color} />}</TouchableOpacity><View style={currentStyles.titleMenuSeparator} />
@@ -484,7 +493,7 @@ const CaloriesScreen = (props) => {
 };
 
 // --- الأنماط (Styles) ---
-// (نفس الأنماط الموجودة في كودك الأصلي، لم أغير فيها شيئاً)
+// تم تحديث الأنماط لتطابق صفحة المسافة
 const lightStyles = StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: '#F7FDF9' },
     scrollViewContent: { paddingBottom: 40, paddingHorizontal: 0, flexGrow: 1 },
@@ -495,10 +504,13 @@ const lightStyles = StyleSheet.create({
     testButton: { backgroundColor: '#e8f5e9', paddingHorizontal: 15, paddingVertical: 8, borderRadius: 20, marginHorizontal: 5, elevation: 1, },
     testButtonText: { color: '#2e7d32', fontWeight: 'bold', fontSize: 13, },
     mainDisplayArea: { width: '100%', alignItems: 'center', paddingBottom: 10 },
-    dayHeader: { flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row', justifyContent: 'space-between', width: '80%', alignItems: 'center', marginBottom: 20, marginTop: 20, alignSelf: 'center'},
-    dayHeaderTitle: { fontSize: 22, fontWeight: 'bold', color: '#2e7d32' },
+    
+    // Day Header Styles updated to match Distance screen
+    dayHeader: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', width: '65%', marginVertical: 15, alignSelf: 'center' },
+    dayHeaderText: { fontSize: 20, fontWeight: 'bold', color: '#2e7d32' },
     dayHeaderArrow: { color: '#2e7d32' },
-    disabledIcon: { color: '#a5d6a7' },
+    dayHeaderArrowDisabled: { color: '#a5d6a7' },
+
     circle: { width: CIRCLE_SIZE, height: CIRCLE_SIZE, justifyContent: 'center', alignItems: 'center', position: 'relative' },
     circleBackground: { stroke: "#e0f2f1" },
     circleProgress: { stroke: "#4caf50" }, 
@@ -527,6 +539,8 @@ const lightStyles = StyleSheet.create({
     badgeTextContainer: { position: 'absolute', justifyContent: 'center', alignItems: 'center' },
     badgeText: { fontSize: 18, fontWeight: 'bold', color: '#4caf50', fontVariant: ['tabular-nums'] },
     activityIndicator: { color: '#388e3c' },
+    
+    // Period Selector Styles updated
     periodSelectorContainer: { flexDirection: 'row-reverse', marginVertical: 10, backgroundColor: '#E8F5E9', borderRadius: 20, overflow: 'hidden', width: '85%', height: 40, alignSelf: 'center' }, 
     periodButton: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 8 }, 
     periodButtonInactive: { backgroundColor: 'transparent' }, 
@@ -534,6 +548,7 @@ const lightStyles = StyleSheet.create({
     periodText: { fontSize: 16, fontWeight: 'bold' }, 
     periodTextInactive: { color: '#388e3c' }, 
     periodTextSelected: { color: '#ffffff' },
+    
     chartPageContainer: { padding: 10, alignItems: 'center', width: '100%', marginTop: 20 },
     chartPageTitle: { fontSize: 22, fontWeight: 'bold', color: '#2e7d32', marginBottom: 20, textAlign: I18nManager.isRTL ? 'right' : 'left', alignSelf: 'stretch', paddingHorizontal: 15 },
     chartPressableArea: { width: '92%', alignSelf: 'center', marginTop: 0, marginBottom: 20 },
@@ -572,22 +587,22 @@ const lightStyles = StyleSheet.create({
     cancelButton: { backgroundColor: '#f5f5f5', borderRadius: 12, paddingVertical: 14, width: '100%', alignItems: 'center' },
     cancelButtonText: { color: '#757575', fontSize: 16, fontWeight: '500' },
     menuModalOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.3)' },
-    titleMenuModalContent: { position: 'absolute', backgroundColor: 'white', borderRadius: 12, paddingVertical: 8, minWidth: 240, elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 6, },
+    titleMenuModalContent: { position: 'absolute', backgroundColor: '#FFFFFF', borderRadius: 8, paddingVertical: 5, width: 155, elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84 },
     menuItemButton: { flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 15, paddingVertical: 12, width: '100%' },
     titleMenuItemText: { fontSize: 16, color: '#2e7d32', fontWeight: 'bold', textAlign: I18nManager.isRTL ? 'right' : 'left' },
-    titleMenuSeparator: { height: StyleSheet.hairlineWidth, backgroundColor: '#e0e0e0', },
+    titleMenuSeparator: { height: StyleSheet.hairlineWidth, backgroundColor: '#e0e0e0', marginVertical: 2},
 });
 
 const darkStyles = StyleSheet.create({
     ...lightStyles,
     safeArea: { ...lightStyles.safeArea, backgroundColor: '#121212' },
     topBar: { ...lightStyles.topBar, backgroundColor: '#121212'},
-    headerTitle: { ...lightStyles.headerTitle, color: '#A7FFEB' },
+    headerTitle: { ...lightStyles.headerTitle, color: '#E0E0E0' },
     testButton: { ...lightStyles.testButton, backgroundColor: '#2C2C2C'},
     testButtonText: { ...lightStyles.testButtonText, color: '#80CBC4'},
-    dayHeaderTitle: { ...lightStyles.dayHeaderTitle, color: '#80CBC4' },
+    dayHeaderText: { ...lightStyles.dayHeaderText, color: '#80CBC4' },
     dayHeaderArrow: { ...lightStyles.dayHeaderArrow, color: '#80CBC4' },
-    disabledIcon: { ...lightStyles.disabledIcon, color: '#004D40' },
+    dayHeaderArrowDisabled: { ...lightStyles.dayHeaderArrowDisabled, color: '#004D40' },
     circleBackground: { stroke: "#333333" },
     circleProgress: { stroke: "#80CBC4" },
     movingDot: { ...lightStyles.movingDot, backgroundColor: '#80CBC4'},
@@ -607,10 +622,10 @@ const darkStyles = StyleSheet.create({
     badgeProgressCircle: { stroke: "#80CBC4" },
     badgeText: { ...lightStyles.badgeText, color: '#80CBC4' },
     activityIndicator: { color: '#80CBC4' },
-    periodSelectorContainer: { ...lightStyles.periodSelectorContainer, backgroundColor: '#1E1E1E' },
+    periodSelectorContainer: { ...lightStyles.periodSelectorContainer, backgroundColor: '#2C2C2C' },
     periodTextInactive: { ...lightStyles.periodTextInactive, color: '#80CBC4' },
     periodButtonSelected: { ...lightStyles.periodButtonSelected, backgroundColor: '#00796B' },
-    periodTextSelected: { ...lightStyles.periodTextSelected, color: '#E0E0E0' },
+    periodTextSelected: { ...lightStyles.periodTextSelected, color: '#FFFFFF' },
     chartPageTitle: { ...lightStyles.chartPageTitle, color: '#80CBC4' },
     chartContainer: { ...lightStyles.chartContainer, backgroundColor: '#1E1E1E', elevation: 3, shadowOpacity: 0.2, shadowColor: '#000' },
     yAxisLabel: { ...lightStyles.yAxisLabel, color: '#B0B0B0' },

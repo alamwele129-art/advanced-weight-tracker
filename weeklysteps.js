@@ -177,24 +177,23 @@ const WeeklySteps = ({
             <ScrollView contentContainerStyle={styles.contentContainer}>
                 <View style={styles.chartCard}>
                     {/* 
-                        =================================================================
-                        <<< START OF FIX: Arrows functionality is now swapped and fixed >>>
-                        =================================================================
+                        تعديل اتجاه الأسهم:
+                        السهم الأيسر = الأسبوع السابق
+                        السهم الأيمن = الأسبوع التالي
                     */}
                     <View style={styles.dateNavigator}>
-                         {/* Left Arrow: Always goes to the NEXT week */}
-                         <TouchableOpacity onPress={onNextWeek} disabled={isCurrentWeek}>
-                            <Ionicons name="chevron-back-outline" size={26} color={isCurrentWeek ? theme.disabledChevron : theme.chevron} />
+                         {/* Left Arrow: Previous Week */}
+                         <TouchableOpacity onPress={onPreviousWeek}>
+                            <Ionicons name={I18nManager.isRTL ? "chevron-forward-outline" : "chevron-back-outline"} size={26} color={theme.chevron} />
                         </TouchableOpacity>
 
                         <Text style={styles.dateText}>{formattedDateRange}</Text>
 
-                        {/* Right Arrow: Always goes to the PREVIOUS week */}
-                        <TouchableOpacity onPress={onPreviousWeek}>
-                            <Ionicons name="chevron-forward-outline" size={26} color={theme.chevron} />
+                        {/* Right Arrow: Next Week */}
+                        <TouchableOpacity onPress={onNextWeek} disabled={isCurrentWeek}>
+                            <Ionicons name={I18nManager.isRTL ? "chevron-back-outline" : "chevron-forward-outline"} size={26} color={isCurrentWeek ? theme.disabledChevron : theme.chevron} />
                         </TouchableOpacity>
                     </View>
-                    {/* <<< END OF FIX >>> */}
 
                     <View style={styles.summaryContainer}>
                         <View style={styles.summaryBox}><Text style={styles.summaryValue}>{formatNumber(totalSteps, language)}</Text><Text style={styles.summaryLabel}>{t.total}</Text></View>
@@ -256,9 +255,7 @@ const getStyles = (theme, isRTL) => StyleSheet.create({
     contentContainer: { padding: 15, paddingBottom: 50 },
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     chartCard: { backgroundColor: theme.cardBackground, borderRadius: 20, marginBottom: 20, shadowColor: theme.shadowColor, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 5, elevation: 2, overflow: 'hidden' },
-    // <<< START OF FIX: Layout direction is now fixed to 'row' >>>
     dateNavigator: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 15 },
-    // <<< END OF FIX >>>
     dateText: { fontSize: 18, fontWeight: '600', color: theme.headerTitle, marginHorizontal: 10, textAlign: 'center' },
     summaryContainer: { flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 20, paddingTop: 10, borderBottomWidth: 1, borderBottomColor: theme.separator, marginHorizontal: 20 },
     summaryBox: { alignItems: 'center', flex:1 },

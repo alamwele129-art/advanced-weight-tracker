@@ -13,7 +13,6 @@ import {
 } from './FoodData';
 
 const MEALS_DATA_KEY_PREFIX = 'mealsData_';
-const INITIAL_SETUP_DONE_KEY_PREFIX = '@FoodLog:initialSetupDone_';
 const MAX_DAILY_TARGET_CALORIES = 10000;
 const SPOONACULAR_API_KEY = '8752a2c73388456888fef7aac64bcba6';
 const SPOONACULAR_IMAGE_BASE_URL = 'https://spoonacular.com/cdn/ingredients_250x250/';
@@ -51,7 +50,7 @@ const DateNavigator = ({ currentDate, onDateSelect, language, darkMode, realToda
     const handleDateItemPress = (date) => { if (date <= realToday) { onDateSelect(new Date(date)); } };
     const shiftWindow = (days) => { setCenterDate(prev => { const newProposedCenter = new Date(prev); newProposedCenter.setDate(prev.getDate() + days); if (days > 0 && newProposedCenter > realToday) { if (prev <= realToday) { return new Date(realToday); } return prev; } return newProposedCenter; }); };
     const navStyles = darkMode ? dateNavigatorDarkStyles : dateNavigatorLightStyles;
-    const disableRightArrow = centerDate >= realToday && datesToDisplay.every(d => d >= realToday || d.toDateString() === realToday.toDateString() && datesToDisplay[datesToDisplay.length -1].toDateString() === realToday.toDateString() );
+    const disableRightArrow = centerDate >= realToday && datesToDisplay.every(d => d >= realToday || (d.toDateString() === realToday.toDateString() && datesToDisplay[datesToDisplay.length -1].toDateString() === realToday.toDateString()));
     return ( <View style={navStyles.container}><TouchableOpacity onPress={() => shiftWindow(-1)} style={navStyles.arrow}><Text style={navStyles.arrowText}>{"<"}</Text></TouchableOpacity><View style={navStyles.datesRow}>{datesToDisplay.map((date) => { const { month, dayNum, dayName } = formatDatePartsForNavigator(date, language); const isStrictlyFuture = date > realToday; const isSelected = !isStrictlyFuture && date.toDateString() === currentDate.toDateString(); const monthDayNameStyle = [navStyles.dateText, navStyles.dateMonthDayNameBase, isSelected ? navStyles.selectedMonthDayNameText : isStrictlyFuture ? navStyles.disabledDateText : navStyles.normalMonthDayNameText]; const dayNumStyle = [navStyles.dateText, navStyles.dateDayNumBase, isSelected ? navStyles.selectedDayNumText : isStrictlyFuture ? navStyles.disabledDateText : navStyles.normalDayNumText]; return (<TouchableOpacity key={date.toISOString()} style={[navStyles.dateItem, isSelected && navStyles.selectedDateItem, isStrictlyFuture && navStyles.disabledDateItem]} onPress={() => handleDateItemPress(date)} disabled={isStrictlyFuture}><Text style={monthDayNameStyle}>{month}</Text><Text style={dayNumStyle}>{dayNum}</Text><Text style={monthDayNameStyle}>{dayName}</Text>{isSelected && <View style={navStyles.selectedDot} />}</TouchableOpacity>); })}</View><TouchableOpacity onPress={() => shiftWindow(1)} style={navStyles.arrow} disabled={disableRightArrow}><Text style={[navStyles.arrowText, disableRightArrow && navStyles.disabledArrowText]}>{">"}</Text></TouchableOpacity></View> );
 };
 const dateNavigatorBaseStyles = { container: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8, paddingHorizontal: 5, marginBottom: 10, borderBottomWidth: 1, }, datesRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'flex-start', flex: 1, marginHorizontal: 5, }, dateItem: { alignItems: 'center', paddingHorizontal: Platform.OS === 'ios' ? 6 : 4, paddingVertical: 5, minWidth: Platform.OS === 'ios' ? 50 : 48, borderRadius: 6, marginHorizontal: 2, }, dateText: { fontSize: 12, textAlign: 'center' }, dateMonthDayNameBase: { fontSize: 11, textTransform: 'capitalize', marginBottom: 2, }, dateDayNumBase: { fontSize: 16, marginBottom: 2, }, selectedDot: { width: 5, height: 5, borderRadius: 2.5, marginTop: 3, }, arrow: { paddingHorizontal: 12, paddingVertical: 10, }, arrowText: { fontSize: 18, fontWeight: 'bold' } };
@@ -141,9 +140,7 @@ const FoodLogScreen = ({ language, darkMode }) => {
 
     const getMealsDataKeyForDate = useCallback((date) => `${MEALS_DATA_KEY_PREFIX}${date.toISOString().split('T')[0]}`, []);
 
-    // -------------------------------------------------------------
-    // 1. تحميل البيانات (Download): هنا التعديل للمزامنة
-    // -------------------------------------------------------------
+    // 1. تحميل البيانات
     const loadDataForDate = useCallback(async (dateToLoad) => {
         setIsScreenDataLoaded(false); 
         let loadedMealsData = initializeEmptyMealsData();
@@ -154,11 +151,9 @@ const FoodLogScreen = ({ language, darkMode }) => {
         const dateString = dateToLoad.toISOString().split('T')[0];
     
         try {
-            // أ. المحاولة من المحلي أولاً (للسرعة)
             const savedDataJSON = await AsyncStorage.getItem(currentDataKey);
             let parsedLocalData = savedDataJSON ? JSON.parse(savedDataJSON) : null;
 
-            // ب. المحاولة من Supabase (للمزامنة)
             const { data: { user } } = await supabase.auth.getUser();
             let cloudData = null;
 
@@ -175,12 +170,9 @@ const FoodLogScreen = ({ language, darkMode }) => {
                 }
             }
 
-            // دمج البيانات (الأولوية للسحابة لو موجودة)
             const finalData = cloudData || parsedLocalData;
 
             if (finalData) {
-                // لو البيانات جاية من Supabase، بتكون في meals_data
-                // لو جاية من AsyncStorage، بتكون في mealsData
                 const mealsSource = finalData.meals_data || finalData.mealsData;
                 
                 if (mealsSource) {
@@ -197,18 +189,15 @@ const FoodLogScreen = ({ language, darkMode }) => {
                     loadedMealsData = mealsSource;
                 }
                 
-                // استخدام الهدف المخزن (سواء محلي أو سحابي)
                 currentDailyTarget = finalData.daily_target_calories || finalData.dailyTargetCalories || initialDailyCalories;
                 
                 if (currentDailyTarget > MAX_DAILY_TARGET_CALORIES) currentDailyTarget = MAX_DAILY_TARGET_CALORIES;
                 
-                // حساب الماكروز
                 const calculatedMacros = calculateMacroTargetsFromCalories(currentDailyTarget, DEFAULT_MACRO_PERCENTAGES);
                 currentTargetP = calculatedMacros.proteinG;
                 currentTargetF = calculatedMacros.fatG;
                 currentTargetC = calculatedMacros.carbsG;
 
-                // تحديث المحلي لو البيانات جاية من السحابة عشان المرة الجاية
                 if (cloudData) {
                     await saveMealsDataInternal(
                         loadedMealsData, currentDailyTarget, currentTargetP, currentTargetF, currentTargetC, false, dateToLoad
@@ -216,7 +205,6 @@ const FoodLogScreen = ({ language, darkMode }) => {
                 }
 
             } else { 
-                // مفيش بيانات خالص
                 currentDailyTarget = initialDailyCalories;
                 const calculatedInitialMacros = calculateMacroTargetsFromCalories(currentDailyTarget, DEFAULT_MACRO_PERCENTAGES);
                 currentTargetP = calculatedInitialMacros.proteinG;
@@ -226,7 +214,6 @@ const FoodLogScreen = ({ language, darkMode }) => {
 
         } catch (error) {
             console.error(`FoodLogScreen: Failed to load data for ${dateToLoad.toDateString()}:`, error);
-            // Fallback
             loadedMealsData = initializeEmptyMealsData(); 
             const errorFallbackMacros = calculateMacroTargetsFromCalories(initialDailyCalories, DEFAULT_MACRO_PERCENTAGES);
             currentTargetP = errorFallbackMacros.proteinG; currentTargetF = errorFallbackMacros.fatG; currentTargetC = errorFallbackMacros.carbsG;
@@ -241,9 +228,7 @@ const FoodLogScreen = ({ language, darkMode }) => {
     }, [initialDailyCalories, getMealsDataKeyForDate]); 
 
 
-    // -------------------------------------------------------------
-    // 2. دالة الحفظ الداخلية (محلي + سحابي)
-    // -------------------------------------------------------------
+    // 2. دالة الحفظ الداخلية
     const saveMealsDataInternal = useCallback(async (currentData, dailyTarget, dailyTargetP, dailyTargetF, dailyTargetC, macrosInitialized, dateToSaveFor) => { 
         const dataKey = getMealsDataKeyForDate(dateToSaveFor); 
         const dateString = dateToSaveFor.toISOString().split('T')[0];
@@ -251,7 +236,6 @@ const FoodLogScreen = ({ language, darkMode }) => {
         try { 
             const { currentTotalCals, currentP, currentF, currentC, itemCount } = calculateTotalsFromMealsData(currentData); 
             
-            // أ. الحفظ المحلي
             const dataToSave = { 
                 mealsData: currentData, 
                 dailyTargetCalories: dailyTarget, 
@@ -264,10 +248,8 @@ const FoodLogScreen = ({ language, darkMode }) => {
             }; 
             await AsyncStorage.setItem(dataKey, JSON.stringify(dataToSave)); 
 
-            // ب. الحفظ في Supabase (لو المستخدم مسجل)
             const { data: { user } } = await supabase.auth.getUser();
             if (user) {
-                // بنعمل upsert (تحديث لو موجود، إضافة لو مش موجود)
                 const { error } = await supabase
                     .from('food_log')
                     .upsert({
@@ -279,7 +261,7 @@ const FoodLogScreen = ({ language, darkMode }) => {
                         total_protein: currentP,
                         total_fat: currentF,
                         total_carbs: currentC
-                    }, { onConflict: 'user_id, date' }); // لازم يكون فيه unique constraint على user_id, date في الجدول
+                    }, { onConflict: 'user_id, date' }); 
                 
                 if (error) console.log("Error syncing food log:", error);
             }
@@ -289,7 +271,6 @@ const FoodLogScreen = ({ language, darkMode }) => {
         } 
     }, [getMealsDataKeyForDate]);
 
-    // باقي الـ Effects والمنطق زي ما هو ...
     useEffect(() => { loadDataForDate(selectedDate); }, [selectedDate, language, loadDataForDate]); 
 
     useEffect(() => {
@@ -304,7 +285,6 @@ const FoodLogScreen = ({ language, darkMode }) => {
         setRemainingCalories(dailyTargetCalories - totalCalories);
     }, [dailyTargetCalories, totalCalories, isScreenDataLoaded]);
 
-    // حفظ تلقائي عند التغيير (Debounced)
     useEffect(() => {
         if (!isScreenDataLoaded || !mealsData || !isTodaySelected) return; 
 
@@ -321,7 +301,6 @@ const FoodLogScreen = ({ language, darkMode }) => {
         return () => clearTimeout(DebouncedSave);
     }, [mealsData, dailyTargetCalories, targetProtein, targetFat, targetCarbs, selectedDate, isScreenDataLoaded, isTodaySelected, saveMealsDataInternal]);
 
-    // دوال البحث والإضافة زي ما هي ...
     const searchFoodOnline = async (query) => {
         if (!query.trim() || !SPOONACULAR_API_KEY) { setApiSearchResults([]); setApiSearchError(null); if (!SPOONACULAR_API_KEY) console.warn("Spoonacular API Key not configured."); return; }
         setIsLoadingApiSearch(true); setApiSearchError(null); setApiSearchResults([]);
@@ -388,7 +367,6 @@ const FoodLogScreen = ({ language, darkMode }) => {
         setTargetProtein(newMacroTargets.proteinG); setTargetFat(newMacroTargets.fatG); setTargetCarbs(newMacroTargets.carbsG);
 
         const newMealsData = JSON.parse(JSON.stringify(mealsData));
-        // ... (منطق توزيع السعرات كما هو)
         setDailyTargetCalories(newTargetCalories);
         setMealsData(newMealsData);
         setTargetEditModalVisible(false); setTargetEditError(''); Alert.alert(translation.targetUpdated);
@@ -443,9 +421,14 @@ const FoodLogScreen = ({ language, darkMode }) => {
         <View style={styles.wrapper}>
             <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContentContainer} keyboardShouldPersistTaps="handled" key={`${language}-${darkMode}-${selectedDate.toDateString()}`}>
                 <View style={styles.innerContainer}>
-                    <View style={styles.header}><Text style={styles.title}>{translation.foodLogTitle}</Text></View>
+                    <View style={styles.header}>
+                        <Text style={styles.title}>{translation.foodLogTitle}</Text>
+                    </View>
+                    
                     <DateNavigator currentDate={selectedDate} onDateSelect={handleDateChange} language={language} darkMode={darkMode} realToday={realToday} />
+                    
                     <CalorieProgressDisplay currentCalories={totalCalories} targetCalories={dailyTargetCalories} proteinCurrent={totalProtein} proteinTarget={targetProtein} proteinLabel={translation.proteinLabel} fatCurrent={totalFat} fatTarget={targetFat} fatLabel={translation.fatLabel} carbsCurrent={totalCarbs} carbsTarget={targetCarbs} carbohydratesLabel={translation.carbohydratesLabel} darkMode={darkMode} />
+                    
                     <View style={styles.targetDisplayContainer}>
                         <View style={styles.targetDisplay}>
                             <Text style={styles.targetLabel}>{translation.targetCaloriesLabel}</Text>
@@ -455,7 +438,13 @@ const FoodLogScreen = ({ language, darkMode }) => {
                             <Text style={styles.editTargetButtonText}>{translation.editTargetButton}</Text>
                         </TouchableOpacity>
                     </View>
-                    <View style={styles.stats}><View style={styles.statItem}><Text style={styles.statValue}>{Math.round(remainingCalories).toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US')}</Text><Text style={styles.statLabel}>{translation.remainingCaloriesLabel}</Text></View><View style={styles.statItem}><Text style={styles.statValue}>{mealCount.toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US')}</Text><Text style={styles.statLabel}>{translation.mealCountLabel}</Text></View><View style={styles.statItem}><Text style={styles.statValue}>{Math.round(totalCalories).toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US')}</Text><Text style={styles.statLabel}>{translation.totalCaloriesLabel}</Text></View></View>
+                    
+                    <View style={styles.stats}>
+                        <View style={styles.statItem}><Text style={styles.statValue}>{Math.round(remainingCalories).toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US')}</Text><Text style={styles.statLabel}>{translation.remainingCaloriesLabel}</Text></View>
+                        <View style={styles.statItem}><Text style={styles.statValue}>{mealCount.toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US')}</Text><Text style={styles.statLabel}>{translation.mealCountLabel}</Text></View>
+                        <View style={styles.statItem}><Text style={styles.statValue}>{Math.round(totalCalories).toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US')}</Text><Text style={styles.statLabel}>{translation.totalCaloriesLabel}</Text></View>
+                    </View>
+                    
                     <View style={styles.buttonsContainer}>
                         <TouchableOpacity style={[styles.addMealBtn, (!canAddMoreCalories || !isTodaySelected) && styles.disabledButton]} onPress={() => { if (!isTodaySelected) { Alert.alert(translation.editPastDayTitle, translation.editPastDayMessage); return; } if (!canAddMoreCalories) { return; } setModalVisible(true); }} disabled={!canAddMoreCalories || !isTodaySelected}>
                             <Text style={styles.buttonText}>{translation.addMealBtn}</Text>
@@ -464,49 +453,76 @@ const FoodLogScreen = ({ language, darkMode }) => {
                             <Text style={styles.buttonText}>{translation.resetBtn}</Text>
                         </TouchableOpacity>
                     </View>
+
                     <Text style={styles.dailyMealsTitle}>{translation.dailyMealsTitle}</Text>
-                    <View style={styles.mealCategoriesContainer}>{MEAL_CATEGORIES_ORDER.map(categoryKey => { const categoryData = mealsData[categoryKey]; if (!categoryData) return null; const categoryTotalCalories = categoryData.items.reduce((sum, item) => sum + (item.calories || 0), 0); const categoryTotalProtein = categoryData.items.reduce((sum, item) => sum + (item.protein || 0), 0); const categoryTotalFat = categoryData.items.reduce((sum, item) => sum + (item.fat || 0), 0); const categoryTotalCarbs = categoryData.items.reduce((sum, item) => sum + (item.carbs || 0), 0); let mainText = categoryData.items.length > 0 ? (categoryData.items[0].name + (categoryData.items.length > 1 ? (language === 'ar' ? " و المزيد" : " & more") : "")) : translation.noItemsInCategory; return ( <TouchableOpacity key={categoryKey} style={styles.mealCategoryCard} onPress={() => { if (!isTodaySelected) { Alert.alert(translation.editPastDayTitle, translation.editPastDayMessage); return; } if (!canAddMoreCalories && categoryData.items.length === 0) { return; } setSelectedMealCategory(categoryKey); setModalVisible(true); }} disabled={!isTodaySelected && categoryData.items.length === 0} > <Image source={categoryData.image} style={styles.mealCategoryImage} onError={(e) => console.log("Failed to load image for", categoryKey, e.nativeEvent.error)} /> <View style={styles.mealCategoryInfo}> <Text style={styles.mealCategoryTitle}>{translation[categoryKey]}</Text> <Text style={styles.mealCategoryItemName} numberOfLines={1}>{mainText}</Text> <Text style={styles.mealCategoryCalories}>{`${Math.round(categoryTotalCalories)} / ${Math.round(categoryData.targetCalories || 0)} KCAL`}</Text> <Text style={styles.mealCategoryMacros} numberOfLines={1}>{`${translation.proteinLabel.substring(0,1)}: ${Math.round(categoryTotalProtein)}g • ${translation.fatLabel.substring(0,1)}: ${Math.round(categoryTotalFat)}g • ${translation.carbohydratesLabel.substring(0,1)}: ${Math.round(categoryTotalCarbs)}g`}</Text> </View> </TouchableOpacity> ); })}</View>
+                    
+                    <View style={styles.mealCategoriesContainer}>
+                        {MEAL_CATEGORIES_ORDER.map(categoryKey => {
+                            const categoryData = mealsData[categoryKey];
+                            if (!categoryData) return null;
+                            const categoryTotalCalories = categoryData.items.reduce((sum, item) => sum + (item.calories || 0), 0);
+                            const categoryTotalProtein = categoryData.items.reduce((sum, item) => sum + (item.protein || 0), 0);
+                            const categoryTotalFat = categoryData.items.reduce((sum, item) => sum + (item.fat || 0), 0);
+                            const categoryTotalCarbs = categoryData.items.reduce((sum, item) => sum + (item.carbs || 0), 0);
+                            let mainText = categoryData.items.length > 0 ? (categoryData.items[0].name + (categoryData.items.length > 1 ? (language === 'ar' ? " و المزيد" : " & more") : "")) : translation.noItemsInCategory;
+                            
+                            return (
+                                <TouchableOpacity key={categoryKey} style={styles.mealCategoryCard} onPress={() => { if (!isTodaySelected) { Alert.alert(translation.editPastDayTitle, translation.editPastDayMessage); return; } if (!canAddMoreCalories && categoryData.items.length === 0) { return; } setSelectedMealCategory(categoryKey); setModalVisible(true); }} disabled={!isTodaySelected && categoryData.items.length === 0}>
+                                    <Image source={categoryData.image} style={styles.mealCategoryImage} onError={(e) => console.log("Failed to load image for", categoryKey, e.nativeEvent.error)} />
+                                    <View style={styles.mealCategoryInfo}>
+                                        <Text style={styles.mealCategoryTitle}>{translation[categoryKey]}</Text>
+                                        <Text style={styles.mealCategoryItemName} numberOfLines={1}>{mainText}</Text>
+                                        <Text style={styles.mealCategoryCalories}>{`${Math.round(categoryTotalCalories)} / ${Math.round(categoryData.targetCalories || 0)} KCAL`}</Text>
+                                        <Text style={styles.mealCategoryMacros} numberOfLines={1}>{`${translation.proteinLabel.substring(0,1)}: ${Math.round(categoryTotalProtein)}g • ${translation.fatLabel.substring(0,1)}: ${Math.round(categoryTotalFat)}g • ${translation.carbohydratesLabel.substring(0,1)}: ${Math.round(categoryTotalCarbs)}g`}</Text>
+                                    </View>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </View>
                 </View>
             </ScrollView>
             
-            {/* Modal Components (Add Meal & Edit Target) - Keep as is */}
             <Modal visible={isModalVisible} transparent={true} animationType="slide" onRequestClose={handleCloseAddMealModal}>
-                <View style={styles.modalOverlay}><View style={styles.modalContent}><ScrollView keyboardShouldPersistTaps="handled">
-                    <TouchableOpacity style={styles.closeButton} onPress={handleCloseAddMealModal}><Text style={styles.closeButtonText}>×</Text></TouchableOpacity>
-                    <Text style={styles.modalTitle}>{translation.addMealTitle}</Text>
-                    <TextInput style={styles.searchInput} placeholder={translation.searchFoodPlaceholder} value={searchQuery} onChangeText={setSearchQuery} placeholderTextColor={styles.placeholderColor.color} editable={isTodaySelected}/>
-                    {isLoadingApiSearch && (<View style={styles.loadingContainer}><ActivityIndicator size="small" color={darkMode ? styles.darkLoadingIndicator.color : styles.lightLoadingIndicator.color} /><Text style={styles.loadingText}>{translation.searchingOnline}</Text></View>)}
-                    {apiSearchError && !isLoadingApiSearch && (<Text style={styles.errorText}>{apiSearchError}</Text>)}
-                    {!isLoadingApiSearch && !apiSearchError && searchQuery.length > 0 && apiSearchResults.length === 0 && (<Text style={styles.noResultsText}>{translation.noOnlineResultsFound}</Text>)}
-                    {apiSearchResults.length > 0 && !isLoadingApiSearch && (<FlatList data={apiSearchResults} renderItem={renderSearchResultItem} keyExtractor={(item) => item.id.toString()} style={styles.searchResultsList} nestedScrollEnabled />)}
-                    <Text style={styles.pickerLabel}>{translation.selectCategory}</Text>
-                    <View style={[styles.pickerContainer, !isTodaySelected && styles.disabledPickerContainer]}>
-                        <Picker selectedValue={selectedMealCategory} onValueChange={(itemValue) => { if(isTodaySelected) setSelectedMealCategory(itemValue);}} style={styles.picker} itemStyle={styles.pickerItem} dropdownIconColor={darkMode ? '#FFFFFF' : '#555'} enabled={isTodaySelected}>
-                            {MEAL_CATEGORIES_ORDER.map(catKey => (<Picker.Item key={catKey} label={translation[catKey]} value={catKey} />))}
-                        </Picker>
-                    </View>
-                    
-                    <Text style={styles.modalSectionTitle}>{translation.suggestedFoods}</Text>
-                    <View style={styles.suggestionsContainer}>
-                        {showPrevSuggestionArrow && ( <TouchableOpacity style={[styles.suggestionScrollArrowContainer, I18nManager.isRTL ? { right: 0 } : { left: 0 }]} onPress={scrollToPrevSuggestion} > <Text style={styles.suggestionScrollArrowText}> {I18nManager.isRTL ? '›' : '‹'} </Text> </TouchableOpacity> )}
-                        <ScrollView ref={suggestionsScrollRef} horizontal showsHorizontalScrollIndicator={false} onScroll={handleSuggestionsScroll} onLayout={handleSuggestionsLayout} onContentSizeChange={handleSuggestionsContentSizeChange} scrollEventThrottle={16}  style={[styles.suggestionsScrollView, suggestionScrollViewPadding]} keyboardShouldPersistTaps="handled" scrollEnabled={isTodaySelected} >
-                            {currentSuggestions.map(food => ( <TouchableOpacity key={food.id} style={styles.suggestionChip} onPress={() => {if(isTodaySelected) handleSelectFoodFromSearch(food);}} disabled={!isTodaySelected} > <Image source={food.image} style={styles.suggestionChipImage} /> <Text style={styles.suggestionChipText} numberOfLines={2}> {language === 'ar' ? food.name_ar : food.name_en} </Text> <Text style={styles.suggestionChipCalories}>{food.calories} kcal</Text> </TouchableOpacity> ))}
-                        </ScrollView>
-                        {showNextSuggestionArrow && ( <TouchableOpacity style={[styles.suggestionScrollArrowContainer, I18nManager.isRTL ? { left: 0 } : { right: 0 }]} onPress={scrollToNextSuggestion} > <Text style={styles.suggestionScrollArrowText}> {I18nManager.isRTL ? '‹' : '›'} </Text> </TouchableOpacity> )}
-                    </View>
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <ScrollView keyboardShouldPersistTaps="handled">
+                            <TouchableOpacity style={styles.closeButton} onPress={handleCloseAddMealModal}><Text style={styles.closeButtonText}>×</Text></TouchableOpacity>
+                            <Text style={styles.modalTitle}>{translation.addMealTitle}</Text>
+                            <TextInput style={styles.searchInput} placeholder={translation.searchFoodPlaceholder} value={searchQuery} onChangeText={setSearchQuery} placeholderTextColor={styles.placeholderColor.color} editable={isTodaySelected}/>
+                            {isLoadingApiSearch && (<View style={styles.loadingContainer}><ActivityIndicator size="small" color={darkMode ? styles.darkLoadingIndicator.color : styles.lightLoadingIndicator.color} /><Text style={styles.loadingText}>{translation.searchingOnline}</Text></View>)}
+                            {apiSearchError && !isLoadingApiSearch && (<Text style={styles.errorText}>{apiSearchError}</Text>)}
+                            {!isLoadingApiSearch && !apiSearchError && searchQuery.length > 0 && apiSearchResults.length === 0 && (<Text style={styles.noResultsText}>{translation.noOnlineResultsFound}</Text>)}
+                            {apiSearchResults.length > 0 && !isLoadingApiSearch && (<FlatList data={apiSearchResults} renderItem={renderSearchResultItem} keyExtractor={(item) => item.id.toString()} style={styles.searchResultsList} nestedScrollEnabled />)}
+                            <Text style={styles.pickerLabel}>{translation.selectCategory}</Text>
+                            <View style={[styles.pickerContainer, !isTodaySelected && styles.disabledPickerContainer]}>
+                                <Picker selectedValue={selectedMealCategory} onValueChange={(itemValue) => { if(isTodaySelected) setSelectedMealCategory(itemValue);}} style={styles.picker} itemStyle={styles.pickerItem} dropdownIconColor={darkMode ? '#FFFFFF' : '#555'} enabled={isTodaySelected}>
+                                    {MEAL_CATEGORIES_ORDER.map(catKey => (<Picker.Item key={catKey} label={translation[catKey]} value={catKey} />))}
+                                </Picker>
+                            </View>
+                            
+                            <Text style={styles.modalSectionTitle}>{translation.suggestedFoods}</Text>
+                            <View style={styles.suggestionsContainer}>
+                                {showPrevSuggestionArrow && ( <TouchableOpacity style={[styles.suggestionScrollArrowContainer, I18nManager.isRTL ? { right: 0 } : { left: 0 }]} onPress={scrollToPrevSuggestion} > <Text style={styles.suggestionScrollArrowText}> {I18nManager.isRTL ? '›' : '‹'} </Text> </TouchableOpacity> )}
+                                <ScrollView ref={suggestionsScrollRef} horizontal showsHorizontalScrollIndicator={false} onScroll={handleSuggestionsScroll} onLayout={handleSuggestionsLayout} onContentSizeChange={handleSuggestionsContentSizeChange} scrollEventThrottle={16}  style={[styles.suggestionsScrollView, suggestionScrollViewPadding]} keyboardShouldPersistTaps="handled" scrollEnabled={isTodaySelected} >
+                                    {currentSuggestions.map(food => ( <TouchableOpacity key={food.id} style={styles.suggestionChip} onPress={() => {if(isTodaySelected) handleSelectFoodFromSearch(food);}} disabled={!isTodaySelected} > <Image source={food.image} style={styles.suggestionChipImage} /> <Text style={styles.suggestionChipText} numberOfLines={2}> {language === 'ar' ? food.name_ar : food.name_en} </Text> <Text style={styles.suggestionChipCalories}>{food.calories} kcal</Text> </TouchableOpacity> ))}
+                                </ScrollView>
+                                {showNextSuggestionArrow && ( <TouchableOpacity style={[styles.suggestionScrollArrowContainer, I18nManager.isRTL ? { left: 0 } : { right: 0 }]} onPress={scrollToNextSuggestion} > <Text style={styles.suggestionScrollArrowText}> {I18nManager.isRTL ? '‹' : '›'} </Text> </TouchableOpacity> )}
+                            </View>
 
-                    <View style={styles.inputContainer}>
-                        <TextInput style={[styles.input, !isTodaySelected && styles.disabledInput]} placeholder={translation.mealNamePlaceholder} value={mealName} onChangeText={setMealName} placeholderTextColor={styles.placeholderColor.color} editable={isTodaySelected} />
-                        <TextInput style={[styles.input, !isTodaySelected && styles.disabledInput]} placeholder={translation.caloriesPlaceholder} keyboardType="numeric" value={mealCalories} onChangeText={setMealCalories} placeholderTextColor={styles.placeholderColor.color} editable={isTodaySelected} />
-                        <TextInput style={[styles.input, !isTodaySelected && styles.disabledInput]} placeholder={translation.proteinPlaceholder} keyboardType="numeric" value={mealProtein} onChangeText={setMealProtein} placeholderTextColor={styles.placeholderColor.color} editable={isTodaySelected} />
-                        <TextInput style={[styles.input, !isTodaySelected && styles.disabledInput]} placeholder={translation.fatPlaceholder} keyboardType="numeric" value={mealFat} onChangeText={setMealFat} placeholderTextColor={styles.placeholderColor.color} editable={isTodaySelected} />
-                        <TextInput style={[styles.input, !isTodaySelected && styles.disabledInput]} placeholder={translation.carbsPlaceholder} keyboardType="numeric" value={mealCarbs} onChangeText={setMealCarbs} placeholderTextColor={styles.placeholderColor.color} editable={isTodaySelected} />
-                        {errorMessage ? (<Text style={styles.errorText}>{errorMessage}</Text>) : null}
+                            <View style={styles.inputContainer}>
+                                <TextInput style={[styles.input, !isTodaySelected && styles.disabledInput]} placeholder={translation.mealNamePlaceholder} value={mealName} onChangeText={setMealName} placeholderTextColor={styles.placeholderColor.color} editable={isTodaySelected} />
+                                <TextInput style={[styles.input, !isTodaySelected && styles.disabledInput]} placeholder={translation.caloriesPlaceholder} keyboardType="numeric" value={mealCalories} onChangeText={setMealCalories} placeholderTextColor={styles.placeholderColor.color} editable={isTodaySelected} />
+                                <TextInput style={[styles.input, !isTodaySelected && styles.disabledInput]} placeholder={translation.proteinPlaceholder} keyboardType="numeric" value={mealProtein} onChangeText={setMealProtein} placeholderTextColor={styles.placeholderColor.color} editable={isTodaySelected} />
+                                <TextInput style={[styles.input, !isTodaySelected && styles.disabledInput]} placeholder={translation.fatPlaceholder} keyboardType="numeric" value={mealFat} onChangeText={setMealFat} placeholderTextColor={styles.placeholderColor.color} editable={isTodaySelected} />
+                                <TextInput style={[styles.input, !isTodaySelected && styles.disabledInput]} placeholder={translation.carbsPlaceholder} keyboardType="numeric" value={mealCarbs} onChangeText={setMealCarbs} placeholderTextColor={styles.placeholderColor.color} editable={isTodaySelected} />
+                                {errorMessage ? (<Text style={styles.errorText}>{errorMessage}</Text>) : null}
+                            </View>
+                            <TouchableOpacity style={[styles.addButton, ((!canAddMoreCalories && mealCalories !== '' && parseInt(mealCalories) > 0) || !isTodaySelected) && styles.disabledButton]} onPress={addMeal} disabled={(!canAddMoreCalories && mealCalories !== '' && (parseInt(mealCalories) || 0) > 0) || !isTodaySelected}>
+                                <Text style={styles.addButtonText}>{translation.addMealButton}</Text>
+                            </TouchableOpacity>
+                        </ScrollView>
                     </View>
-                    <TouchableOpacity style={[styles.addButton, ((!canAddMoreCalories && mealCalories !== '' && parseInt(mealCalories) > 0) || !isTodaySelected) && styles.disabledButton]} onPress={addMeal} disabled={(!canAddMoreCalories && mealCalories !== '' && (parseInt(mealCalories) || 0) > 0) || !isTodaySelected}>
-                        <Text style={styles.addButtonText}>{translation.addMealButton}</Text>
-                    </TouchableOpacity>
-                </ScrollView></View></View>
+                </View>
             </Modal>
             
             <Modal visible={isTargetEditModalVisible} transparent={true} animationType="slide" onRequestClose={() => { setTargetEditModalVisible(false); setTargetEditError(''); }}>
