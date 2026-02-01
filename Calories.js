@@ -80,7 +80,10 @@ const calculateIconPositionOnPath = (angleDegrees) => {
     const angleRad = (angleDegrees * Math.PI) / 180; 
     const iconRadius = PATH_RADIUS; 
     
-    const xOffset = -iconRadius * Math.sin(angleRad); 
+    // التعديل هنا: إزالة السالب (-) ليصبح التحرك يمينًا (مع عقارب الساعة)
+    const xOffset = iconRadius * Math.sin(angleRad); 
+    
+    // Y يبقى كما هو بالسالب
     const yOffset = -iconRadius * Math.cos(angleRad); 
 
     const iconCenterX = CENTER_X + xOffset; 
@@ -100,6 +103,7 @@ const calculateIconPositionOnPath = (angleDegrees) => {
         alignItems: 'center' 
     }; 
 };
+
 
 const describeArc = (x, y, radius, startAngleDeg, endAngleDeg) => { const clampedEndAngle = Math.min(endAngleDeg, 359.999); const startAngleRad = ((startAngleDeg - 90) * Math.PI) / 180.0; const endAngleRad = ((clampedEndAngle - 90) * Math.PI) / 180.0; const startX = x + radius * Math.cos(startAngleRad); const startY = y + radius * Math.sin(startAngleRad); const endX = x + radius * Math.cos(endAngleRad); const endY = y + radius * Math.sin(endAngleRad); const largeArcFlag = clampedEndAngle - startAngleDeg <= 180 ? '0' : '1'; const sweepFlag = '1'; const d = [ 'M', startX, startY, 'A', radius, radius, 0, largeArcFlag, sweepFlag, endX, endY ].join(' '); return d; };
 
@@ -167,7 +171,7 @@ const ActivityChart = React.memo(({ data = [], goal = DEFAULT_GOAL, styles, lang
     const startOfWeekDay = language === 'ar' ? 6 : 0;
     const displayDayIndex = (jsDayIndex - startOfWeekDay + 7) % 7;
 
-    const headerAlign = language === 'ar' ? 'flex-start' : 'flex-end'; 
+    const headerAlign = 'flex-start'; 
     // (2) ضبط اتجاه الرسم البياني، في العربية row-reverse يجعل محور الصادات على اليمين
     const chartLayoutDirection = 'row'; 
 
@@ -188,7 +192,7 @@ const ActivityChart = React.memo(({ data = [], goal = DEFAULT_GOAL, styles, lang
 
                 <View style={styles.mainChartArea}>
                     {/* (3) في barsContainer نستخدم row-reverse للأيام في العربية لتبدأ من اليمين (السبت) */}
-                    <View style={[styles.barsContainer, { flexDirection: language === 'ar' ? 'row' : 'row-reverse' }]}>
+                    <View style={[styles.barsContainer, { flexDirection: language === 'ar' ? 'row-reverse' : 'row' }]}>
                         {dayNames.map((_, displayIndex) => { 
                             const dataIndex = displayIndex; 
                             const value = (Array.isArray(data) && data.length === 7) ? (data[dataIndex] || 0) : 0; 
@@ -216,7 +220,7 @@ const ActivityChart = React.memo(({ data = [], goal = DEFAULT_GOAL, styles, lang
                         })}
                     </View>
                     {/* (4) في xAxisContainer نستخدم row-reverse للأيام في العربية لتبدأ من اليمين */}
-                    <View style={[styles.xAxisContainer, { flexDirection: language === 'ar' ? 'row' : 'row-reverse' }]}>
+                    <View style={[styles.xAxisContainer, { flexDirection: language === 'ar' ? 'row-reverse' : 'row' }]}>
                         {dayNames.map((day, displayIndex) => (
                             <View key={`x-${displayIndex}`} style={styles.dayLabelWrapper}>
                                 <Text style={[ styles.xAxisLabel, (displayIndex === displayDayIndex || (selectedBarIndex !== null && displayIndex === selectedBarIndex)) && styles.xAxisLabelToday ]}>
@@ -439,32 +443,41 @@ const CaloriesScreen = (props) => {
                         </TouchableOpacity>
                     </>
                 ) : (
-                    <>
-                        <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'day' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('day')}>
-                            <Text style={[ currentStyles.periodText, selectedPeriod === 'day' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.dayPeriod}</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'week' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('week')}>
-                            <Text style={[ currentStyles.periodText, selectedPeriod === 'week' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.weekPeriod}</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'month' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('month')}>
-                            <Text style={[ currentStyles.periodText, selectedPeriod === 'month' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.monthPeriod}</Text>
-                        </TouchableOpacity>
-                    </>
-                )}
+    <>
+        {/* زر الشهر أصبح في البداية */}
+        <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'month' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('month')}>
+            <Text style={[ currentStyles.periodText, selectedPeriod === 'month' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.monthPeriod}</Text>
+        </TouchableOpacity>
+        
+        {/* زر الأسبوع يبقى في المنتصف */}
+        <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'week' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('week')}>
+            <Text style={[ currentStyles.periodText, selectedPeriod === 'week' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.weekPeriod}</Text>
+        </TouchableOpacity>
+
+        {/* زر اليوم أصبح في النهاية */}
+        <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'day' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('day')}>
+            <Text style={[ currentStyles.periodText, selectedPeriod === 'day' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.dayPeriod}</Text>
+        </TouchableOpacity>
+    </>
+)}
             </View>
             
             <ScrollView contentContainerStyle={currentStyles.scrollViewContent} showsVerticalScrollIndicator={false} key={`${selectedPeriod}-${language}-${isDarkMode}`}>
                 {selectedPeriod === 'day' && (
                     <>
-                        <View style={currentStyles.dayHeader}>
-                            <TouchableOpacity onPress={handleNextDay} disabled={isViewingToday}>
-                                <Ionicons name={I18nManager.isRTL ? "chevron-forward-outline" : "chevron-back-outline"} size={28} color={isViewingToday ? currentStyles.dayHeaderArrowDisabled.color : currentStyles.dayHeaderArrow.color} />
-                            </TouchableOpacity>
-                            <Text style={currentStyles.dayHeaderText}>{formatDisplayDate(currentDate)}</Text>
-                            <TouchableOpacity onPress={handlePreviousDay}>
-                                <Ionicons name={I18nManager.isRTL ? "chevron-back-outline" : "chevron-forward-outline"} size={28} color={currentStyles.dayHeaderArrow.color} />
-                            </TouchableOpacity>
-                        </View>
+<View style={currentStyles.dayHeader}>
+    <TouchableOpacity onPress={handleNextDay} disabled={isViewingToday}>
+        {/* تم تغيير الجزء الأخير ليكون forward بدلاً من back */}
+        <Ionicons name={I18nManager.isRTL ? "chevron-forward-outline" : "chevron-forward-outline"} size={28} color={isViewingToday ? currentStyles.dayHeaderArrowDisabled.color : currentStyles.dayHeaderArrow.color} />
+    </TouchableOpacity>
+    
+    <Text style={currentStyles.dayHeaderText}>{formatDisplayDate(currentDate)}</Text>
+    
+    <TouchableOpacity onPress={handlePreviousDay}>
+        {/* تم تغيير الجزء الأخير ليكون back بدلاً من forward */}
+        <Ionicons name={I18nManager.isRTL ? "chevron-back-outline" : "chevron-back-outline"} size={28} color={currentStyles.dayHeaderArrow.color} />
+    </TouchableOpacity>
+</View>
 
                         <View style={currentStyles.mainDisplayArea}>
                             <View style={currentStyles.circle}>
@@ -511,7 +524,7 @@ const CaloriesScreen = (props) => {
                                     <Text style={currentStyles.summaryMainText}>{`${currentChallengeDuration.toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US')} ${translation.challengePrefix}`}</Text>
                                     <Text style={currentStyles.summarySubText}>{remainingDays > 0 ? `${remainingDays.toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US')} ${remainingDays === 1 ? translation.challengeRemainingSingular : translation.challengeRemainingPlural}` : translation.challengeCompleted}</Text>
                                 </View>
-                                <Ionicons name={I18nManager.isRTL ? "chevron-forward" : "chevron-back"} size={24} color={currentStyles.summaryChevron.color} />
+                                <Ionicons name={I18nManager.isRTL ? "chevron-forward" : "chevron-forward"} size={24} color={currentStyles.summaryChevron.color} />
                             </View>
                         </TouchableOpacity>
                         

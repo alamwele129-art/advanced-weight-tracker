@@ -146,8 +146,10 @@ const calculateIconPositionOnPath = (angleDegrees) => {
     const angleRad = (angleDegrees * Math.PI) / 180; 
     const iconRadius = PATH_RADIUS; 
     
-    // نفس المنطق المستخدم في صفحة المسافة
-    const xOffset = -iconRadius * Math.sin(angleRad); 
+    // التعديل هنا: إزالة السالب (-) ليصبح التحرك يمينًا (مع عقارب الساعة)
+    const xOffset = iconRadius * Math.sin(angleRad); 
+    
+    // Y يبقى كما هو بالسالب
     const yOffset = -iconRadius * Math.cos(angleRad); 
 
     const iconCenterX = CENTER_X + xOffset; 
@@ -375,15 +377,19 @@ const DayView = ({ goalHour, goalMinute, onOpenGoalModal, activeTimeForDate, cur
 
   return (
     <View style={currentStyles.dayViewContainer}>
-      <View style={currentStyles.dayHeader}>
-        <TouchableOpacity onPress={onNextDay} disabled={isViewingToday}>
-          <Icon name={I18nManager.isRTL ? "chevron-forward-outline" : "chevron-back-outline"} size={28} color={isViewingToday ? currentStyles.dayHeaderArrowDisabled.color : currentStyles.dayHeaderArrow.color} />
-        </TouchableOpacity>
-        <Text style={currentStyles.dayHeaderTitle}>{formatDisplayDate(currentDate)}</Text>
-        <TouchableOpacity onPress={onPreviousDay}>
-          <Icon name={I18nManager.isRTL ? "chevron-back-outline" : "chevron-forward-outline"} size={28} color={currentStyles.dayHeaderArrow.color} />
-        </TouchableOpacity>
-      </View>
+<View style={[currentStyles.dayHeader, { flexDirection: language === 'ar' ? 'row-reverse' : 'row' }]}>
+  {/* زر اليوم السابق */}
+  <TouchableOpacity onPress={onPreviousDay}>
+    <Icon name={I18nManager.isRTL ? "chevron-forward-outline" : "chevron-back-outline"} size={28} color={currentStyles.dayHeaderArrow.color} />
+  </TouchableOpacity>
+  
+  <Text style={currentStyles.dayHeaderTitle}>{formatDisplayDate(currentDate)}</Text>
+  
+  {/* زر اليوم التالي */}
+  <TouchableOpacity onPress={onNextDay} disabled={isViewingToday}>
+    <Icon name={I18nManager.isRTL ? "chevron-back-outline" : "chevron-forward-outline"} size={28} color={isViewingToday ? currentStyles.dayHeaderArrowDisabled.color : currentStyles.dayHeaderArrow.color} />
+  </TouchableOpacity>
+</View>
 
       {/* *** الهيكلية الجديدة للدائرة لتطابق صفحة المسافة *** */}
       <View style={currentStyles.progressCircleContainer}>
@@ -444,7 +450,7 @@ const ChallengeCard = ({ onPress, currentChallengeDuration, remainingDays, curre
           <Text style={currentStyles.summaryMainText}>{mainText}</Text>
           <Text style={currentStyles.summarySubText}>{subText}</Text>
         </View>
-        <Icon name={I18nManager.isRTL ? "chevron-forward" : "chevron-back"} size={24} color={currentStyles.summaryChevron.color} />
+        <Icon name={I18nManager.isRTL ? "chevron-forward" : "chevron-forward"} size={24} color={currentStyles.summaryChevron.color} />
       </View>
     </TouchableOpacity>
   );
@@ -463,12 +469,12 @@ const WeekView = ({ weeklyTimeData, onTestIncrement, onResetData, currentStyles,
   const locale = language === 'ar' ? 'ar-EG' : 'en-US';
 
   // اتجاه الجدول (كما طلبت سابقاً)
-  const chartDirection = language === 'ar' ? 'row' : 'row-reverse';
+  const chartDirection = language === 'ar' ? 'row-reverse' : 'row';
   
   // *** التعديل الجديد هنا: محاذاة العنوان ***
   // عربي = flex-start (يسار/شمال)
   // إنجليزي = flex-end (يمين)
-  const headerAlign = language === 'ar' ? 'flex-start' : 'flex-end';
+  const headerAlign = 'flex-start';
 
   // ... (نفس دوال الهاندلر: handleBarPress, handleOutsidePress)
   const handleBarPress = useCallback((index, value) => {
@@ -700,19 +706,24 @@ const ActiveTimeScreen = (props) => {
                 <Text style={[currentStyles.periodText, activeTab === 'day' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive]}>{translation.tabDay}</Text>
               </TouchableOpacity>
             </>
-          ) : (
-            <>
-              <TouchableOpacity style={[currentStyles.periodButton, activeTab === 'day' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive]} onPress={() => setActiveTab('day')}>
-                <Text style={[currentStyles.periodText, activeTab === 'day' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive]}>{translation.tabDay}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[currentStyles.periodButton, activeTab === 'week' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive]} onPress={() => setActiveTab('week')}>
-                <Text style={[currentStyles.periodText, activeTab === 'week' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive]}>{translation.tabWeek}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[currentStyles.periodButton, activeTab === 'month' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive]} onPress={() => setActiveTab('month')}>
-                <Text style={[currentStyles.periodText, activeTab === 'month' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive]}>{translation.tabMonth}</Text>
-              </TouchableOpacity>
-            </>
-          )}
+) : (
+  <>
+    {/* زر الشهر أصبح في البداية */}
+    <TouchableOpacity style={[currentStyles.periodButton, activeTab === 'month' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive]} onPress={() => setActiveTab('month')}>
+      <Text style={[currentStyles.periodText, activeTab === 'month' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive]}>{translation.tabMonth}</Text>
+    </TouchableOpacity>
+    
+    {/* زر الأسبوع يبقى في المنتصف */}
+    <TouchableOpacity style={[currentStyles.periodButton, activeTab === 'week' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive]} onPress={() => setActiveTab('week')}>
+      <Text style={[currentStyles.periodText, activeTab === 'week' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive]}>{translation.tabWeek}</Text>
+    </TouchableOpacity>
+
+    {/* زر اليوم أصبح في النهاية */}
+    <TouchableOpacity style={[currentStyles.periodButton, activeTab === 'day' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive]} onPress={() => setActiveTab('day')}>
+      <Text style={[currentStyles.periodText, activeTab === 'day' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive]}>{translation.tabDay}</Text>
+    </TouchableOpacity>
+  </>
+)}
         </View>
 
         {activeTab === 'day' && (

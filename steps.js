@@ -86,8 +86,13 @@ const describeArc = (x, y, radius, startAngleDeg, endAngleDeg) => {
 const calculateIconPositionOnPath = (angleDegrees) => { 
     const angleRad = (angleDegrees * Math.PI) / 180; 
     const iconRadius = PATH_RADIUS; 
-    const xOffset = -iconRadius * Math.sin(angleRad); 
+    
+    // التعديل هنا: إزالة علامة السالب (-) ليصبح التحرك يمينًا (مع عقارب الساعة)
+    const xOffset = iconRadius * Math.sin(angleRad); 
+    
+    // Y يبقى كما هو (بالسالب لكي يبدأ من الأعلى)
     const yOffset = -iconRadius * Math.cos(angleRad); 
+    
     const iconCenterX = CENTER_X + xOffset; 
     const iconCenterY = CENTER_Y + yOffset; 
     const top = iconCenterY - (ICON_SIZE / 2); 
@@ -134,8 +139,8 @@ const DailyStepsChart = React.memo(({ dailySteps = [], goalSteps = DEFAULT_GOAL,
     const [selectedBarIndex, setSelectedBarIndex] = useState(null);
     const [selectedBarValue, setSelectedBarValue] = useState(null);
     
-    const chartDirection = language === 'ar' ? 'row' : 'row-reverse';
-    const headerAlign = language === 'ar' ? 'flex-start' : 'flex-end';
+    const chartDirection = 'row';
+    const headerAlign = language === 'ar' ? 'flex-start' : 'flex-start';
 
     const yAxisLabelsToDisplay = useMemo(() => {
         const actualData = Array.isArray(dailySteps) ? dailySteps : [];
@@ -194,7 +199,7 @@ const DailyStepsChart = React.memo(({ dailySteps = [], goalSteps = DEFAULT_GOAL,
                         ))}
                     </View>
                     <View style={styles.mainChartArea}>
-                        <View style={styles.barsContainer}>
+                        <View style={[styles.barsContainer, { flexDirection: language === 'ar' ? 'row-reverse' : 'row' }]}>
                             {dayNames.map((_, displayIndex) => {
                                 const steps = (Array.isArray(dailySteps) && dailySteps.length === 7) ? (dailySteps[displayIndex] || 0) : 0;
                                 const barHeight = Math.min(BAR_CONTAINER_HEIGHT, Math.max(0, steps * scale));
@@ -218,7 +223,7 @@ const DailyStepsChart = React.memo(({ dailySteps = [], goalSteps = DEFAULT_GOAL,
                                 );
                             })}
                         </View>
-                        <View style={styles.xAxisContainer}>
+                        <View style={[styles.xAxisContainer, { flexDirection: language === 'ar' ? 'row-reverse' : 'row' }]}>
                             {dayNames.map((day, displayIndex) => (
                                 <View key={`x-${displayIndex}`} style={styles.dayLabelWrapper}>
                                     <Text style={[
@@ -656,33 +661,51 @@ const StepsScreen = (props) => {
                              <Text style={[ currentStyles.periodText, selectedPeriod === 'day' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.today}</Text>
                          </TouchableOpacity>
                      </>
-                 ) : (
-                     <>
-                         <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'day' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('day')}>
-                             <Text style={[ currentStyles.periodText, selectedPeriod === 'day' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.today}</Text>
-                         </TouchableOpacity>
-                         <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'week' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('week')}>
-                             <Text style={[ currentStyles.periodText, selectedPeriod === 'week' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.week}</Text>
-                         </TouchableOpacity>
-                         <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'month' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('month')}>
-                             <Text style={[ currentStyles.periodText, selectedPeriod === 'month' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.month}</Text>
-                         </TouchableOpacity>
-                     </>
-                 )}
+) : (
+     <>
+         {/* زر الشهر أصبح في البداية */}
+         <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'month' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('month')}>
+             <Text style={[ currentStyles.periodText, selectedPeriod === 'month' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.month}</Text>
+         </TouchableOpacity>
+         
+         {/* زر الأسبوع يبقى في المنتصف */}
+         <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'week' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('week')}>
+             <Text style={[ currentStyles.periodText, selectedPeriod === 'week' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.week}</Text>
+         </TouchableOpacity>
+
+         {/* زر اليوم أصبح في النهاية */}
+         <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'day' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('day')}>
+             <Text style={[ currentStyles.periodText, selectedPeriod === 'day' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.today}</Text>
+         </TouchableOpacity>
+     </>
+ )}
              </View>
 
              <ScrollView contentContainerStyle={currentStyles.scrollViewContent} showsVerticalScrollIndicator={false} key={`${selectedPeriod}-${language}-${isDarkMode}-${startOfWeekDay}`} >
                  {selectedPeriod === 'day' && (
                      <>
-                        <View style={currentStyles.dayHeader}>
-                            <TouchableOpacity onPress={handleNextDay} disabled={isViewingToday}>
-                                <Ionicons name={I18nManager.isRTL ? "chevron-forward-outline" : "chevron-back-outline"} size={28} color={isViewingToday ? currentStyles.dayHeaderArrowDisabled.color : currentStyles.dayHeaderArrow.color} />
-                            </TouchableOpacity>
-                            <Text style={currentStyles.dayHeaderText}>{dayLabel}</Text>
-                            <TouchableOpacity onPress={handlePreviousDay}>
-                                <Ionicons name={I18nManager.isRTL ? "chevron-back-outline" : "chevron-forward-outline"} size={28} color={currentStyles.dayHeaderArrow.color} />
-                            </TouchableOpacity>
-                        </View>
+                        <View style={[currentStyles.dayHeader, { flexDirection: language === 'ar' ? 'row-reverse' : 'row' }]}>
+    {/* زر اليوم السابق */}
+    <TouchableOpacity onPress={handlePreviousDay}>
+        <Ionicons 
+            name={language === 'ar' ? "chevron-forward-outline" : "chevron-back-outline"} 
+            size={28} 
+            color={currentStyles.dayHeaderArrow.color} 
+        />
+    </TouchableOpacity>
+    
+    <Text style={currentStyles.dayHeaderText}>{dayLabel}</Text>
+    
+    {/* زر اليوم التالي */}
+    <TouchableOpacity onPress={handleNextDay} disabled={isViewingToday}>
+        <Ionicons 
+            name={language === 'ar' ? "chevron-back-outline" : "chevron-forward-outline"} 
+            size={28} 
+            color={isViewingToday ? currentStyles.dayHeaderArrowDisabled.color : currentStyles.dayHeaderArrow.color} 
+        />
+    </TouchableOpacity>
+</View>
+
                         {isLoading && isViewingToday ? (
                             <View style={[currentStyles.mainDisplayArea, { height: CIRCLE_SIZE, justifyContent: 'center', alignItems: 'center'}]}>
                                 <ActivityIndicator size="large" color={currentStyles.circleProgress.stroke} />
@@ -735,7 +758,7 @@ const StepsScreen = (props) => {
                                     <Text style={currentStyles.summaryMainText}>{`${currentChallengeDuration.toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US')} ${translation.challengePrefix}`}</Text>
                                     <Text style={currentStyles.summarySubText}>{remainingDays > 0 ? `${remainingDays.toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US')} ${remainingDays === 1 ? translation.challengeRemainingSingular : translation.challengeRemainingPlural}` : translation.challengeCompleted}</Text>
                                 </View>
-                               <Ionicons name={I18nManager.isRTL ? "chevron-forward" : "chevron-back"} size={24} color={currentStyles.summaryChevron.color} />
+                               <Ionicons name={I18nManager.isRTL ? "chevron-forward" : "chevron-forward"} size={24} color={currentStyles.summaryChevron.color} />
                             </View>
                         </TouchableOpacity>
                         
