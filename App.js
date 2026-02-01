@@ -5,7 +5,8 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { I18nManager, useColorScheme, Alert, View, ActivityIndicator } from 'react-native';
-import RNRestart from 'react-native-restart';
+// ✅ تأكدنا من استخدام مكتبة اكسبو فقط وإزالة react-native-restart
+import * as Updates from 'expo-updates'; 
 import { supabase } from './supabaseClient'; 
 
 // --- Screen Imports ---
@@ -176,6 +177,7 @@ const App = () => {
 
     initializeApp();
 
+    // ✅ تم تصحيح هذا الجزء بالكامل لتجنب الأخطاء
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
     });
@@ -187,15 +189,32 @@ const App = () => {
     if (newLang === appLanguage) return;
     try {
       await AsyncStorage.setItem(APP_LANGUAGE_KEY, newLang);
+      
+      const isAr = newLang === 'ar';
+      // تحديث إعدادات RTL
+      I18nManager.allowRTL(isAr);
+      I18nManager.forceRTL(isAr);
+
       const currentRoute = navigationRef.current?.getCurrentRoute()?.name;
       if (currentRoute) {
         await AsyncStorage.setItem(INTENDED_ROUTE_AFTER_RESTART_KEY, currentRoute);
       }
       const translations = effectiveGlobalAppTranslations[newLang] || effectiveGlobalAppTranslations['en'];
+      
       Alert.alert(
         translations.restartTitle,
         translations.restartMessage,
-        [{ text: translations.okButton, onPress: () => RNRestart.Restart() }],
+        [{ 
+            text: translations.okButton, 
+            onPress: async () => {
+                // ✅ استخدام Expo Updates بدلاً من RNRestart
+                try {
+                    await Updates.reloadAsync();
+                } catch (e) {
+                    console.log("Error reloading app: ", e);
+                }
+            } 
+        }],
         { cancelable: false }
       );
     } catch (error) {
@@ -231,8 +250,6 @@ const App = () => {
   }
 
   // ✅ تحديد شاشة البداية
-  // لو فيه سيشن -> ابدأ بـ Weight
-  // لو مفيش سيشن -> ابدأ بـ Index
   const initialRouteName = session && session.user ? "Weight" : "Index";
 
   return (

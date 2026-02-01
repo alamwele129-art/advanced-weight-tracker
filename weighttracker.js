@@ -8,7 +8,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { LineChart } from 'react-native-chart-kit';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { supabase } from './supabaseClient'; // 1. استيراد Supabase (مهم جداً)
+import { supabase } from './supabaseClient';
 import tips from './tips';
 
 // --- استيراد الأيقونات والمكونات ---
@@ -33,11 +33,9 @@ const USER_SUBSCRIPTION_DATA_KEY = '@App:userSubscriptionData';
 // --- بيانات وترجمات ---
 const initialWeightHistory = [
   { date: '2024-05-22', weight: 85.0 }, 
-  // ... (باقي البيانات الافتراضية)
 ];
 
 const translations = {
-  // ... (نفس الترجمات اللي عندك بالظبط)
   en: {
     weightTracker: 'Weight Tracker', currentStatus: 'Current Status', lastUpdate: 'Last update:', starting: 'Starting', goal: 'Goal', bmi: 'BMI', progressChart: 'Progress Chart', last7Entries: 'Last 7 Entries', history: 'History', logYourWeight: 'Log Your Weight', weightPlaceholder: 'e.g., 85.5', cancel: 'Cancel', save: 'Save', invalidInputTitle: 'Invalid Input', invalidInputMessage: 'Please enter a valid number for your weight.', unrealisticValueTitle: 'Unrealistic Value', unrealisticValueMessage: 'Please enter a weight between 20 and 400 kg.', alreadyLoggedTitle: 'Already Logged', alreadyLoggedMessage: 'You have already logged your weight for today. Would you like to update it?', update: 'Update', kg: 'kg', dailyTip: 'Daily Tip',
     weightNavLabel: 'Weight', foodNavLabel: 'Food', waterNavLabel: 'Water', stepsNavLabel: 'Steps', reportsNavLabel: 'Reports',
@@ -75,7 +73,6 @@ const WeightTracker = ({ navigation, language, darkMode }) => {
   const [liveStepsForAchievements, setLiveStepsForAchievements] = useState(0);
   const [isUserPremium, setIsUserPremium] = useState(false);
 
-  // ... (useFocusEffect الخاص بالاشتراك زي ما هو)
   useFocusEffect(
     useCallback(() => {
       const checkUserStatus = async () => {
@@ -101,7 +98,6 @@ const WeightTracker = ({ navigation, language, darkMode }) => {
   );
 
   const handlePremiumFeaturePress = () => {
-    // ... (نفس الكود)
     const t = (key) => translations[language][key] || key;
     Alert.alert(
       t('premiumFeatureTitle'),
@@ -113,14 +109,10 @@ const WeightTracker = ({ navigation, language, darkMode }) => {
     );
   };
 
-  // -------------------------------------------------------------
-  // 2. تحميل البيانات (Download): هنا التغيير الكبير
-  // -------------------------------------------------------------
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
       try {
-        // أ. جلب إعدادات المستخدم محلياً
         const settingsString = await AsyncStorage.getItem('@Settings:generalSettings');
         if (settingsString) {
           const settings = JSON.parse(settingsString);
@@ -128,11 +120,9 @@ const WeightTracker = ({ navigation, language, darkMode }) => {
           if (settings.height) setUserHeight(parseFloat(settings.height) / 100);
         }
 
-        // ب. محاولة جلب البيانات من Supabase (السحابة) أولاً
         const { data: { user } } = await supabase.auth.getUser();
         
         if (user) {
-            // لو المستخدم مسجل، هات بياناته من جدول weights
             const { data: cloudWeights, error } = await supabase
                 .from('weights')
                 .select('*')
@@ -140,22 +130,18 @@ const WeightTracker = ({ navigation, language, darkMode }) => {
                 .order('date', { ascending: false });
 
             if (!error && cloudWeights && cloudWeights.length > 0) {
-                // تحويل البيانات لشكل يفهمه التطبيق { date, weight }
                 const formattedHistory = cloudWeights.map(item => ({
                     date: item.date,
                     weight: item.weight
                 }));
                 setHistory(formattedHistory);
-                // تحديث النسخة المحلية عشان المرة الجاية تكون أسرع
                 await AsyncStorage.setItem('@WeightTracker:history', JSON.stringify(formattedHistory));
             } else {
-                // لو مفيش نت أو مفيش بيانات في السحابة، اعتمد على المحلي
                 const storedHistory = await AsyncStorage.getItem('@WeightTracker:history');
                 const parsedHistory = storedHistory ? JSON.parse(storedHistory) : null;
                 setHistory(parsedHistory && parsedHistory.length > 0 ? parsedHistory : initialWeightHistory);
             }
         } else {
-            // لو مش مسجل دخول، اشتغل محلي بس
             const storedHistory = await AsyncStorage.getItem('@WeightTracker:history');
             const parsedHistory = storedHistory ? JSON.parse(storedHistory) : null;
             setHistory(parsedHistory && parsedHistory.length > 0 ? parsedHistory : initialWeightHistory);
@@ -169,16 +155,14 @@ const WeightTracker = ({ navigation, language, darkMode }) => {
       }
     };
     loadData();
-  }, []); // Run once on mount
+  }, []);
 
-  // هذا الـ Effect يحفظ محلياً دائماً كنسخة احتياطية
   useEffect(() => {
     if (!isLoading) {
       AsyncStorage.setItem('@WeightTracker:history', JSON.stringify(history));
     }
   }, [history, isLoading]);
   
-  // ... (تحديث النصيحة اليومية زي ما هو)
   useEffect(() => {
     const updateDailyTip = (currentLang) => {
       if (tips[currentLang] && tips[currentLang].length > 0) {
@@ -194,13 +178,9 @@ const WeightTracker = ({ navigation, language, darkMode }) => {
   
   const hideTooltip = () => setTooltip(null);
   
-  // -------------------------------------------------------------
-  // 3. إضافة وتحديث الوزن (Upload): هنا التغيير الثاني
-  // -------------------------------------------------------------
   const handleAddWeight = async () => {
     const t = (key) => translations[language][key] || key;
     
-    // التحقق من صحة المدخلات
     if (!newWeight || isNaN(parseFloat(newWeight))) { Alert.alert(t('invalidInputTitle'), t('invalidInputMessage')); return; }
     const weightValue = parseFloat(newWeight);
     if (weightValue <= 20 || weightValue >= 400) { Alert.alert(t('unrealisticValueTitle'), t('unrealisticValueMessage')); return; }
@@ -209,7 +189,6 @@ const WeightTracker = ({ navigation, language, darkMode }) => {
     const formattedDate = getLocalDateString(today); 
     const isDateAlreadyAdded = history.some(entry => entry.date === formattedDate);
     
-    // الحصول على المستخدم الحالي
     const { data: { user } } = await supabase.auth.getUser();
 
     if (isDateAlreadyAdded) {
@@ -218,13 +197,11 @@ const WeightTracker = ({ navigation, language, darkMode }) => {
         { 
           text: t('update'), 
           onPress: async () => {
-            // أ. تحديث محلي (عشان السرعة)
             const updatedHistory = history.map(entry => entry.date === formattedDate ? { ...entry, weight: weightValue } : entry);
             setHistory(updatedHistory); 
             setModalVisible(false); 
             setNewWeight('');
 
-            // ب. تحديث في Supabase (لو المستخدم مسجل)
             if (user) {
                 const { error } = await supabase
                     .from('weights')
@@ -239,15 +216,12 @@ const WeightTracker = ({ navigation, language, darkMode }) => {
       return;
     }
 
-    // إضافة جديد
-    // أ. تحديث محلي
     const newEntry = { date: formattedDate, weight: weightValue }; 
     const updatedHistory = [...history, newEntry].sort((a, b) => new Date(b.date) - new Date(a.date));
     setHistory(updatedHistory); 
     setModalVisible(false); 
     setNewWeight('');
 
-    // ب. إضافة في Supabase (لو المستخدم مسجل)
     if (user) {
         const { error } = await supabase
             .from('weights')
@@ -265,7 +239,6 @@ const WeightTracker = ({ navigation, language, darkMode }) => {
   };
 
   const renderWeightTrackerScreen = () => {
-    // ... (باقي الكود زي ما هو بالظبط بدون أي تغيير في الـ UI)
     const isRTL = language === 'ar';
     const t = (key) => translations[language][key] || key;
     const styles = createStyles(darkMode, isRTL);
@@ -302,16 +275,77 @@ const WeightTracker = ({ navigation, language, darkMode }) => {
     };
     
     const chartHistory = getFilteredChartHistory();
-    const chartData = { labels: chartHistory.map(entry => `${new Date(entry.date).getDate()}/${new Date(entry.date).getMonth() + 1}`), datasets: [{ data: chartHistory.map(entry => entry.weight), color: (opacity = 1) => `rgba(76, 175, 80, ${opacity})`, strokeWidth: 2, }], };
-    const getChartConfig = (isDark) => ({ backgroundColor: isDark ? '#1e1e1e' : '#ffffff', backgroundGradientFrom: isDark ? '#1e1e1e' : '#ffffff', backgroundGradientTo: isDark ? '#1e1e1e' : '#ffffff', decimalPlaces: 1, color: (opacity = 1) => isDark ? `rgba(230, 230, 230, ${opacity})` : `rgba(0, 0, 0, ${opacity})`, labelColor: (opacity = 1) => isDark ? `rgba(200, 200, 200, ${opacity})` : `rgba(100, 100, 100, ${opacity})`, style: { borderRadius: 16 }, propsForDots: { r: '6', strokeWidth: '2', stroke: '#4CAF50' }, });
+
+    // --- تعديل لقلب الرسمة في العربي ---
+    // بنعمل نسخة من الداتا عشان نقلبها لو اللغة عربي
+    let finalChartData = [...chartHistory];
+    if (isRTL) {
+        finalChartData.reverse();
+    }
+
+    const chartData = { 
+        labels: finalChartData.map(entry => `${new Date(entry.date).getDate()}/${new Date(entry.date).getMonth() + 1}`), 
+        datasets: [{ 
+            data: finalChartData.map(entry => entry.weight), 
+            color: (opacity = 1) => `rgba(76, 175, 80, ${opacity})`, 
+            strokeWidth: 2, 
+        }], 
+    };
+    
+    const getChartConfig = (isDark) => ({ 
+        // بنخلي الخلفية شفافة عشان تاخد لون الكارت اللي تحتها
+        backgroundColor: 'transparent',
+        backgroundGradientFrom: 'transparent',
+        backgroundGradientTo: 'transparent',
+        backgroundGradientFromOpacity: 0,
+        backgroundGradientToOpacity: 0,
+        
+        decimalPlaces: 1, 
+        color: (opacity = 1) => isDark ? `rgba(230, 230, 230, ${opacity})` : `rgba(0, 0, 0, ${opacity})`, 
+        labelColor: (opacity = 1) => isDark ? `rgba(200, 200, 200, ${opacity})` : `rgba(100, 100, 100, ${opacity})`, 
+        style: { borderRadius: 16 }, 
+        propsForDots: { r: '6', strokeWidth: '2', stroke: '#4CAF50' },
+        formatYLabel: (y) => language === 'ar' ? '' : parseFloat(y).toFixed(1)
+    });
+
     const chartConfig = getChartConfig(darkMode);
-    const dynamicStyles = { textAlign: { textAlign: isRTL ? 'right' : 'left' }, row: { flexDirection: isRTL ? 'row-reverse' : 'row' }, rtlText: { writingDirection: isRTL ? 'rtl' : 'ltr' } };
+
+    // --- حساب الأرقام للجهة اليمنى (للعربي فقط) ---
+    let rightAxisLabels = [];
+    if (language === 'ar' && chartHistory.length > 0) {
+        const weights = chartHistory.map(e => e.weight);
+        const max = Math.max(...weights);
+        const min = Math.min(...weights);
+        
+        const range = max - min;
+        if (range === 0) {
+            rightAxisLabels = [max.toFixed(1)];
+        } else {
+             for(let i=5; i>=0; i--) {
+                const val = min + (range * (i / 5));
+                rightAxisLabels.push(val.toFixed(1));
+             }
+        }
+    }
+
+    const dynamicStyles = { 
+        textAlign: { textAlign: isRTL ? 'left' : 'left' }, 
+        row: { flexDirection: isRTL ? 'row-reverse' : 'row' }, 
+        rtlText: { writingDirection: isRTL ? 'rtl' : 'ltr' } 
+    };
     
     let tooltipStyle = {}; 
     if (tooltip) { 
-        const horizontalOffset = 35;
-        const verticalOffset = tooltip.y - 42;
-        tooltipStyle = { left: tooltip.x - horizontalOffset, top: verticalOffset };
+        // توسيط التولتيب، بما ان العرض 80، نصه 40
+        const horizontalOffset = 75; 
+        
+        // رفع التولتيب لأعلى أكثر
+        const verticalOffset = tooltip.y - 40; 
+        
+        tooltipStyle = { 
+            left: tooltip.x - horizontalOffset, 
+            top: verticalOffset 
+        };
     }
     
     return (
@@ -330,7 +364,7 @@ const WeightTracker = ({ navigation, language, darkMode }) => {
         <TouchableOpacity activeOpacity={1} onPress={hideTooltip}>
           <View style={styles.card}>
             <Text style={[styles.cardTitle, dynamicStyles.textAlign, dynamicStyles.rtlText]}>{t('currentStatus')}</Text>
-            <View style={[styles.currentWeightContainer, dynamicStyles.row]}>
+            <View style={[styles.currentWeightContainer]}>
               <Text style={styles.currentWeight}>{currentEntry.weight.toFixed(1)} {t('kg')}</Text>
               <View style={[styles.changeBadge, { backgroundColor: totalChange <= 0 ? '#4CAF50' : '#F44336' }]}>
                 <Icon name={totalChange <= 0 ? 'arrow-down-bold' : 'arrow-up-bold'} size={14} color="#fff" />
@@ -338,6 +372,7 @@ const WeightTracker = ({ navigation, language, darkMode }) => {
               </View>
             </View>
             <Text style={[styles.lastUpdatedText, dynamicStyles.textAlign, dynamicStyles.rtlText]}>{t('lastUpdate')} {formatDisplayDate(currentEntry.date, language)}</Text>
+            
             <View style={[styles.statsRow, dynamicStyles.row]}>
               <View style={styles.statItem}><Text style={styles.statLabel}>{t('starting')}</Text><Text style={styles.statValue}>{startingEntry.weight.toFixed(1)} {t('kg')}</Text></View>
               <View style={styles.statItem}><Text style={styles.statLabel}>{t('goal')}</Text><Text style={styles.statValue}>{goalWeight.toFixed(1)} {t('kg')}</Text></View>
@@ -348,7 +383,7 @@ const WeightTracker = ({ navigation, language, darkMode }) => {
         
         <View style={styles.card}>
           <Text style={[styles.cardTitle, dynamicStyles.textAlign, dynamicStyles.rtlText]}>{t('progressChart')}</Text>
-          <View style={styles.filterContainer}>
+          <View style={[styles.filterContainer, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
             {['1W', '1M', '3M', 'All'].map(filter => {
                 const isPremiumFeature = ['1M', '3M', 'All'].includes(filter);
                 const isLocked = isPremiumFeature && !isUserPremium;
@@ -369,17 +404,39 @@ const WeightTracker = ({ navigation, language, darkMode }) => {
 
           <View style={styles.chartContainer}>
             {chartHistory.length > 1 ? (
-              <LineChart
-                data={chartData}
-                width={Dimensions.get('window').width - 64}
-                height={220}
-                chartConfig={chartConfig}
-                bezier
-                withShadow
-                style={{ marginVertical: 8, borderRadius: 16 }}
-                segments={5}
-                onDataPointClick={({ value, x, y, index }) => { if (tooltip && tooltip.index === index) { hideTooltip(); } else { setTooltip({ x, y, value, index }); } }}
-              />
+              <View style={{position: 'relative'}}>
+<LineChart
+                    data={chartData}
+                    // رجعنا العرض -64 عشان يكون مظبوط جوه الكارت وميخرجش بره
+                    width={Dimensions.get('window').width - 0} 
+                    height={220}
+                    chartConfig={chartConfig}
+                    bezier
+                    withShadow
+                    style={{ 
+                        marginVertical: 8, 
+                        borderRadius: 16,
+                        // زقيت الرسمة من الشمال سنة عشان متلزقش في الحيطة
+                        paddingLeft: -90, 
+                    }}
+                    segments={5}
+                    // هنا بنحجز مسافة 50 بيكسل فاضية على اليمين عشان الأرقام اللي ضفناها
+                    paddingRight={language === 'ar' ? 50 : 0}
+                    
+                    formatYLabel={(y) => language === 'ar' ? '' : parseFloat(y).toFixed(1)}
+                    onDataPointClick={({ value, x, y, index }) => { if (tooltip && tooltip.index === index) { hideTooltip(); } else { setTooltip({ x, y, value, index }); } }}
+                  />
+                  
+                  {/* --- كود الأرقام الجانبية للعربي --- */}
+                  {isRTL && (
+                    <View style={styles.rightAxisContainer}> 
+                        {rightAxisLabels.map((label, index) => (
+                            <Text key={index} style={styles.rightAxisText}>{label}</Text>
+                        ))}
+                    </View>
+                  )}
+                  
+              </View>
             ) : (
               <View style={{height: 220, justifyContent: 'center', alignItems: 'center'}}>
                 <Text style={{color: darkMode ? '#999' : '#777'}}>Not enough data to draw a chart for this period.</Text>
@@ -404,7 +461,17 @@ const WeightTracker = ({ navigation, language, darkMode }) => {
               const prev = sortedHistory[index + 1];
               const change = prev ? entry.weight - prev.weight : 0;
               return (
-                <View key={entry.date} style={[styles.historyItem, dynamicStyles.row, index === sortedHistory.length - 1 && { borderBottomWidth: 0 }]}>
+<View 
+    key={entry.date} 
+    style={[
+        styles.historyItem, 
+        // التعديل هنا: نستخدم 'row' دائماً
+        // في العربي (RTL) 'row' ستبدأ من اليمين (وهذا ما تريده)
+        // في الإنجليزي (LTR) 'row' ستبدأ من اليسار
+        { flexDirection: 'row' }, 
+        index === sortedHistory.length - 1 && { borderBottomWidth: 0 }
+    ]}
+>
                   <View style={{flex: 1}}>
                     <Text style={[styles.historyDate, dynamicStyles.textAlign, dynamicStyles.rtlText]}>{formatDisplayDate(entry.date, language)}</Text>
                     <Text style={[styles.historyWeight, dynamicStyles.textAlign]}>{entry.weight.toFixed(1)} {t('kg')}</Text>
@@ -424,7 +491,6 @@ const WeightTracker = ({ navigation, language, darkMode }) => {
     );
   };
     
-  // ... (نفس دوال التنقل وباقي الكود)
   const handleNavigationRequest = (screenName, params = {}) => {
       const activityScreens = ['steps', 'distance', 'calories', 'activeTime'];
       if (activityScreens.includes(screenName)) {
@@ -506,6 +572,9 @@ const WeightTracker = ({ navigation, language, darkMode }) => {
       const greenBackgroundScreens = ['food', 'water', 'steps', 'reports', 'distance', 'calories', 'activeTime'];
       const safeAreaStyle = [ styles.safeArea, greenBackgroundScreens.includes(currentScreen) && { backgroundColor: darkMode ? '#141914' : '#f0f8f0' } ];
 
+      const modalTextAlign = isRTL ? 'left' : 'right';
+      const modalDirection = isRTL ? 'row' : 'row-reverse';
+
       return (
           <SafeAreaView style={safeAreaStyle}>
               <View style={styles.mainContainer}>
@@ -537,9 +606,9 @@ const WeightTracker = ({ navigation, language, darkMode }) => {
               <Modal animationType="fade" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
                   <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalCenteredView}>
                       <View style={styles.modalView}>
-                          <Text style={[styles.modalTitle, { writingDirection: isRTL ? 'rtl' : 'ltr' }]}>{t('logYourWeight')}</Text>
-                          <TextInput style={[styles.input, { textAlign: isRTL ? 'right' : 'left' }]} onChangeText={setNewWeight} value={newWeight} placeholder={t('weightPlaceholder')} keyboardType="decimal-pad" autoFocus={true} placeholderTextColor={darkMode ? '#999' : '#ccc'} />
-                          <View style={[styles.modalButtons, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                          <Text style={[styles.modalTitle, { writingDirection: isRTL ? 'ltr' : 'rtl' }]}>{t('logYourWeight')}</Text>
+                          <TextInput style={[styles.input, { textAlign: modalTextAlign }]} onChangeText={setNewWeight} value={newWeight} placeholder={t('weightPlaceholder')} keyboardType="decimal-pad" autoFocus={true} placeholderTextColor={darkMode ? '#999' : '#ccc'} />
+                          <View style={[styles.modalButtons, { flexDirection: modalDirection }]}>
                               <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={() => setModalVisible(false)}><Text style={styles.buttonText}>{t('cancel')}</Text></TouchableOpacity>
                               <TouchableOpacity style={[styles.button, styles.saveButton]} onPress={handleAddWeight}><Text style={styles.buttonText}>{t('save')}</Text></TouchableOpacity>
                           </View>
@@ -621,7 +690,7 @@ const createStyles = (isDark, isRTL) => StyleSheet.create({
     
     header: { alignItems: 'center', justifyContent: 'center', marginBottom: 16, position: 'relative' },
     screenTitle: { textAlign: 'center', fontSize: 28, fontWeight: 'bold', color: isDark ? '#e0e0e0' : '#2c3e50' },
-    headerIcon: { position: 'absolute', [isRTL ? 'left' : 'right']: 0, padding: 5, },
+    headerIcon: { position: 'absolute', [isRTL ? 'right' : 'left']: 0, padding: 5, },
     loadingText: { fontSize: 16, color: isDark ? '#aaa' : '#555', textAlign: 'center', lineHeight: 24, marginBottom: 8 },
     card: { backgroundColor: isDark ? '#1e1e1e' : '#fff', borderRadius: 16, padding: 20, marginBottom: 16, elevation: 3, shadowColor: isDark ? '#000' : '#555', shadowOffset: { width: 0, height: 2 }, shadowOpacity: isDark ? 0.7 : 0.1, shadowRadius: 4 },
     cardTitle: { fontSize: 18, fontWeight: '600', color: isDark ? '#f0f0f0' : '#34495e', marginBottom: 15 },
@@ -649,8 +718,36 @@ const createStyles = (isDark, isRTL) => StyleSheet.create({
     tipCard: { backgroundColor: isDark ? 'rgba(76, 175, 80, 0.15)' : 'rgba(76, 175, 80, 0.08)', borderRadius: 16, padding: 20, marginBottom: 16, alignItems: 'center', borderWidth: 1, borderColor: isDark ? 'rgba(76, 175, 80, 0.3)' : 'rgba(76, 175, 80, 0.2)' },
     tipLabel: { fontSize: 18, fontWeight: '600', color: isDark ? '#a5d6a7' : '#2e7d32', marginBottom: 8 },
     tipText: { fontSize: 15, fontStyle: 'italic', textAlign: 'center', lineHeight: 22, color: isDark ? '#cfd8dc' : '#37474f' },
-    chartContainer: { position: 'relative' },
-    tooltipWrapper: { position: 'absolute', alignItems: 'center', zIndex: 10 },
+    
+chartContainer: { 
+        position: 'relative', 
+        direction: 'ltr', 
+        alignItems: 'center',
+        
+        // شيلنا العلامات من هنا عشان يقص أي زيادة بره البرواز
+        overflow: 'visible',  
+        
+        borderRadius: 16, 
+        zIndex: 100, 
+    },
+    
+    rightAxisContainer: {
+        position: 'absolute',
+        right: 45,     // نفس الرقم اللي حضرتك حطيته
+        top: 20,       
+        bottom: 40,    
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        zIndex: 10,
+    },
+    rightAxisText: {
+        fontSize: 12,
+        fontWeight: 'bold',
+        color: isDark ? '#B0B0B0' : 'rgba(100, 100, 100, 0.7)',
+        backgroundColor: 'transparent',
+    },
+    
+    tooltipWrapper: { position: 'absolute', alignItems: 'center', justifyContent: 'center', zIndex: 10, width: 80, },
     tooltipContainer: { flexDirection: 'row', alignItems: 'baseline', backgroundColor: 'black', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 6, elevation: 5 },
     tooltipValueText: { color: 'white', fontWeight: 'bold', fontSize: 15 },
     tooltipUnitText: { color: 'white', fontWeight: 'normal', fontSize: 14, marginLeft: 4 },

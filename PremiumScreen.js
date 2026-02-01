@@ -12,6 +12,7 @@ import {
   I18nManager,
   Alert,
   ActivityIndicator,
+  Platform
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,6 +20,16 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { supabase } from './supabaseClient'; // تأكد إن المسار ده صح لملف supabaseClient
 
+// --- 1. استيراد مكتبة الدفع ---
+import Purchases, { PACKAGE_TYPE } from 'react-native-purchases';
+
+// --- إعدادات مفاتيح RevenueCat (Test Store) ---
+const API_KEYS = {
+  apple: "test_wrFWyNmRhjMTifCUutQULwoRKyZ", 
+  google: "test_wrFWyNmRhjMTifCUutQULwoRKyZ" 
+};
+
+const ENTITLEMENT_ID = 'premium';
 const USER_SUBSCRIPTION_DATA_KEY = '@App:userSubscriptionData';
 
 // --- Subscription Check Logic (Local Check) ---
@@ -46,41 +57,32 @@ const translations = {
   ar: {
     title: 'ارتقِ برحلتك الصحية',
     subtitle: 'افتح الميزات الحصرية واستمتع بالتجربة الكاملة.',
-    feature: 'الميزة',
-    free: 'مجاني',
-    premium: 'مميز',
+    feature: 'الميزة', free: 'مجاني', premium: 'مميز',
     feature_history: 'سجل متقدم ورسوم بيانية\nلتتبع الوزن',
     feature_ads: 'إزالة جميع الإعلانات',
     feature_dark_mode: 'الوضع الداكن',
     feature_reports: 'تقارير وتحليلات متقدمة',
     feature_tips: 'نصائح يومية عبر الإشعارات',
     monthly: 'شهرياً',
-    monthly_price: '$4.99 / شهر',
+    monthly_price: '$4.99 / شهر', // نص احتياطي
     annually: 'سنوياً',
-    annually_price: '$29.99 / سنة',
+    annually_price: '$29.99 / سنة', // نص احتياطي
     best_value: 'أفضل قيمة',
     save_50: 'وفر 50%',
     button_use_trial: 'استخدم التجربة المجانية 7 أيام',
     button_upgrade: 'الترقية إلى المميز',
     trial_checkbox_label: 'استخدم التجربة المجانية 7 أيام',
     footer_text: 'سيتم خصم المبلغ من حساب App Store الخاص بك. يمكنك إدارة أو إلغاء اشتراكك في أي وقت من إعدادات حسابك.',
-    
-    // Purchase & Restore Alerts
     purchase_success_title: "نجاح!",
     purchase_success_message: "تهانينا! تم فتح جميع الميزات المميزة.\n\nتم حفظ اشتراكك بنجاح.",
     purchase_continue: "متابعة",
     purchase_error_title: "خطأ",
     purchase_error_message: "حدث خطأ ما. يرجى المحاولة مرة أخرى.",
-    login_required_title: "تنبيه",
-    login_required_message: "ننصح بتسجيل الدخول قبل الشراء لضمان حفظ اشتراكك ومزامنته مع أجهزتك الأخرى.",
-    
     restore_purchase: "استعادة المشتريات",
     restore_success_title: "تمت الاستعادة",
-    restore_success_message: "تم استعادة اشتراكك بنجاح من الخادم.",
+    restore_success_message: "تم استعادة اشتراكك بنجاح.",
     restore_empty_title: "لا يوجد اشتراك",
     restore_empty_message: "لم نتمكن من العثور على اشتراك فعال لهذا الحساب.",
-    restore_login_required: "يرجى تسجيل الدخول لاستعادة اشتراكك.",
-
     already_premium_title: "أنت مشترك بالفعل!",
     already_premium_subtitle: "جميع الميزات المميزة متاحة لك. استمر في رحلتك الصحية!",
     go_back_button: "العودة",
@@ -88,9 +90,7 @@ const translations = {
   en: {
     title: 'Elevate Your Health Journey',
     subtitle: 'Unlock exclusive features and enjoy the full experience.',
-    feature: 'Feature',
-    free: 'Free',
-    premium: 'Premium',
+    feature: 'Feature', free: 'Free', premium: 'Premium',
     feature_history: 'Advanced history and graphs\nfor weight tracking',
     feature_ads: 'Remove all ads',
     feature_dark_mode: 'Dark Mode',
@@ -105,26 +105,19 @@ const translations = {
     button_use_trial: 'Use 7-day free trial',
     button_upgrade: 'Upgrade to Premium',
     trial_checkbox_label: 'Use 7-day free trial',
-    footer_text: 'Payment will be charged to your App Store account. You can manage or cancel your subscription at any time in your account settings.',
-    
-    // Purchase & Restore Alerts
+    footer_text: 'Payment will be charged to your App Store account. Manage anytime in settings.',
     purchase_success_title: "Success!",
-    purchase_success_message: "Congratulations! All premium features are now unlocked.\n\nYour subscription is synced.",
+    purchase_success_message: "Congratulations! All premium features are now unlocked.",
     purchase_continue: "Continue",
     purchase_error_title: "Error",
     purchase_error_message: "Something went wrong. Please try again.",
-    login_required_title: "Notice",
-    login_required_message: "We recommend logging in before purchasing to ensure your subscription syncs across devices.",
-    
     restore_purchase: "Restore Purchase",
     restore_success_title: "Restored",
-    restore_success_message: "Your subscription has been restored successfully from the server.",
+    restore_success_message: "Your subscription has been restored successfully.",
     restore_empty_title: "No Subscription",
-    restore_empty_message: "We couldn't find an active subscription linked to this account.",
-    restore_login_required: "Please log in to restore your subscription.",
-
+    restore_empty_message: "We couldn't find an active subscription.",
     already_premium_title: "You're Already a Premium Member!",
-    already_premium_subtitle: "All premium features are available to you. Keep up the great work!",
+    already_premium_subtitle: "All premium features are available to you.",
     go_back_button: "Go Back",
   },
 };
@@ -167,6 +160,7 @@ const PremiumScreen = ({ language: propLanguage, darkMode: propDarkMode }) => {
   const [selectedPlan, setSelectedPlan] = useState('annually');
   const [useTrial, setUseTrial] = useState(false);
   const [isLoading, setIsLoading] = useState(false); 
+  const [packages, setPackages] = useState([]); // لتخزين الأسعار القادمة
 
   const shimmerTranslateX = useRef(new Animated.Value(-150)).current;
   const isTrialActiveRef = useRef(useTrial);
@@ -187,20 +181,61 @@ const PremiumScreen = ({ language: propLanguage, darkMode: propDarkMode }) => {
     { name: t.feature_tips, free: false, premium: true },
   ], [t]);
 
-  useFocusEffect(
-    useCallback(() => {
-        const checkStatus = async () => {
-            const isPremium = await checkSubscriptionStatus();
-            setIsAlreadyPremium(isPremium);
-        };
-        checkStatus();
-    }, [])
-  );
+  // --- تهيئة RevenueCat + بيانات وهمية للعرض ---
+  useEffect(() => {
+    const initPurchases = async () => {
+      try {
+        if (Platform.OS === 'ios') {
+            await Purchases.configure({ apiKey: API_KEYS.apple });
+        } else {
+            await Purchases.configure({ apiKey: API_KEYS.google });
+        }
+
+        const customerInfo = await Purchases.getCustomerInfo();
+        if (customerInfo.entitlements.active[ENTITLEMENT_ID]) {
+             setIsAlreadyPremium(true);
+        } else {
+             const localStatus = await checkSubscriptionStatus();
+             setIsAlreadyPremium(localStatus);
+        }
+
+        // جلب المنتجات (محاولة حقيقية + Fallback وهمي)
+        try {
+            const offerings = await Purchases.getOfferings();
+            if (offerings.current !== null && offerings.current.availablePackages.length !== 0) {
+              setPackages(offerings.current.availablePackages);
+            } else {
+              // لو مفيش منتجات (Expo Go) حط وهمي عشان UI يظهر
+              throw new Error("No offerings found");
+            }
+        } catch (e) {
+             console.log("Using dummy data for UI");
+             setPackages([
+                { 
+                    identifier: 'mock_monthly', 
+                    packageType: PACKAGE_TYPE.MONTHLY, 
+                    product: { priceString: '$4.99', price: 4.99, currencyCode: 'USD', title: 'Monthly' } 
+                },
+                { 
+                    identifier: 'mock_annual', 
+                    packageType: PACKAGE_TYPE.ANNUAL, 
+                    product: { priceString: '$29.99', price: 29.99, currencyCode: 'USD', title: 'Annual' } 
+                }
+              ]);
+        }
+      } catch (e) {
+        console.log("Error initializing purchases:", e);
+        setIsAlreadyPremium(false);
+      }
+    };
+
+    initPurchases();
+  }, []);
   
   // Animation Logic
   useEffect(() => { isTrialActiveRef.current = useTrial; }, [useTrial]);
   const runAnimation = () => {
-    shimmerTranslateX.setValue(-150);
+    shimmerTranslateX.setValue(-230);
     Animated.timing(shimmerTranslateX, {
       toValue: screenWidth, duration: 1500, useNativeDriver: true,
     }).start(({ finished }) => {
@@ -212,109 +247,99 @@ const PremiumScreen = ({ language: propLanguage, darkMode: propDarkMode }) => {
     return () => shimmerTranslateX.stopAnimation();
   }, [useTrial]);
 
-  const handleTrialToggle = () => setUseTrial(p => !p);
+  const handleTrialToggle = () => {
+      setUseTrial(p => !p);
+      // لو شغل التجربة، نختار السنوي افتراضياً
+      if (!useTrial) setSelectedPlan('annually');
+  };
   const handleCloseOrBack = () => navigation.goBack();
 
   // ---------------------------------------------------------
-  // 1. PURCHASE LOGIC (UPDATED FOR SYNC)
+  // 1. PURCHASE LOGIC 
   // ---------------------------------------------------------
   const handlePurchase = async () => {
     setIsLoading(true);
     try {
-      // 1. Check if user is logged in
-      const { data: { user } } = await supabase.auth.getUser();
+        let packageToBuy;
+        if (selectedPlan === 'monthly') {
+            packageToBuy = packages.find(pkg => pkg.packageType === PACKAGE_TYPE.MONTHLY);
+        } else {
+            packageToBuy = packages.find(pkg => pkg.packageType === PACKAGE_TYPE.ANNUAL);
+        }
 
-      // If needed: Simulate Payment Processing Here (Success)
-      
-      const now = Date.now();
-      const DAY_IN_MS = 24 * 60 * 60 * 1000;
-      let expiryTimestamp;
+        // لو الباقة وهمية (Mock) - فعل الاشتراك فوراً
+        if (packageToBuy && packageToBuy.identifier.startsWith('mock_')) {
+             setTimeout(async () => {
+                 await handleSuccessfulSubscription();
+                 setIsLoading(false);
+             }, 1000); 
+             return;
+        }
 
-      if (useTrial) {
-        expiryTimestamp = now + (7 * DAY_IN_MS);
-      } else if (selectedPlan === 'monthly') {
-        expiryTimestamp = now + (30 * DAY_IN_MS);
-      } else { 
-        expiryTimestamp = now + (365 * DAY_IN_MS);
-      }
+        if (!packageToBuy) {
+            // لو مفيش باقة لسه، خد أول واحدة وهمية أو حقيقية
+            packageToBuy = packages[0];
+        }
 
-      // 2. Sync with Supabase if User Exists
-      if (user) {
-          const { error } = await supabase
-            .from('profiles')
-            .update({ is_subscribed: true })
-            .eq('id', user.id);
-          
-          if (error) console.log("Failed to sync subscription to cloud:", error);
-      }
-
-      // 3. Save Locally (Source of Truth for Offline)
-      const subscriptionData = {
-        isPremium: true,
-        expiryDate: expiryTimestamp,
-      };
-
-      await AsyncStorage.setItem(USER_SUBSCRIPTION_DATA_KEY, JSON.stringify(subscriptionData));
-      setIsAlreadyPremium(true); 
-      
-      Alert.alert(
-        t.purchase_success_title,
-        t.purchase_success_message, 
-        [ { text: t.purchase_continue, onPress: () => navigation.goBack() } ],
-        { cancelable: false }
-      );
-
+        if (packageToBuy) {
+            const { customerInfo } = await Purchases.purchasePackage(packageToBuy);
+            if (typeof customerInfo.entitlements.active[ENTITLEMENT_ID] !== "undefined") {
+                await handleSuccessfulSubscription();
+            }
+        }
     } catch (e) {
-      console.error(e);
-      Alert.alert(t.purchase_error_title, t.purchase_error_message);
+      if (!e.userCancelled) {
+          Alert.alert(t.purchase_error_title, e.message);
+      }
     } finally {
-        setIsLoading(false);
+        // تأكد إننا بنقفل التحميل
+        if (!packages.find(p => p.identifier.startsWith('mock_'))) {
+            setIsLoading(false);
+        }
     }
   };
 
+  const handleSuccessfulSubscription = async (isRestore = false) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+          await supabase.from('profiles').update({ is_subscribed: true }).eq('id', user.id);
+      }
+
+      const expiryDate = Date.now() + (365 * 24 * 60 * 60 * 1000); 
+      await AsyncStorage.setItem(USER_SUBSCRIPTION_DATA_KEY, JSON.stringify({ isPremium: true, expiryDate }));
+
+      setIsAlreadyPremium(true);
+      
+      Alert.alert(
+          isRestore ? t.restore_success_title : t.purchase_success_title,
+          isRestore ? t.restore_success_message : t.purchase_success_message,
+          [{ text: t.purchase_continue, onPress: () => {} }]
+      );
+  };
+
   // ---------------------------------------------------------
-  // 2. RESTORE LOGIC (UPDATED FOR SYNC)
+  // 2. RESTORE LOGIC 
   // ---------------------------------------------------------
   const handleRestorePurchase = async () => {
     setIsLoading(true);
     try {
-        // 1. Must be logged in to restore from our DB
-        const { data: { user } } = await supabase.auth.getUser();
-
-        if (!user) {
-             setIsLoading(false);
-             Alert.alert(t.purchase_error_title, t.restore_login_required);
-             return;
-        }
-
-        // 2. Query Supabase
-        const { data: profile, error } = await supabase
-            .from('profiles')
-            .select('is_subscribed')
-            .eq('id', user.id)
-            .single();
-
-        if (error) {
-            console.log("Restore error:", error);
-            throw error;
-        }
-
-        // 3. Check Subscription Status
-        if (profile && profile.is_subscribed) {
-             // 4. Activate Locally
-             // We give a long expiry date since we confirmed with server
-             const oneYearFromNow = Date.now() + (365 * 24 * 60 * 60 * 1000);
-             await AsyncStorage.setItem(USER_SUBSCRIPTION_DATA_KEY, JSON.stringify({ isPremium: true, expiryDate: oneYearFromNow }));
-             
-             setIsAlreadyPremium(true);
-             Alert.alert(t.restore_success_title, t.restore_success_message);
+        const customerInfo = await Purchases.restorePurchases();
+        if (typeof customerInfo.entitlements.active[ENTITLEMENT_ID] !== "undefined") {
+            await handleSuccessfulSubscription(true);
         } else {
+            // محاولة الاستعادة من قاعدة البيانات لو المتجر مرجعش حاجة
+             const { data: { user } } = await supabase.auth.getUser();
+             if (user) {
+                const { data: profile } = await supabase.from('profiles').select('is_subscribed').eq('id', user.id).single();
+                if (profile && profile.is_subscribed) {
+                    await handleSuccessfulSubscription(true);
+                    return;
+                }
+             }
              Alert.alert(t.restore_empty_title, t.restore_empty_message);
         }
-
     } catch (e) {
-        setIsLoading(false);
-        Alert.alert(t.purchase_error_title, t.purchase_error_message);
+        Alert.alert(t.purchase_error_title, e.message);
     } finally {
         setIsLoading(false);
     }
@@ -322,6 +347,13 @@ const PremiumScreen = ({ language: propLanguage, darkMode: propDarkMode }) => {
   
   const isMonthlySelected = selectedPlan === 'monthly';
   const isAnnuallySelected = selectedPlan === 'annually';
+
+  // استخراج الأسعار من الباقات المحملة
+  const monthlyPkg = packages.find(p => p.packageType === PACKAGE_TYPE.MONTHLY);
+  const annualPkg = packages.find(p => p.packageType === PACKAGE_TYPE.ANNUAL);
+  
+  const displayMonthlyPrice = monthlyPkg?.product?.priceString || t.monthly_price;
+  const displayAnnualPrice = annualPkg?.product?.priceString || t.annually_price;
 
   if (isAlreadyPremium === null) {
     return (
@@ -348,7 +380,7 @@ const PremiumScreen = ({ language: propLanguage, darkMode: propDarkMode }) => {
         <View style={styles.headerContainer}>
           <TouchableOpacity style={styles.backButton} onPress={handleCloseOrBack}>
             <Ionicons 
-              name={route.params?.fromLogin ? 'close' : (I18nManager.isRTL ? 'arrow-forward' : 'arrow-back')} 
+              name={route.params?.fromLogin ? 'close' : (I18nManager.isRTL ? 'arrow-back' : 'arrow-forward')} 
               size={route.params?.fromLogin ? 30 : 28}
               color={styles.headerTitle.color} 
             />
@@ -375,7 +407,7 @@ const PremiumScreen = ({ language: propLanguage, darkMode: propDarkMode }) => {
             style={[styles.planBox, isMonthlySelected ? styles.selectedPlanBox : styles.unselectedPlanBox]}
             onPress={() => setSelectedPlan('monthly')}>
             <Text style={[styles.planTitle, isMonthlySelected ? styles.selectedPlanTitle : styles.unselectedPlanTitle]}>{t.monthly}</Text>
-            <Text style={styles.planPrice}>{t.monthly_price}</Text>
+            <Text style={styles.planPrice}>{displayMonthlyPrice}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -385,18 +417,26 @@ const PremiumScreen = ({ language: propLanguage, darkMode: propDarkMode }) => {
               <Text style={styles.bestValueText}>{t.best_value}</Text>
             </View>
             <Text style={[styles.planTitle, isAnnuallySelected ? styles.selectedPlanTitle : styles.unselectedPlanTitle]}>{t.annually}</Text>
-            <Text style={styles.planPrice}>{t.annually_price}</Text>
+            <Text style={styles.planPrice}>{displayAnnualPrice}</Text>
             <Text style={styles.planSave}>{t.save_50}</Text>
           </TouchableOpacity>
         </View>
         
         <TouchableOpacity style={styles.upgradeButton} onPress={handlePurchase} disabled={isLoading}>
-          {useTrial && (
+{useTrial && (
             <AnimatedLinearGradient
-              colors={['transparent', theme.shimmerEffectColor, 'transparent']}
-              start={{ x: 0, y: 0.5 }}
+              colors={['transparent', 'rgba(255,255,255,0.4)', 'transparent']} 
+              start={{ x: 0, y: 0.3 }}
               end={{ x: 1, y: 0.5 }}
-              style={[ styles.shimmerEffect, { transform: [{ translateX: shimmerTranslateX }] }]} 
+              style={[
+                styles.shimmerEffect,
+                {
+                  transform: [
+                    { translateX: shimmerTranslateX }, 
+                    { rotate: '110deg' } 
+                  ]
+                }
+              ]} 
             />
           )}
           {isLoading ? (
@@ -469,7 +509,7 @@ const getStyles = (themeMode) => {
     bestValueBadge: { position: 'absolute', top: -14, backgroundColor: theme.primary, borderRadius: 15, paddingHorizontal: 10, paddingVertical: 4 },
     bestValueText: { color: theme.bestValueText, fontWeight: 'bold', fontSize: 12 },
     upgradeButton: { width: '100%', backgroundColor: theme.primary, padding: 18, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginTop: 30, overflow: 'hidden' },
-    shimmerEffect: { position: 'absolute', top: 0, left: 0, height: '100%', width: 150, transform: [{ skewX: '-20deg' }] },
+    shimmerEffect: { position: 'absolute', top: 0, left: 0, height: '260%', width: 150, transform: [{ skewX: '-20deg' }] },
     upgradeButtonText: { color: theme.primaryText, fontSize: 18, fontWeight: 'bold' },
     trialContainer: { width: '100%', flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row', alignItems: 'center', justifyContent: 'center', marginTop: 20 },
     trialText: { fontSize: 16, color: theme.text, marginHorizontal: 10 },

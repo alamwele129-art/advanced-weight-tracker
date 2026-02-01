@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef, useMemo } from 'react'; // <<< THIS LINE IS FIXED
+﻿import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, Image, ScrollView,
   KeyboardAvoidingView, Platform, Alert, ActivityIndicator, I18nManager,
@@ -6,11 +6,11 @@ import {
 import { MaterialIcons, FontAwesome } from '@expo/vector-icons';
 import { useNavigation, useIsFocused, CommonActions } from '@react-navigation/native';
 import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking'; 
 import { supabase } from './supabaseClient';
 
 WebBrowser.maybeCompleteAuthSession();
 
-// --- Theme and Translation ---
 const lightTheme = {
   background: '#f5f5f5',
   contentBackground: '#fff',
@@ -153,30 +153,74 @@ const SignUpScreen = ({ language = 'ar', isDarkMode = false }) => {
         if (isFocused) { setActiveTab('SignUp'); }
     }, [isFocused, language]);
 
+    useEffect(() => {
+        const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+            if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session) {
+                console.log('✅ SignUp/Login detected! Navigating...');
+                setIsGoogleLoading(false);
+                setIsFacebookLoading(false);
+                setIsLoading(false);
+                navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name: 'Weight' }] }));
+            }
+        });
+
+        const handleDeepLink = async (event) => {
+            let url = event.url;
+            if (url && url.includes('access_token') && url.includes('refresh_token')) {
+                try {
+                    const accessToken = url.match(/access_token=([^&]+)/)?.[1];
+                    const refreshToken = url.match(/refresh_token=([^&]+)/)?.[1];
+                    if (accessToken && refreshToken) {
+                        await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+                    }
+                } catch (err) { console.error("Error parsing URL:", err); }
+            }
+        };
+
+        const linkingSubscription = Linking.addEventListener('url', handleDeepLink);
+        Linking.getInitialURL().then((url) => { if (url) handleDeepLink({ url }); });
+
+        return () => {
+            authListener.subscription.unsubscribe();
+            linkingSubscription.remove();
+        };
+    }, []);
+
     const anyLoading = isLoading || isGoogleLoading || isFacebookLoading;
 
     const handleSocialSignUp = async (provider) => {
-        await supabase.auth.signOut();
-        if (anyLoading) return;
-        
-        if (provider === 'google') setIsGoogleLoading(true);
-        if (provider === 'facebook') setIsFacebookLoading(true);
-
         try {
-            const { data, error } = await supabase.auth.signInWithOAuth({ provider });
+            await supabase.auth.signOut();
+            if (anyLoading) return;
+            if (provider === 'google') setIsGoogleLoading(true);
+            if (provider === 'facebook') setIsFacebookLoading(true);
 
-            if (error) {
-                console.error(`${provider} Sign-Up Error:`, error);
-                Alert.alert(translation.socialSignUpError.replace('{provider}', provider), error.message);
-            } else if (data.session){
-                 navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name: 'Weight' }] }));
+            const redirectUrl = Linking.createURL('/');
+            
+            const { data, error } = await supabase.auth.signInWithOAuth({ 
+              provider,
+              options: {
+                redirectTo: redirectUrl,
+                skipBrowserRedirect: true,
+                queryParams: { prompt: 'select_account' }
+              }
+            });
+
+            if (error) throw error;
+
+            if (data?.url) {
+                const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
+                if (result.type !== 'success') {
+                    if (provider === 'google') setIsGoogleLoading(false);
+                    if (provider === 'facebook') setIsFacebookLoading(false);
+                }
             }
+
         } catch (error) {
             console.error(`Unexpected ${provider} Sign-Up Error:`, error);
-            Alert.alert(translation.errorTitle, translation.socialSignUpUnexpectedError.replace('{provider}', provider));
-        } finally {
-            if (provider === 'google') setIsGoogleLoading(false);
-            if (provider === 'facebook') setIsFacebookLoading(false);
+            Alert.alert(translation.errorTitle, error.message || translation.socialSignUpUnexpectedError.replace('{provider}', provider));
+            setIsGoogleLoading(false);
+            setIsFacebookLoading(false);
         }
     };
 
@@ -240,7 +284,7 @@ const SignUpScreen = ({ language = 'ar', isDarkMode = false }) => {
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}>
       <View style={styles.tabContainerWrapper}>
-        <View style={styles.tabContainer}>
+        <View style={[styles.tabContainer, language === 'ar' && { flexDirection: 'row-reverse' }]}>
           <TouchableOpacity style={[ styles.tab, activeTab === 'Login' && styles.activeTab ]} onPress={() => handleTabPress('Login')} disabled={anyLoading}>
             <Text style={[ styles.tabText, activeTab === 'Login' && styles.activeTabText ]}>{translation.loginTab}</Text>
             {activeTab === 'Login' && <View style={styles.greenLine} />}
@@ -309,9 +353,10 @@ const SignUpScreen = ({ language = 'ar', isDarkMode = false }) => {
   );
 };
 
+// التعديلات تمت هنا بشكل رئيسي في scrollContentContainer وفي الهوامش لرفع المحتوى
 const getStyles = (theme) => StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.background },
-    scrollContentContainer: { flexGrow: 1, paddingBottom: 20 },
+    scrollContentContainer: { flexGrow: 1, paddingBottom: 150 }, // تم زيادة هذا الرقم لرفع المحتوى عند السكرول
     tabContainerWrapper: { backgroundColor: theme.contentBackground, paddingTop: Platform.OS === 'ios' ? 50 : 30, borderBottomWidth: 1, borderBottomColor: theme.separator, zIndex: 10 },
     tabContainer: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10 },
     tab: { flex: 1, paddingVertical: 15, alignItems: 'center', justifyContent: 'center', position: 'relative', borderBottomWidth: 3, borderBottomColor: 'transparent' },
@@ -319,21 +364,21 @@ const getStyles = (theme) => StyleSheet.create({
     tabText: { fontSize: 17, fontWeight: '600', color: theme.placeholderText },
     activeTabText: { color: theme.text },
     greenLine: { backgroundColor: theme.primary, height: 3, position: 'absolute', bottom: -5, left: 0, right: 0 },
-    content: { paddingHorizontal: 25, paddingTop: 20 },
-    socialButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: theme.contentBackground, borderWidth: 1, borderColor: theme.socialButtonBorder, borderRadius: 8, paddingVertical: 10, paddingHorizontal: 15, marginBottom: 12, minHeight: 44 },
+    content: { paddingHorizontal: 25, paddingTop: 30 }, // تم تقليل المسافة العلوية قليلاً
+    socialButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: theme.contentBackground, borderWidth: 1, borderColor: theme.socialButtonBorder, borderRadius: 8, paddingVertical: -5, paddingHorizontal: 15, marginBottom: 10, minHeight: 44 }, // تقليل الهامش السفلي
     buttonIcon: { marginHorizontal: 12, width: 24, textAlign: 'center' },
     googleLogo: { width: 22, height: 22, marginHorizontal: 12 },
     socialButtonText: { fontSize: 16, fontWeight: '500', color: theme.socialButtonText },
-    orText: { textAlign: 'center', marginVertical: 15, color: theme.placeholderText, fontSize: 14 },
-    inputContainer: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: theme.inputBorder, marginBottom: 15, paddingBottom: 5 },
+    orText: { textAlign: 'center', marginVertical: 10, color: theme.placeholderText, fontSize: 14 }, // تقليل الهامش
+    inputContainer: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: theme.inputBorder, marginBottom: 10, paddingBottom: 5 }, // تقليل الهامش
     inputIcon: { marginHorizontal: 12, width: 20, textAlign: 'center' },
-    input: { flex: 1, height: 40, fontSize: 16, color: theme.text, textAlign: I18nManager.isRTL ? 'right' : 'left' },
+    input: { flex: 1, height: 40, fontSize: 16, color: theme.text, textAlign: I18nManager.isRTL ? 'left' : 'right' },
     eyeIcon: { paddingHorizontal: 10 },
-    passwordRequirements: { marginVertical: 10, paddingHorizontal: 5, alignSelf: I18nManager.isRTL ? 'flex-end' : 'flex-start' },
+    passwordRequirements: { marginVertical: 8, paddingHorizontal: 5, alignSelf: I18nManager.isRTL ? 'flex-end' : 'flex-start' },
     requirementText: { fontSize: 13, color: theme.invalid, marginBottom: 4, flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row', alignItems: 'center' },
     reqIcon: { marginHorizontal: 6 },
     validRequirement: { color: theme.valid },
-    termsContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 25 },
+    termsContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 15 }, // تقليل الهامش
     checkbox: { width: 20, height: 20, borderWidth: 1.5, borderColor: theme.checkboxBorder, borderRadius: 3, marginHorizontal: 10, alignItems: 'center', justifyContent: 'center' },
     checkboxChecked: { backgroundColor: theme.primary, borderColor: theme.primary },
     termsText: { flex: 1, fontSize: 13, color: theme.subtleText, lineHeight: 18, textAlign: I18nManager.isRTL ? 'left' : 'left' },
