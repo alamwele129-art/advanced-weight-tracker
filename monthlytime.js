@@ -1,8 +1,8 @@
-﻿// MonthlyTime.js (Fixed Layout & Infinite Scroll)
+﻿// MonthlyTime.js (Fixed Layout & Infinite Scroll & Arrow Logic)
 
 import React, { useState, useMemo, useCallback } from 'react';
 import {
-  View, // Changed from SafeAreaView
+  View,
   Text,
   StyleSheet,
   ScrollView,
@@ -76,7 +76,7 @@ const addMonths = (date, months) => { const d = new Date(date); d.setMonth(d.get
 const getStartOfMonth = (date) => new Date(date.getFullYear(), date.getMonth(), 1);
 const getEndOfMonth = (date) => new Date(date.getFullYear(), date.getMonth() + 1, 0);
 
-// Sub-Components
+// --- Sub-Components (تم التعديل هنا MonthlyChart) ---
 const MonthlyChart = ({ styles, onNextMonth, onPrevMonth, isNextButtonDisabled, dateRangeDisplay, totalHours, avgHours, weeklyAggregates, translation, locale, language }) => {
     const [selectedBarIndex, setSelectedBarIndex] = useState(null);
     const MAX_WEEKLY_VALUE = useMemo(() => Math.max(2500, ...weeklyAggregates.map(w => w.value)), [weeklyAggregates]);
@@ -85,26 +85,47 @@ const MonthlyChart = ({ styles, onNextMonth, onPrevMonth, isNextButtonDisabled, 
     const handleBarPress = (index) => setSelectedBarIndex(prev => prev === index ? null : index);
     const handleDismissTooltip = () => setSelectedBarIndex(null);
 
-    const GoBackButton = (
-        <TouchableOpacity onPress={onPrevMonth}>
-            <Icon name="chevron-forward-outline" size={24} color={styles.chevron.color} />
-        </TouchableOpacity>
-    );
+    // ==========================================================
+    // منطق الأسهم (التحكم الكامل)
+    // ==========================================================
+    let leftButtonIconName;
+    let rightButtonIconName;
 
-    const GoForwardButton = (
-        <TouchableOpacity onPress={onNextMonth} disabled={isNextButtonDisabled} activeOpacity={0.7}>
-            <Icon name="chevron-back-outline" size={24} color={isNextButtonDisabled ? styles.disabledChevron.color : styles.chevron.color} />
-        </TouchableOpacity>
-    );
+    if (language === 'ar') {
+        // --- إعدادات العربي ---
+        leftButtonIconName = "chevron-forward-outline"; // سهم يمين
+        rightButtonIconName = "chevron-back-outline";   // سهم يسار
+    } else {
+        // --- إعدادات الإنجليزي ---
+        leftButtonIconName = "chevron-back-outline";     // سهم يسار
+        rightButtonIconName = "chevron-forward-outline"; // سهم يمين
+    }
 
     return (
         <View style={styles.chartCard}>
             <View>
+                {/* 
+                   تعديل التخطيط يدوياً:
+                   [زر السابق] - [النص] - [زر التالي]
+                */}
                 <View style={styles.dateNavigator}>
-                  { language === 'ar' ? GoForwardButton : GoBackButton }
+                  {/* الزر الأيسر: للشهر السابق */}
+                  <TouchableOpacity onPress={onPrevMonth}>
+                      <Icon name={leftButtonIconName} size={24} color={styles.chevron.color} />
+                  </TouchableOpacity>
+
                   <Text style={styles.dateText}>{dateRangeDisplay}</Text>
-                  { language === 'ar' ? GoBackButton : GoForwardButton }
+
+                  {/* الزر الأيمن: للشهر التالي */}
+                  <TouchableOpacity onPress={onNextMonth} disabled={isNextButtonDisabled} activeOpacity={0.7}>
+                      <Icon 
+                        name={rightButtonIconName} 
+                        size={24} 
+                        color={isNextButtonDisabled ? styles.disabledChevron.color : styles.chevron.color} 
+                      />
+                  </TouchableOpacity>
                 </View>
+
                 <View style={styles.summaryContainer}>
                     <View style={styles.summaryBox}><Text style={styles.summaryValue}>{avgHours}</Text><Text style={styles.summaryLabel}>{translation.avgLabel}</Text></View>
                     <View style={styles.summaryBox}><Text style={styles.summaryValue}>{totalHours}</Text><Text style={styles.summaryLabel}>{translation.totalLabel}</Text></View>
@@ -153,7 +174,7 @@ const MetricBlock = ({iconName, value, unit, styles}) => (
 );
 
 // Main Component
-const MonthlyTime = ({ language, isDarkMode }) => {
+const MonthlyTime = ({ language = 'ar', isDarkMode = false }) => {
     const translation = useMemo(() => translations[language] || translations.en, [language]);
     const theme = useMemo(() => isDarkMode ? darkTheme : lightTheme, [isDarkMode]);
     const styles = useMemo(() => getStyles(theme, language === 'ar'), [theme, language]);
@@ -251,22 +272,30 @@ const getStyles = (theme, isRTL) => StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: theme.safeArea },
     mainContainer: { padding: 15, paddingBottom: 50 },
     chartCard: { backgroundColor: theme.cardBackground, borderRadius: 20, marginBottom: 20, shadowColor: theme.shadowColor, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 5, elevation: 2, overflow: 'hidden' },
-    dateNavigator: { flexDirection: isRTL ? 'row-reverse' : 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 15 },
+    
+    // --- التعديل هنا: استخدام row دائماً ---
+    dateNavigator: { 
+        flexDirection: 'row', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        paddingHorizontal: 20, 
+        paddingVertical: 15 
+    },
+
     dateText: { fontSize: 18, fontWeight: '600', color: theme.headerTitle },
     chevron: { color: theme.chevron },
     disabledChevron: { color: theme.disabledChevron },
     summaryContainer: { flexDirection: isRTL ? 'row-reverse' : 'row', justifyContent: 'space-around', paddingVertical: 20, paddingTop: 10 },
     summaryBox: { alignItems: 'center', flex:1 },
     summaryValue: { fontSize: 32, fontWeight: 'bold', color: theme.mainText, fontVariant: ['tabular-nums'] },
-    summaryLabel: { fontSize: 14, color: theme.secondaryText, marginTop: 4, textAlign:'center' },
+    summaryLabel: { fontSize: 12, color: theme.secondaryText, marginTop: 4, textAlign:'center' },
     
-    // --- FIX IS HERE: FIXED HEIGHT ADDED ---
     graphContainer: { 
         flexDirection: isRTL ? 'row-reverse' : 'row', 
         paddingHorizontal: 15, 
         paddingTop: 10, 
         paddingBottom: 10, 
-        height: 300, // <--- FIXED HEIGHT
+        height: 300, 
         alignItems: 'stretch'
     },
     

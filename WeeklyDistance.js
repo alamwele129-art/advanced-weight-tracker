@@ -32,7 +32,7 @@ const getStartOfWeek = (date, startOfWeekDay) => { const d = new Date(date); d.s
 // =================================================================
 // Sub-components
 // =================================================================
-const WeeklyChart = ({ styles, chartData, totalDistance, averageDistance, dateRange, onPreviousWeek, onNextWeek, isNextWeekDisabled, todayIndex, translation }) => {
+const WeeklyChart = ({ styles, chartData, totalDistance, averageDistance, dateRange, onPreviousWeek, onNextWeek, isNextWeekDisabled, todayIndex, translation, language }) => { // أضفنا language هنا
     const [selectedBarIndex, setSelectedBarIndex] = useState(null);
     const { yAxisLabels, yMax } = useMemo(() => { const dataMax = Math.max(...chartData, 1); const topValue = Math.ceil(dataMax / 5) * 5; const finalMax = Math.max(topValue, 5); const labels = []; for (let i = finalMax; i >= 0; i -= (finalMax / 4)) { labels.push(Math.round(i).toString()); } return { yAxisLabels: [...new Set(labels)], yMax: finalMax }; }, [chartData]);
     const getBarHeight = useCallback((value) => (yMax === 0 ? '0%' : `${Math.min((value / yMax) * 100, 100)}%`), [yMax]);
@@ -41,26 +41,38 @@ const WeeklyChart = ({ styles, chartData, totalDistance, averageDistance, dateRa
     const chartDayLabels = translation.dayNamesShort;
     const locale = I18nManager.isRTL ? 'ar-EG' : 'en-US';
 
-    const GoBackButton = (
-        <TouchableOpacity onPress={onPreviousWeek}>
-            <Icon name="chevron-back-outline" size={24} color={styles.chevron.color} />
-        </TouchableOpacity>
-    );
+    // --- بداية التعديل: منطق تحديد الأيقونات ---
+    let leftButtonIconName;
+    let rightButtonIconName;
 
-    const GoForwardButton = (
-        <TouchableOpacity onPress={onNextWeek} disabled={isNextWeekDisabled}>
-            <Icon name="chevron-forward-outline" size={24} color={isNextWeekDisabled ? styles.disabledChevron.color : styles.chevron.color} />
-        </TouchableOpacity>
-    );
+    if (language === 'ar') {
+        // في العربي: الزر الأيسر (السابق) يشير لليمين، والأيمن (القادم) يشير لليسار
+        leftButtonIconName = "chevron-forward-outline"; 
+        rightButtonIconName = "chevron-back-outline";   
+    } else {
+        // في الإنجليزي: العكس
+        leftButtonIconName = "chevron-back-outline";
+        rightButtonIconName = "chevron-forward-outline";
+    }
+    // --- نهاية التعديل ---
 
     return (
         <View style={styles.chartCard}>
             <View>
                 <View style={styles.dateNavigator}>
-                    { I18nManager.isRTL ? GoBackButton : GoForwardButton }
+                    {/* الزر الأيسر: الأسبوع السابق */}
+                    <TouchableOpacity onPress={onPreviousWeek}>
+                        <Icon name={leftButtonIconName} size={24} color={styles.chevron.color} />
+                    </TouchableOpacity>
+                    
                     <Text style={styles.dateText}>{dateRange}</Text>
-                    { I18nManager.isRTL ? GoForwardButton : GoBackButton }
+                    
+                    {/* الزر الأيمن: الأسبوع القادم */}
+                    <TouchableOpacity onPress={onNextWeek} disabled={isNextWeekDisabled}>
+                        <Icon name={rightButtonIconName} size={24} color={isNextWeekDisabled ? styles.disabledChevron.color : styles.chevron.color} />
+                    </TouchableOpacity>
                 </View>
+
                 <View style={styles.summaryContainer}>
                     <View style={styles.summaryBox}><Text style={styles.summaryValue}>{averageDistance.toLocaleString(locale, {maximumFractionDigits: 1})}</Text><Text style={styles.summaryLabel}>{translation.averageKm}</Text></View>
                     <View style={styles.summaryBox}><Text style={styles.summaryValue}>{totalDistance.toLocaleString(locale, {maximumFractionDigits: 1})}</Text><Text style={styles.summaryLabel}>{translation.totalKm}</Text></View>
@@ -182,10 +194,23 @@ const WeeklyDistance = ({ language = 'ar', isDarkMode = false }) => {
     return ( <View style={styles.safeArea}><ActivityIndicator size="large" color={theme.mainText} style={{ flex: 1 }} /></View> );
   }
 
-  return (
+return (
     <View style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.mainContainer}>
-        <WeeklyChart styles={styles} chartData={weeklyData.chartData} totalDistance={weeklyData.totalKm} averageDistance={weeklyData.averageKm} dateRange={weeklyData.dateRange} onPreviousWeek={handlePreviousWeek} onNextWeek={handleNextWeek} isNextWeekDisabled={weekOffset === 0} todayIndex={weeklyData.todayIndex} translation={translation} />
+        {/* التعديل هنا: أضفنا language={language} */}
+        <WeeklyChart 
+            styles={styles} 
+            chartData={weeklyData.chartData} 
+            totalDistance={weeklyData.totalKm} 
+            averageDistance={weeklyData.averageKm} 
+            dateRange={weeklyData.dateRange} 
+            onPreviousWeek={handlePreviousWeek} 
+            onNextWeek={handleNextWeek} 
+            isNextWeekDisabled={weekOffset === 0} 
+            todayIndex={weeklyData.todayIndex} 
+            translation={translation}
+            language={language} // <--- أضف هذا السطر
+        />
         <ActivitySummary styles={styles} totalKm={weeklyData.totalKm} totalSteps={weeklyData.totalSteps} totalCalories={weeklyData.totalCalories} totalHours={weeklyData.totalHours} trend={weeklyData.trend} mostActiveTime={weeklyData.mostActiveTime} translation={translation} />
       </ScrollView>
     </View>

@@ -1,7 +1,8 @@
-﻿// WeeklyCaloriesScreen.js (نسخة قابلة للتحكم عبر Props مع سلوك الأسهم المطلوب وإصلاح المشكلة الرسومية)
+﻿// WeeklyCaloriesScreen.js
+
 import React, { useState, useMemo, useCallback } from 'react';
 import {
-  View, // تم التغيير من SafeAreaView
+  View,
   Text, 
   StyleSheet, 
   ScrollView,
@@ -14,13 +15,13 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 
-// --- الثوابت المشتركة ---
+// --- الثوابت المشتركة (كما هي) ---
 const DAILY_STEPS_HISTORY_KEY = '@Steps:DailyHistory';
 const CALORIES_PER_STEP = 0.04;
 const STEP_LENGTH_METERS = 0.762;
 const STEPS_PER_MINUTE = 100;
 
-// --- كائن الترجمة (عربي وإنجليزي) ---
+// --- كائن الترجمة (كما هو) ---
 const translations = {
     ar: {
         headerTitle: "السعرات الأسبوعية",
@@ -60,7 +61,7 @@ const translations = {
     }
 };
 
-// --- دوال مساعدة معتمدة على اللغة ---
+// --- دوال مساعدة (كما هي) ---
 const getDateString = (date) => new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())).toISOString().slice(0, 10);
 const addDays = (date, days) => { const result = new Date(date); result.setDate(result.getDate() + days); return result; };
 const isSameDay = (d1, d2) => d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate();
@@ -90,12 +91,11 @@ const getStartOfWeek = (date, lang) => {
     return d;
 };
 
-
-// --- ألوان الوضع الفاتح والداكن ---
+// --- ألوان الوضع الفاتح والداكن (كما هي) ---
 const lightTheme = { safeArea: '#F7FDF9', cardBackground: '#FFFFFF', headerText: '#2e7d32', mainText: '#388e3c', secondaryText: '#757575', activeBar: '#81c784', todayBar: '#4caf50', selectedBar: '#2E7D32', todayText: '#000000', graphLine: '#eee', tooltipBg: '#333333', tooltipText: '#FFFFFF', separator: '#eee', icon: '#4caf50', iconCircleBg: 'rgba(76, 175, 80, 0.1)', arrowColor: '#2e7d32', arrowDisabled: '#a5d6a7' };
 const darkTheme = { safeArea: '#121212', cardBackground: '#1E1E1E', headerText: '#E0E0E0', mainText: '#80CBC4', secondaryText: '#A0A0A0', activeBar: '#00796B', todayBar: '#80CBC4', selectedBar: '#A7FFEB', todayText: '#FFFFFF', graphLine: '#333333', tooltipBg: '#E0E0E0', tooltipText: '#121212', separator: '#424242', icon: '#80CBC4', iconCircleBg: 'rgba(128, 203, 196, 0.1)', arrowColor: '#E0E0E0', arrowDisabled: '#555555' };
 
-// --- مكون الرسم البياني مع سلوك الأسهم المطلوب ---
+// --- مكون الرسم البياني (تم التعديل هنا) ---
 const WeeklyChart = ({ weeklyData, dateRange, styles, lang, onPrev, onNext, isNextDisabled, formatNumber, language }) => {
     const [selectedBarIndex, setSelectedBarIndex] = useState(null);
     const today = new Date();
@@ -107,22 +107,54 @@ const WeeklyChart = ({ weeklyData, dateRange, styles, lang, onPrev, onNext, isNe
     const activeDays = weeklyData.filter(d => d.calories > 0).length;
     const avgCalories = activeDays > 0 ? totalCalories / activeDays : 0;
     
+    // ==========================================================
+    // 1. منطق الأسهم (نفس فكرة الكود الثاني)
+    // ==========================================================
+    let leftButtonIconName;
+    let rightButtonIconName;
+
+    if (language === 'ar') {
+        // --- إعدادات العربي ---
+        // الزر الأيسر (السابق): أيقونة تشير لليمين (لأن الماضي يمين في بعض المفاهيم أو العكس حسب رغبتك)
+        leftButtonIconName = "chevron-forward-outline"; 
+        
+        // الزر الأيمن (التالي): أيقونة تشير لليسار
+        rightButtonIconName = "chevron-back-outline";    
+
+    } else {
+        // --- إعدادات الإنجليزي ---
+        // الزر الأيسر (Previous): سهم لليسار
+        leftButtonIconName = "chevron-back-outline";     
+
+        // الزر الأيمن (Next): سهم لليمين
+        rightButtonIconName = "chevron-forward-outline"; 
+    }
+
     return (
         <View style={styles.chartCard}>
-             {/* خاصية flexDirection في هذا النمط ستتحكم بالترتيب تلقائياً */}
+            {/* 
+               تم تعديل الـ dateNavigator في الـ styles بالأسفل ليكون دائماً 'row'
+               وهنا نقوم بترتيب الأزرار يدوياً: (زر أيسر - نص - زر أيمن)
+            */}
             <View style={styles.dateNavigator}>
-                {/* هذا الزر دائمًا ينتقل للأسبوع التالي (أقرب لليوم) ويستخدم أيقونة السهم الأيسر */}
-                <TouchableOpacity onPress={onNext} disabled={isNextDisabled}>
-                    <Icon name="chevron-back-outline" size={24} color={isNextDisabled ? styles.arrowDisabled.color : styles.arrowColor.color} />
+                
+                {/* الزر الموجود على اليسار (للأسبوع السابق) */}
+                <TouchableOpacity onPress={onPrev}>
+                    <Icon name={leftButtonIconName} size={24} color={styles.arrowColor.color} />
                 </TouchableOpacity>
 
                 <Text style={styles.dateText}>{dateRange}</Text>
 
-                {/* هذا الزر دائمًا يرجع للأسبوع السابق ويستخدم أيقونة السهم الأيمن */}
-                <TouchableOpacity onPress={onPrev}>
-                    <Icon name="chevron-forward-outline" size={24} color={styles.arrowColor.color} />
+                {/* الزر الموجود على اليمين (للأسبوع التالي) */}
+                <TouchableOpacity onPress={onNext} disabled={isNextDisabled}>
+                    <Icon 
+                        name={rightButtonIconName} 
+                        size={24} 
+                        color={isNextDisabled ? styles.arrowDisabled.color : styles.arrowColor.color} 
+                    />
                 </TouchableOpacity>
             </View>
+
             <View style={styles.summaryContainer}>
                 <View style={styles.summaryBox}><Text style={styles.summaryValue}>{formatNumber(Math.round(avgCalories), language)}</Text><Text style={styles.summaryLabel}>{lang.averageKcal}</Text></View>
                 <View style={styles.summaryBox}><Text style={styles.summaryValue}>{formatNumber(Math.round(totalCalories), language)}</Text><Text style={styles.summaryLabel}>{lang.totalKcal}</Text></View>
@@ -153,7 +185,7 @@ const WeeklyChart = ({ weeklyData, dateRange, styles, lang, onPrev, onNext, isNe
     );
 };
 
-// --- باقي المكونات (بدون تغيير) ---
+// --- باقي المكونات (كما هي) ---
 const StatRow = ({label, value, styles}) => ( <View style={styles.summaryStatRow}><Text style={styles.summaryStatValue}>{value}</Text><Text style={styles.summaryStatLabel}>{label}</Text></View> );
 const MetricBlock = ({iconName, value, unit, styles}) => ( <View style={styles.metricBlock}><View style={styles.metricIconCircle}><Icon name={iconName} size={28} color={styles.metricIconCircle.iconColor} /></View><Text style={styles.metricValue}>{value}</Text><Text style={styles.metricUnit}>{unit}</Text></View> );
 const ActivitySummary = ({ stats, styles, lang, formatNumber, language }) => {
@@ -250,7 +282,7 @@ const WeeklyCaloriesScreen = ({ language = 'ar', isDarkMode = false }) => {
     );
 };
 
-// --- الأنماط الديناميكية (مع التعديل على dateNavigator) ---
+// --- الأنماط الديناميكية (تم تعديل dateNavigator) ---
 const getStyles = (theme, language) => StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: theme.safeArea },
     headerContainer: { paddingVertical: 15, paddingHorizontal: 20, alignItems: language === 'ar' ? 'flex-end' : 'flex-start' },
@@ -259,31 +291,30 @@ const getStyles = (theme, language) => StyleSheet.create({
     centerSpinner: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     loadingText: { color: theme.secondaryText, marginTop: 10 },
     chartCard: { backgroundColor: theme.cardBackground, borderRadius: 20, marginBottom: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 5, elevation: 2, overflow: 'hidden' },
+    
+    // --- التعديل هنا: استخدام row دائماً للتحكم يدوياً ---
     dateNavigator: {
-        // هذا هو الجزء الأهم. الترتيب سيتغير تلقائيًا بناءً على اللغة
-        flexDirection: language === 'ar' ? 'row-reverse' : 'row',
+        flexDirection: 'row', // بدل row-reverse، نجعله دائماً row ونتحكم بالأيقونات
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 20,
         paddingTop: 20,
         paddingBottom: 15
     },
+
     dateText: { fontSize: 18, fontWeight: '600', color: theme.headerText, marginHorizontal: 10, flexShrink: 1, textAlign: 'center' },
     summaryContainer: { flexDirection: language === 'ar' ? 'row-reverse' : 'row', justifyContent: 'space-around', paddingVertical: 20 },
     summaryBox: { alignItems: 'center', flex: 1 },
     summaryValue: { fontSize: 32, fontWeight: 'bold', color: theme.mainText, fontVariant: ['tabular-nums'] },
     summaryLabel: { fontSize: 14, color: theme.secondaryText, marginTop: 4, textAlign: 'center' },
-    
-    // --- FIX IS HERE: FIXED HEIGHT ADDED ---
     graphContainer: { 
         flexDirection: language === 'ar' ? 'row-reverse' : 'row', 
         paddingHorizontal: 15, 
         paddingTop: 10, 
         paddingBottom: 10, 
-        height: 300, // <--- FIXED HEIGHT
+        height: 300, 
         alignItems: 'stretch'
     },
-    
     yAxis: { width: 35, justifyContent: 'space-between', paddingLeft: language === 'ar' ? 8 : 0, paddingRight: language === 'ar' ? 0 : 8, height: '100%', paddingBottom: 25, alignItems: language === 'ar' ? 'flex-start' : 'flex-end' },
     yAxisLabel: { fontSize: 11, color: theme.secondaryText, fontVariant: ['tabular-nums'] },
     barsAreaWrapper: { flex: 1, marginHorizontal: 5 },

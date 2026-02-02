@@ -1,8 +1,8 @@
-﻿// WeeklyTime.js (Fixed Layout & Infinite Scroll)
+﻿// WeeklyTime.js (نسخة معدلة للتحكم بالأسهم)
 
 import React, { useState, useMemo, useCallback } from 'react';
 import {
-  View, // Changed from SafeAreaView
+  View,
   Text,
   StyleSheet,
   ScrollView,
@@ -32,7 +32,7 @@ const translations = {
         stepsUnit: "خطوة",
         kmUnit: "كم",
         hoursUnit: "ساعات",
-        dayNamesShort: ['س', 'أ', 'ن', 'ث', 'ر', 'خ', 'ج'], // السبت, الأحد...
+        dayNamesShort: ['س', 'أ', 'ن', 'ث', 'ر', 'خ', 'ج'],
         loading: "جار التحميل..."
     },
     en: {
@@ -47,7 +47,7 @@ const translations = {
         stepsUnit: "Steps",
         kmUnit: "Km",
         hoursUnit: "Hours",
-        dayNamesShort: ['S', 'M', 'T', 'W', 'T', 'F', 'S'], // Sunday, Monday...
+        dayNamesShort: ['S', 'M', 'T', 'W', 'T', 'F', 'S'],
         loading: "Loading..."
     }
 };
@@ -78,7 +78,7 @@ const addDays = (date, days) => { const result = new Date(date); result.setDate(
 const getStartOfWeek = (date, startOfWeekDay = 6) => { const d = new Date(date); const day = d.getDay(); const diff = (day < startOfWeekDay) ? (day - startOfWeekDay + 7) : (day - startOfWeekDay); d.setDate(d.getDate() - diff); return d; };
 const isSameDay = (d1, d2) => d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate();
 
-// Sub-Components
+// --- Sub-Components (تم التعديل هنا NewMonthlyChart) ---
 const NewMonthlyChart = ({ styles, data, todayIndex, onNextWeek, onPrevWeek, weekDateRange, totalHours, avgHours, isNextButtonDisabled, translation, language }) => {
     const [selectedBarIndex, setSelectedBarIndex] = useState(null);
     const handleBarPress = (index) => setSelectedBarIndex(prev => prev === index ? null : index);
@@ -90,26 +90,49 @@ const NewMonthlyChart = ({ styles, data, todayIndex, onNextWeek, onPrevWeek, wee
     const yAxisLabels = useMemo(() => Array.from({ length: 5 }, (_, i) => (yAxisMax - (yAxisMax / 4) * i).toLocaleString(locale)), [yAxisMax, locale]);
     const getBarHeight = useCallback((value) => yAxisMax > 0 ? `${Math.min((value / yAxisMax) * 100, 100)}%` : '0%', [yAxisMax]);
 
-    const GoBackButton = (
-        <TouchableOpacity onPress={onPrevWeek}>
-            <Icon name="chevron-forward-outline" size={24} color={styles.chevron.color} />
-        </TouchableOpacity>
-    );
+    // ==========================================================
+    // منطق الأسهم (نفس الكود السابق)
+    // ==========================================================
+    let leftButtonIconName;
+    let rightButtonIconName;
 
-    const GoForwardButton = (
-        <TouchableOpacity onPress={onNextWeek} disabled={isNextButtonDisabled} activeOpacity={0.7}>
-            <Icon name="chevron-back-outline" size={24} color={isNextButtonDisabled ? styles.disabledChevron.color : styles.chevron.color} />
-        </TouchableOpacity>
-    );
+    if (language === 'ar') {
+        // --- إعدادات العربي ---
+        leftButtonIconName = "chevron-forward-outline"; // سهم يمين
+        rightButtonIconName = "chevron-back-outline";   // سهم يسار
+    } else {
+        // --- إعدادات الإنجليزي ---
+        leftButtonIconName = "chevron-back-outline";     // سهم يسار
+        rightButtonIconName = "chevron-forward-outline"; // سهم يمين
+    }
 
     return (
         <View style={styles.chartCard}>
             <View>
+                {/* 
+                    تم ترتيب العناصر هنا يدوياً:
+                    1. زر اليسار (السابق دائماً)
+                    2. التاريخ
+                    3. زر اليمين (التالي دائماً)
+                */}
                 <View style={styles.dateNavigator}>
-                  { language === 'ar' ? GoBackButton : GoForwardButton }
-                  <Text style={styles.dateText}>{weekDateRange.display}</Text>
-                  { language === 'ar' ? GoForwardButton : GoBackButton }
+                    {/* الزر الأيسر: للأسبوع السابق */}
+                    <TouchableOpacity onPress={onPrevWeek}>
+                        <Icon name={leftButtonIconName} size={24} color={styles.chevron.color} />
+                    </TouchableOpacity>
+
+                    <Text style={styles.dateText}>{weekDateRange.display}</Text>
+
+                    {/* الزر الأيمن: للأسبوع التالي */}
+                    <TouchableOpacity onPress={onNextWeek} disabled={isNextButtonDisabled} activeOpacity={0.7}>
+                        <Icon 
+                            name={rightButtonIconName} 
+                            size={24} 
+                            color={isNextButtonDisabled ? styles.disabledChevron.color : styles.chevron.color} 
+                        />
+                    </TouchableOpacity>
                 </View>
+
                 <View style={styles.summaryContainer}>
                   <View style={styles.summaryBox}><Text style={styles.summaryValue}>{avgHours}</Text><Text style={styles.summaryLabel}>{translation.avgLabel}</Text></View>
                   <View style={styles.summaryBox}><Text style={styles.summaryValue}>{totalHours}</Text><Text style={styles.summaryLabel}>{translation.totalLabel}</Text></View>
@@ -131,6 +154,8 @@ const NewMonthlyChart = ({ styles, data, todayIndex, onNextWeek, onPrevWeek, wee
         </View>
     );
 };
+
+// --- باقي المكونات (كما هي) ---
 const StatRow = ({label, value, styles}) => ( <View style={styles.summaryStatRow}><Text style={styles.summaryStatValue}>{value}</Text><Text style={styles.summaryStatLabel}>{label}</Text></View> );
 const MetricBlock = ({iconName, value, unit, styles}) => ( 
     <View style={styles.metricBlock}>
@@ -162,7 +187,7 @@ const ActivitySummary = ({ styles, totalCalories, trend, mostActiveTimeRange, to
 };
 
 // Main Component
-const WeeklyTime = ({ language, isDarkMode }) => {
+const WeeklyTime = ({ language = 'ar', isDarkMode = false }) => {
   const translation = useMemo(() => translations[language] || translations.en, [language]);
   const theme = useMemo(() => isDarkMode ? darkTheme : lightTheme, [isDarkMode]);
   const styles = useMemo(() => getStyles(theme, language === 'ar'), [theme, language]);
@@ -187,6 +212,20 @@ const WeeklyTime = ({ language, isDarkMode }) => {
       loadTimeHistory();
     }, [])
   );
+
+  const handleNextWeek = () => { 
+    // Logic for next week
+    const today = new Date();
+    const startOfCurrentSystemWeek = getStartOfWeek(today, startOfWeekDay);
+    const startOfViewedWeek = getStartOfWeek(currentDate, startOfWeekDay);
+    
+    // Prevent going to future weeks
+    if (getDateString(startOfViewedWeek) >= getDateString(startOfCurrentSystemWeek)) return;
+
+    setCurrentDate(prev => addDays(prev, 7)); 
+  };
+
+  const handlePreviousWeek = () => setCurrentDate(prev => addDays(prev, -7));
 
   const memoizedData = useMemo(() => {
     if (timeHistory === null) return null;
@@ -221,13 +260,6 @@ const WeeklyTime = ({ language, isDarkMode }) => {
     return { weeklyData, todayIndex, weekDateRange: { start: startOfWeek, end: endOfWeek, display: displayRange }, stats: { totalHours, avgHours, trend, mostActiveTimeRange, totalSteps, totalCalories, totalKm }, isNextButtonDisabled: isNextButtonDisabled, };
   }, [currentDate, timeHistory, startOfWeekDay, locale]);
 
-  const handlePreviousWeek = () => setCurrentDate(prev => addDays(prev, -7));
-  const handleNextWeek = () => { 
-    if (memoizedData && memoizedData.isNextButtonDisabled) return;
-    const nextWeekStart = addDays(currentDate, 7);
-    setCurrentDate(nextWeekStart); 
-  };
-  
   if (!memoizedData) { return ( <View style={styles.safeArea}><View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}><ActivityIndicator size="large" color={theme.mainText} /></View></View> ); }
   
   return (
@@ -266,7 +298,16 @@ const getStyles = (theme, isRTL) => StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: theme.safeArea },
     mainContainer: { padding: 15, paddingBottom: 50 },
     chartCard: { backgroundColor: theme.cardBackground, borderRadius: 20, marginBottom: 20, shadowColor: theme.shadowColor, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 5, elevation: 2, overflow: 'hidden' },
-    dateNavigator: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 15 },
+    
+    // --- التعديل هنا: استخدام row دائماً ---
+    dateNavigator: { 
+        flexDirection: 'row', // دائماً row
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        paddingHorizontal: 20, 
+        paddingVertical: 15 
+    },
+
     dateText: { fontSize: 18, fontWeight: '600', color: theme.headerTitle },
     chevron: { color: theme.chevron },
     disabledChevron: { color: theme.disabledChevron },
@@ -275,13 +316,12 @@ const getStyles = (theme, isRTL) => StyleSheet.create({
     summaryValue: { fontSize: 32, fontWeight: 'bold', color: theme.mainText, fontVariant: ['tabular-nums'] },
     summaryLabel: { fontSize: 14, color: theme.secondaryText, marginTop: 4, textAlign:'center' },
     
-    // --- FIX IS HERE: FIXED HEIGHT ADDED ---
     graphContainer: { 
         flexDirection: isRTL ? 'row-reverse' : 'row', 
         paddingHorizontal: 15, 
         paddingTop: 10, 
         paddingBottom: 10, 
-        height: 300,  // <--- FIXED HEIGHT
+        height: 300, 
         alignItems: 'stretch'
     },
     

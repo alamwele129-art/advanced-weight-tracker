@@ -1,6 +1,6 @@
 ﻿import React, { useState, useMemo } from 'react';
 import {
-    View, // تم التغيير من SafeAreaView
+    View,
     Text,
     StyleSheet,
     ScrollView,
@@ -147,6 +147,37 @@ const WeeklySteps = ({
     }, [isCurrentWeek, language]);
 
 
+    // ==========================================================
+    // إعدادات أيقونات الأسهم (Icon Controls)
+    // ==========================================================
+    let leftButtonIconName;  // اسم أيقونة الزر الأيسر
+    let rightButtonIconName; // اسم أيقونة الزر الأيمن
+
+    // التعديل الجديد: بنعتمد على المتغير language مباشرة عشان يضمن التغيير
+    if (language === 'ar') {
+        // -----------------------------------------------------------
+        // (1) منطقة تعديل العربي فقط
+        // -----------------------------------------------------------
+        
+        // ده الزرار اللي ع الشمال (عايزه يبقى باصص فين؟)
+        leftButtonIconName = "chevron-forward-outline";  
+        
+        // ده الزرار اللي ع اليمين (عايزه يبقى باصص فين؟)
+        rightButtonIconName = "chevron-back-outline";    
+
+    } else {
+        // -----------------------------------------------------------
+        // (2) منطقة تعديل الإنجليزي (English) فقط
+        // -----------------------------------------------------------
+
+        // ده الزرار اللي ع الشمال (Left Button)
+        leftButtonIconName = "chevron-back-outline";     
+
+        // ده الزرار اللي ع اليمين (Right Button)
+        rightButtonIconName = "chevron-forward-outline"; 
+    }
+
+
     if (isLoading) {
         return (
             <View style={styles.container}>
@@ -179,17 +210,27 @@ const WeeklySteps = ({
                 <View style={styles.chartCard}>
                     {/* Header Navigator */}
                     <View style={styles.dateNavigator}>
+                        
+                         {/* زر الأسبوع السابق (على اليسار) */}
                          <TouchableOpacity onPress={onPreviousWeek}>
-                            <Ionicons name={I18nManager.isRTL ? "chevron-back-outline" : "chevron-forward-outline"} size={26} color={theme.chevron} />
+                            <Ionicons 
+                                name={leftButtonIconName} // بياخد الاسم من المتغير اللي فوق
+                                size={26} 
+                                color={theme.chevron} 
+                            />
                         </TouchableOpacity>
 
                         <Text style={styles.dateText}>{formattedDateRange}</Text>
 
+                        {/* زر الأسبوع القادم (على اليمين) */}
                         <TouchableOpacity onPress={onNextWeek} disabled={isCurrentWeek}>
-                            <Ionicons name={I18nManager.isRTL ? "chevron-forward-outline" : "chevron-back-outline"} size={26} color={isCurrentWeek ? theme.disabledChevron : theme.chevron} />
+                            <Ionicons 
+                                name={rightButtonIconName} // بياخد الاسم من المتغير اللي فوق
+                                size={26} 
+                                color={isCurrentWeek ? theme.disabledChevron : theme.chevron} 
+                            />
                         </TouchableOpacity>
                     </View>
-
                     {/* Summary Boxes */}
                     <View style={styles.summaryContainer}>
                         <View style={styles.summaryBox}>

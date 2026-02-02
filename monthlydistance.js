@@ -1,8 +1,8 @@
-﻿// MonthlyDistance.js (Fixed Layout and Infinite Scroll Issue)
+﻿// MonthlyDistance.js (Fixed Layout and Infinite Scroll Issue & Arrow Logic)
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
-  View, // Changed from SafeAreaView
+  View,
   Text, 
   StyleSheet, 
   ScrollView, 
@@ -26,9 +26,9 @@ const DAILY_DISTANCE_HISTORY_KEY = '@DistanceScreen:DailyHistory';
 const getDateString = (date) => { if (!date || !(date instanceof Date)) return null; return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())).toISOString().slice(0, 10); };
 
 // =================================================================
-// Sub-components
+// Sub-components (تم التعديل هنا MonthlyChart)
 // =================================================================
-const MonthlyChart = ({ styles, weeklyAggregates, totalDistance, averageDistance, dateRange, onPreviousMonth, onNextMonth, isNextMonthDisabled, translation }) => {
+const MonthlyChart = ({ styles, weeklyAggregates, totalDistance, averageDistance, dateRange, onPreviousMonth, onNextMonth, isNextMonthDisabled, translation, language }) => {
     const [selectedBarIndex, setSelectedBarIndex] = useState(null);
     const locale = I18nManager.isRTL ? 'ar-EG' : 'en-US';
 
@@ -46,26 +46,47 @@ const MonthlyChart = ({ styles, weeklyAggregates, totalDistance, averageDistance
     const handleBarPress = (index) => setSelectedBarIndex(prev => prev === index ? null : index);
     const handleDismissTooltip = () => setSelectedBarIndex(null);
 
-    const GoBackButton = (
-        <TouchableOpacity onPress={onPreviousMonth}>
-            <Icon name="chevron-back-outline" size={24} color={styles.chevron.color} />
-        </TouchableOpacity>
-    );
+    // ==========================================================
+    // منطق الأسهم (التحكم الكامل)
+    // ==========================================================
+    let leftButtonIconName;
+    let rightButtonIconName;
 
-    const GoForwardButton = (
-        <TouchableOpacity onPress={onNextMonth} disabled={isNextMonthDisabled}>
-            <Icon name="chevron-forward-outline" size={24} color={isNextMonthDisabled ? styles.disabledChevron.color : styles.chevron.color} />
-        </TouchableOpacity>
-    );
+    if (language === 'ar') {
+        // --- إعدادات العربي ---
+        leftButtonIconName = "chevron-forward-outline"; // سهم يمين
+        rightButtonIconName = "chevron-back-outline";   // سهم يسار
+    } else {
+        // --- إعدادات الإنجليزي ---
+        leftButtonIconName = "chevron-back-outline";     // سهم يسار
+        rightButtonIconName = "chevron-forward-outline"; // سهم يمين
+    }
 
     return (
         <View style={styles.chartCard}>
             <View>
+                {/* 
+                    تم ترتيب العناصر يدوياً: (زر السابق - التاريخ - زر التالي)
+                    واستخدام المتغيرات للتحكم في شكل الأيقونة
+                */}
                 <View style={styles.dateNavigator}>
-                   { I18nManager.isRTL ? GoBackButton : GoForwardButton }
+                    {/* الزر الأيسر: للشهر السابق */}
+                    <TouchableOpacity onPress={onPreviousMonth}>
+                        <Icon name={leftButtonIconName} size={24} color={styles.chevron.color} />
+                    </TouchableOpacity>
+
                     <Text style={styles.dateText}>{dateRange}</Text>
-                   { I18nManager.isRTL ? GoForwardButton : GoBackButton }
+
+                    {/* الزر الأيمن: للشهر التالي */}
+                    <TouchableOpacity onPress={onNextMonth} disabled={isNextMonthDisabled}>
+                        <Icon 
+                            name={rightButtonIconName} 
+                            size={24} 
+                            color={isNextMonthDisabled ? styles.disabledChevron.color : styles.chevron.color} 
+                        />
+                    </TouchableOpacity>
                 </View>
+
                 <View style={styles.summaryContainer}>
                     <View style={styles.summaryBox}><Text style={styles.summaryValue}>{averageDistance.toLocaleString(locale, {maximumFractionDigits: 1})}</Text><Text style={styles.summaryLabel}>{translation.dailyAverage}</Text></View>
                     <View style={styles.summaryBox}><Text style={styles.summaryValue}>{totalDistance.toLocaleString(locale, {maximumFractionDigits: 1})}</Text><Text style={styles.summaryLabel}>{translation.totalKm}</Text></View>
@@ -192,8 +213,6 @@ const MonthlyDistance = ({ language = 'ar', isDarkMode = false }) => {
                 if (maxDistance > 0) { 
                     const mostActiveDayIndex = distances.indexOf(maxDistance); 
                     const mostActiveDate = new Date(Date.UTC(year, month, mostActiveDayIndex + 1)); 
-
-                    // --- FORMATTING LOGIC FOR MOST ACTIVE DAY ---
                     mostActiveTime = new Intl.DateTimeFormat(locale, { weekday: 'long', day: 'numeric', month: 'long' }).format(mostActiveDate);
                 }
                 
@@ -219,7 +238,19 @@ const MonthlyDistance = ({ language = 'ar', isDarkMode = false }) => {
   return ( 
     <View style={styles.safeArea}> 
         <ScrollView contentContainerStyle={styles.mainContainer}> 
-            <MonthlyChart styles={styles} weeklyAggregates={monthlyData.weeklyAggregates} totalDistance={monthlyData.totalKm} averageDistance={monthlyData.averageKm} dateRange={monthlyData.dateRange} onPreviousMonth={handlePreviousMonth} onNextMonth={handleNextMonth} isNextMonthDisabled={monthOffset === 0} translation={translation}/> 
+            {/* تم تمرير language هنا */}
+            <MonthlyChart 
+                styles={styles} 
+                weeklyAggregates={monthlyData.weeklyAggregates} 
+                totalDistance={monthlyData.totalKm} 
+                averageDistance={monthlyData.averageKm} 
+                dateRange={monthlyData.dateRange} 
+                onPreviousMonth={handlePreviousMonth} 
+                onNextMonth={handleNextMonth} 
+                isNextMonthDisabled={monthOffset === 0} 
+                translation={translation}
+                language={language} 
+            /> 
             <ActivitySummary styles={styles} totalKm={monthlyData.totalKm} totalSteps={monthlyData.totalSteps} totalCalories={monthlyData.totalCalories} totalHours={monthlyData.totalHours} trend={monthlyData.trend} mostActiveTime={monthlyData.mostActiveTime} translation={translation} /> 
         </ScrollView> 
     </View> 
@@ -233,7 +264,16 @@ const getStyles = (theme, isRTL) => StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: theme.safeArea },
     mainContainer: { padding: 15, paddingBottom: 50 },
     chartCard: { backgroundColor: theme.cardBackground, borderRadius: 20, marginBottom: 20, shadowColor: theme.shadowColor, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 5, elevation: 2, overflow: 'hidden' },
-    dateNavigator: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 15 },
+    
+    // --- التعديل هنا: استخدام row دائماً ---
+    dateNavigator: { 
+        flexDirection: 'row', // دائماً row
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        paddingHorizontal: 20, 
+        paddingVertical: 15 
+    },
+
     dateText: { fontSize: 18, fontWeight: '600', color: theme.headerTitle, fontVariant: ['tabular-nums'], textAlign: 'center' },
     chevron: { color: theme.chevron },
     disabledChevron: { color: theme.disabledChevron },
@@ -242,13 +282,12 @@ const getStyles = (theme, isRTL) => StyleSheet.create({
     summaryValue: { fontSize: 32, fontWeight: 'bold', color: theme.mainText, fontVariant: ['tabular-nums'] },
     summaryLabel: { fontSize: 14, color: theme.secondaryText, marginTop: 4, textAlign:'center' },
     
-    // --- FIX IS HERE: Fixed Height prevents infinite scrolling ---
     graphContainer: { 
         flexDirection: isRTL ? 'row-reverse' : 'row', 
         paddingHorizontal: 15, 
         paddingTop: 10, 
         paddingBottom: 10, 
-        height: 300, // Fixed height added here
+        height: 300, 
         alignItems: 'stretch'
     },
     

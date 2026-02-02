@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
-// --- Constants ---
+// --- Constants (كما هي) ---
 const STEPS_PER_MINUTE = 100;
 const CALORIES_PER_STEP = 0.04;
 const STEP_LENGTH_METERS = 0.762;
@@ -19,7 +19,7 @@ const TOOLTIP_WIDTH = 65;
 const TOOLTIP_POINTER_HEIGHT = 5;
 const TOOLTIP_VERTICAL_OFFSET = 3;
 
-// --- Theme Colors ---
+// --- Theme Colors (كما هي) ---
 const lightTheme = {
     backgroundColor: '#F7FDF9', cardBackgroundColor: '#FFFFFF', textColor: '#424242',
     primaryText: '#2e7d32', secondaryText: '#757575', accentColor: '#4caf50',
@@ -38,7 +38,7 @@ const darkTheme = {
     loadingColor: '#424242', disabledColor: '#424242', shadowColor: '#000',
 };
 
-// --- Translations ---
+// --- Translations (كما هي) ---
 const translations = {
     ar: {
         total: "الإجمالي", average: "متوسط", loading: "...", loadingCalculating: "جارٍ الحساب...",
@@ -74,7 +74,7 @@ const translations = {
     }
 };
 
-// --- Helper Functions ---
+// --- Helper Functions (كما هي) ---
 const formatNumber = (num, lang, options = {}) => {
     const locale = lang === 'ar' ? 'ar-EG' : 'en-US';
     if (typeof num !== 'number' || isNaN(num)) {
@@ -149,7 +149,6 @@ const MonthlySteps = ({
     const [selectedBarValue, setSelectedBarValue] = useState(null);
 
     useEffect(() => {
-        // --- تصحيح: إضافة تحقق إضافي للبيانات ---
         const hasData = Array.isArray(monthlyData) && monthlyData.length > 0;
         const totalCheck = hasData ? monthlyData.reduce((a, b) => a + b, 0) : 0;
         const dataAvailable = !isLoading && hasData && totalCheck >= 0;
@@ -319,19 +318,50 @@ const MonthlySteps = ({
         return `${periodText}, ${formatNumber(value, lang)} ${t.stepsUnit || (lang === 'ar' ? 'خطوة' : 'steps')}`;
     };
 
+    // ==========================================================
+    // منطق الأسهم (Icon Controls)
+    // ==========================================================
+    let leftButtonIconName;
+    let rightButtonIconName;
+
+    // استخدام MaterialCommunityIcons (chevron-left / chevron-right)
+    if (effectiveLang === 'ar') {
+        // --- إعدادات العربي ---
+        // الزر الأيسر (السابق) يشير لليمين في العربية
+        leftButtonIconName = "chevron-right"; 
+        // الزر الأيمن (التالي) يشير لليسار في العربية
+        rightButtonIconName = "chevron-left";    
+    } else {
+        // --- إعدادات الإنجليزي ---
+        // الزر الأيسر (Previous) يشير لليسار
+        leftButtonIconName = "chevron-left";     
+        // الزر الأيمن (Next) يشير لليمين
+        rightButtonIconName = "chevron-right"; 
+    }
+
     return (
          <ScrollView style={S.container} contentContainerStyle={S.contentContainer}>
             <View style={S.mainCardContainer}>
                 <View style={S.topSectionInsideCard}>
+                     {/* 
+                         تم تعديل dateNavigator هنا
+                         الترتيب: [زر السابق] - [النص] - [زر التالي]
+                         ويتم التحكم بالأيقونة ديناميكياً
+                     */}
                      <View style={S.dateNavigator}>
-                         <TouchableOpacity onPress={onNextMonth} disabled={isLoading || isCurrentMonth}>
-                            <Icon name="chevron-right" size={28} color={isLoading || isCurrentMonth ? theme.disabledColor : theme.secondaryText} />
-                         </TouchableOpacity>
-                         <Text style={S.dateText}>{displayDateRange}</Text>
+                         {/* الزر الأيسر: دائماً للأسبوع السابق */}
                          <TouchableOpacity onPress={onPreviousMonth} disabled={isLoading}>
-                            <Icon name="chevron-left" size={28} color={isLoading ? theme.disabledColor : theme.secondaryText} />
+                            <Icon name={leftButtonIconName} size={28} color={isLoading ? theme.disabledColor : theme.secondaryText} />
+                         </TouchableOpacity>
+
+                         <Text style={S.dateText}>{displayDateRange}</Text>
+
+                         {/* الزر الأيمن: دائماً للأسبوع التالي */}
+                         <TouchableOpacity onPress={onNextMonth} disabled={isLoading || isCurrentMonth}>
+                            <Icon name={rightButtonIconName} size={28} color={isLoading || isCurrentMonth ? theme.disabledColor : theme.secondaryText} />
                          </TouchableOpacity>
                      </View>
+
                      <View style={S.cardSeparator} />
                      <View style={S.summaryContainer}>
                         <View style={S.summaryBox}>
@@ -345,7 +375,6 @@ const MonthlySteps = ({
                      </View>
                 </View>
 
-                {/* --- FIX IS HERE: FIXED HEIGHT ADDED IN STYLES --- */}
                 <View style={S.graphContainerInsideCard}>
                     <View style={S.yAxis}>
                         {yAxisLabels.slice().reverse().map((label, index) =>
@@ -466,11 +495,16 @@ const styles = (theme) => StyleSheet.create({
         overflow: 'hidden',
     },
     topSectionInsideCard: {},
+    
+    // --- تعديل الستايل هنا: استخدام row دائماً ---
     dateNavigator: {
-        flexDirection: 'row',
-        justifyContent: 'space-between', alignItems: 'center',
-        paddingHorizontal: 20, paddingVertical: 15,
+        flexDirection: 'row', // بدل الاعتماد على RTL، نجعله row ونتحكم يدوياً
+        justifyContent: 'space-between', 
+        alignItems: 'center',
+        paddingHorizontal: 20, 
+        paddingVertical: 15,
     },
+
     dateText: {
         fontSize: 18, fontWeight: 'bold', color: theme.primaryText,
         fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
@@ -490,17 +524,14 @@ const styles = (theme) => StyleSheet.create({
         fontSize: 14, color: theme.secondaryText, marginTop: 4,
         fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
     },
-    
-    // --- IMPORTANT FIX: Fixed Height is applied here ---
     graphContainerInsideCard: {
-        flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row', // Ensures correct graph direction
+        flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row', 
         paddingHorizontal: 15, 
         paddingTop: 30, 
-        height: 300,  // <--- FIXED HEIGHT PREVENTS INFINITE SCROLL BUG
+        height: 300,  
         paddingBottom: 10,
         alignItems: 'stretch'
     },
-    
     yAxis: {
         justifyContent: 'space-between',
         alignItems: 'flex-end',
@@ -514,7 +545,7 @@ const styles = (theme) => StyleSheet.create({
     barsAreaWrapper: {
         flex: 1,
         marginLeft: 5,
-        height: '100%' // Ensure it takes the full fixed height
+        height: '100%' 
     },
     barsArea: {
         flex: 1, position: 'relative',

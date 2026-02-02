@@ -146,10 +146,10 @@ const calculateIconPositionOnPath = (angleDegrees) => {
     const angleRad = (angleDegrees * Math.PI) / 180; 
     const iconRadius = PATH_RADIUS; 
     
-    // معادلة ثابتة: موجب يعني يمين (مع العقارب)
+    // التعديل هنا: إزالة السالب (-) ليصبح التحرك يمينًا (مع عقارب الساعة)
     const xOffset = iconRadius * Math.sin(angleRad); 
     
-    // سالب يعني فوق
+    // Y يبقى كما هو بالسالب
     const yOffset = -iconRadius * Math.cos(angleRad); 
 
     const iconCenterX = CENTER_X + xOffset; 

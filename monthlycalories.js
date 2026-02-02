@@ -1,8 +1,8 @@
-﻿// MonthlyCaloriesScreen.js (Fixed Layout & Infinite Scroll)
+﻿// MonthlyCaloriesScreen.js (Fixed Layout & Arrow Logic)
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
-  View, // Changed from SafeAreaView
+  View,
   Text, 
   StyleSheet, 
   ScrollView,
@@ -99,7 +99,7 @@ const darkTheme = {
     calorieValueColor: '#80CBC4',
 };
 
-// --- المكونات الفرعية ---
+// --- المكونات الفرعية (تم التعديل هنا MonthlyChart) ---
 const MonthlyChart = ({ aggregatedData, dateRange, total, average, styles, lang, onPrev, onNext, isNextDisabled, formatNumber, language }) => {
     const [selectedBarIndex, setSelectedBarIndex] = useState(null);
     const MAX_CHART_VALUE = useMemo(() => Math.max(...aggregatedData.map(d => d.value), 400), [aggregatedData]);
@@ -107,35 +107,42 @@ const MonthlyChart = ({ aggregatedData, dateRange, total, average, styles, lang,
     const getBarHeight = useCallback((value) => `${Math.min((value / MAX_CHART_VALUE) * 100, 100)}%`, [MAX_CHART_VALUE]);
     const handleBarPress = (index) => setSelectedBarIndex(prev => prev === index ? null : index);
     
-    const PrevMonthButton = () => (
-        <TouchableOpacity onPress={onPrev}>
-            <Icon name="chevron-back-outline" size={24} color={styles.arrowColor.color} />
-        </TouchableOpacity>
-    );
+    // ==========================================================
+    // منطق الأسهم (التحكم الكامل)
+    // ==========================================================
+    let leftButtonIconName;
+    let rightButtonIconName;
 
-    const NextMonthButton = () => (
-        <TouchableOpacity onPress={onNext} disabled={isNextDisabled}>
-            <Icon name="chevron-forward-outline" size={24} color={isNextDisabled ? styles.arrowDisabled.color : styles.arrowColor.color} />
-        </TouchableOpacity>
-    );
+    if (language === 'ar') {
+        // --- إعدادات العربي ---
+        leftButtonIconName = "chevron-forward-outline"; // سهم يمين
+        rightButtonIconName = "chevron-back-outline";   // سهم يسار
+    } else {
+        // --- إعدادات الإنجليزي ---
+        leftButtonIconName = "chevron-back-outline";     // سهم يسار
+        rightButtonIconName = "chevron-forward-outline"; // سهم يمين
+    }
 
     return (
         <View style={styles.chartCard}>
             <View style={styles.dateNavigator}>
-                {language === 'ar' ? (
-                    <>
-                        <NextMonthButton />
-                        <Text style={styles.dateText}>{dateRange}</Text>
-                        <PrevMonthButton />
-                    </>
-                ) : (
-                    <>
-                        <NextMonthButton />
-                        <Text style={styles.dateText}>{dateRange}</Text>
-                        <PrevMonthButton />
-                    </>
-                )}
+                {/* الزر الأيسر: للشهر السابق */}
+                <TouchableOpacity onPress={onPrev}>
+                    <Icon name={leftButtonIconName} size={24} color={styles.arrowColor.color} />
+                </TouchableOpacity>
+
+                <Text style={styles.dateText}>{dateRange}</Text>
+
+                {/* الزر الأيمن: للشهر التالي */}
+                <TouchableOpacity onPress={onNext} disabled={isNextDisabled}>
+                    <Icon 
+                        name={rightButtonIconName} 
+                        size={24} 
+                        color={isNextDisabled ? styles.arrowDisabled.color : styles.arrowColor.color} 
+                    />
+                </TouchableOpacity>
             </View>
+
             <View style={styles.cardSeparator} />
             <View style={styles.summaryContainer}>
                 <View style={styles.summaryBox}><Text style={styles.summaryValue}>{formatNumber(Math.round(average), language)}</Text><Text style={styles.summaryLabel}>{lang.averageKcal}</Text></View>
@@ -191,7 +198,7 @@ const ActivitySummary = ({ stats, styles, lang, theme, formatNumber, language })
     </>
 );
 
-// --- المكون الرئيسي للصفحة (يقبل language و isDarkMode كـ props) ---
+// --- المكون الرئيسي للصفحة ---
 const MonthlyCaloriesScreen = ({ language = 'ar', isDarkMode = false }) => {
     
     const theme = useMemo(() => isDarkMode ? darkTheme : lightTheme, [isDarkMode]);
@@ -288,7 +295,6 @@ const MonthlyCaloriesScreen = ({ language = 'ar', isDarkMode = false }) => {
         return viewedMonth.getFullYear() === now.getFullYear() && viewedMonth.getMonth() === now.getMonth(); 
     }, [viewedMonth]);
     
-    // --- تعديل تنسيق التاريخ هنا ---
     const formattedDateRange = useMemo(() => {
         const year = viewedMonth.getFullYear();
         const month = viewedMonth.getMonth();
@@ -339,7 +345,7 @@ const MonthlyCaloriesScreen = ({ language = 'ar', isDarkMode = false }) => {
     );
 };
 
-// --- الأنماط الديناميكية (مع التعديل على dateNavigator) ---
+// --- الأنماط الديناميكية ---
 const getStyles = (theme, language) => StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: theme.safeArea },
     headerContainer: { paddingVertical: 15, paddingHorizontal: 20, alignItems: language === 'ar' ? 'flex-end' : 'flex-start' },
@@ -348,7 +354,16 @@ const getStyles = (theme, language) => StyleSheet.create({
     mainContainer: { padding: 15, paddingBottom: 50 },
     card: { backgroundColor: theme.cardBackground, borderRadius: 12, paddingHorizontal: 15, paddingVertical: 5, marginBottom: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 },
     chartCard: { backgroundColor: theme.cardBackground, borderRadius: 12, marginBottom: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 2, overflow: 'hidden' },
-    dateNavigator: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 15, paddingBottom: 10 },
+    
+    // --- التعديل هنا: استخدام row دائماً ---
+    dateNavigator: { 
+        flexDirection: 'row', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        padding: 15, 
+        paddingBottom: 10 
+    },
+
     dateText: { fontSize: 18, fontWeight: 'bold', color: theme.headerText },
     arrowColor: { color: theme.arrowColor },
     arrowDisabled: { color: theme.arrowDisabled },
@@ -358,13 +373,12 @@ const getStyles = (theme, language) => StyleSheet.create({
     summaryValue: { fontSize: 32, fontWeight: 'bold', color: theme.mainText, fontVariant: ['tabular-nums'] },
     summaryLabel: { fontSize: 14, color: theme.secondaryText, marginTop: 4, textAlign:'center' },
     
-    // --- FIX IS HERE: FIXED HEIGHT ADDED ---
     graphContainer: { 
         flexDirection: language === 'ar' ? 'row-reverse' : 'row', 
         paddingHorizontal: 15, 
         paddingTop: 10, 
         paddingBottom: 10, 
-        height: 300, // <--- FIXED HEIGHT
+        height: 300, 
         alignItems: 'stretch'
     },
     
