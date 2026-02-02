@@ -146,10 +146,10 @@ const calculateIconPositionOnPath = (angleDegrees) => {
     const angleRad = (angleDegrees * Math.PI) / 180; 
     const iconRadius = PATH_RADIUS; 
     
-    // التعديل هنا: إزالة السالب (-) ليصبح التحرك يمينًا (مع عقارب الساعة)
+    // معادلة ثابتة: موجب يعني يمين (مع العقارب)
     const xOffset = iconRadius * Math.sin(angleRad); 
     
-    // Y يبقى كما هو بالسالب
+    // سالب يعني فوق
     const yOffset = -iconRadius * Math.cos(angleRad); 
 
     const iconCenterX = CENTER_X + xOffset; 
@@ -363,7 +363,6 @@ const DayView = ({ goalHour, goalMinute, onOpenGoalModal, activeTimeForDate, cur
   useEffect(() => {
     const listenerId = animatedAngle.addListener(({ value }) => {
       setDynamicDotStyle(calculateIconPositionOnPath(value));
-      // استخدم 0.01 كبداية لتجنب مشاكل الرسم عند 0
       setProgressPathD(value > 0.01 ? describeArc(CENTER_X, CENTER_Y, PATH_RADIUS, 0.01, value) : '');
     });
     const timeListenerId = animatedTime.addListener(v => {
@@ -375,56 +374,101 @@ const DayView = ({ goalHour, goalMinute, onOpenGoalModal, activeTimeForDate, cur
     return () => { animatedAngle.removeListener(listenerId); animatedTime.removeListener(timeListenerId); };
   }, [animatedAngle, animatedTime]);
 
+  // **********************************************************
+  // هنا الفصل: تصميم خاص للعربي وتصميم خاص للإنجليزي
+  // **********************************************************
+
+  // ---- (1) التصميم العربي ----
+  if (language === 'ar') {
+    return (
+      <View style={currentStyles.dayViewContainer}>
+        <View style={[currentStyles.dayHeader, { flexDirection: 'row' }]}>
+          {/* زر السابق (يمين الشاشة في العربي) */}
+          <TouchableOpacity onPress={onPreviousDay}>
+            {/* غير الاسم هنا للتحكم في سهم السابق للعربي فقط: chevron-forward-outline (يمين) أو chevron-back-outline (يسار) */}
+            <Icon name="chevron-forward-outline" size={28} color={currentStyles.dayHeaderArrow.color} />
+          </TouchableOpacity>
+          
+          <Text style={currentStyles.dayHeaderTitle}>{formatDisplayDate(currentDate)}</Text>
+          
+          {/* زر التالي (يسار الشاشة في العربي) */}
+          <TouchableOpacity onPress={onNextDay} disabled={isViewingToday}>
+            {/* غير الاسم هنا للتحكم في سهم التالي للعربي فقط */}
+            <Icon name="chevron-back-outline" size={28} color={isViewingToday ? currentStyles.dayHeaderArrowDisabled.color : currentStyles.dayHeaderArrow.color} />
+          </TouchableOpacity>
+        </View>
+
+        {/* باقي محتوى الصفحة (الدائرة والإحصائيات) */}
+        {renderCircleContent(currentStyles, SVG_VIEWBOX_SIZE, CENTER_X, CENTER_Y, PATH_RADIUS, CIRCLE_BORDER_WIDTH, progressPathD, displayTimeText, onOpenGoalModal, goalHour, goalMinute, translation, dynamicDotStyle, calculatedSteps, calculatedCalories, calculatedDistanceKm, language)}
+      </View>
+    );
+  }
+
+  // ---- (2) التصميم الإنجليزي (وغيره) ----
   return (
     <View style={currentStyles.dayViewContainer}>
-<View style={[currentStyles.dayHeader, { flexDirection: language === 'ar' ? 'row-reverse' : 'row' }]}>
-  {/* زر اليوم السابق */}
-  <TouchableOpacity onPress={onPreviousDay}>
-    <Icon name={I18nManager.isRTL ? "chevron-forward-outline" : "chevron-back-outline"} size={28} color={currentStyles.dayHeaderArrow.color} />
-  </TouchableOpacity>
-  
-  <Text style={currentStyles.dayHeaderTitle}>{formatDisplayDate(currentDate)}</Text>
-  
-  {/* زر اليوم التالي */}
-  <TouchableOpacity onPress={onNextDay} disabled={isViewingToday}>
-    <Icon name={I18nManager.isRTL ? "chevron-back-outline" : "chevron-forward-outline"} size={28} color={isViewingToday ? currentStyles.dayHeaderArrowDisabled.color : currentStyles.dayHeaderArrow.color} />
-  </TouchableOpacity>
-</View>
-
-      {/* *** الهيكلية الجديدة للدائرة لتطابق صفحة المسافة *** */}
-      <View style={currentStyles.progressCircleContainer}>
-        <View style={currentStyles.circle}>
-          <Svg width={SVG_VIEWBOX_SIZE} height={SVG_VIEWBOX_SIZE} viewBox={`0 0 ${SVG_VIEWBOX_SIZE} ${SVG_VIEWBOX_SIZE}`}>
-            <Circle stroke={currentStyles.progressCircleBackground.stroke} fill="none" cx={CENTER_X} cy={CENTER_Y} r={PATH_RADIUS} strokeWidth={CIRCLE_BORDER_WIDTH} />
-            <Path d={progressPathD} stroke={currentStyles.progressCircleForeground.stroke} fill="none" strokeWidth={CIRCLE_BORDER_WIDTH} strokeLinecap="round" />
-          </Svg>
-          
-          {/* محتوى الدائرة (النص والأيقونة) - Overlay */}
-          <View style={currentStyles.circleContentOverlay}>
-            <MaterialIcon name="timer" size={30} color={currentStyles.timerIcon.color} />
-            <Text style={currentStyles.timerText}>{displayTimeText}</Text>
-            <TouchableOpacity style={currentStyles.goalContainer} onPress={onOpenGoalModal}>
-                <Text style={currentStyles.goalText}>{translation.goalPrefix}: {formatTime(goalHour)}:{formatTime(goalMinute)}</Text>
-                <MaterialIcon name="edit" size={16} color={currentStyles.goalText.color} style={{ [I18nManager.isRTL ? 'marginRight' : 'marginLeft']: 5 }} />
-            </TouchableOpacity>
-          </View>
-
-          {/* تم إزالة الشرط هنا لتظهر النقطة دائماً */}
-          <Animated.View style={dynamicDotStyle}>
-               <View style={[currentStyles.movingDot, { borderColor: currentStyles.container.backgroundColor }]} />
-          </Animated.View>
-          
-        </View>
+      <View style={[currentStyles.dayHeader, { flexDirection: 'row' }]}>
+        {/* Previous Button (Left side) */}
+        <TouchableOpacity onPress={onPreviousDay}>
+          <Icon name="chevron-back-outline" size={28} color={currentStyles.dayHeaderArrow.color} />
+        </TouchableOpacity>
+        
+        <Text style={currentStyles.dayHeaderTitle}>{formatDisplayDate(currentDate)}</Text>
+        
+        {/* Next Button (Right side) */}
+        <TouchableOpacity onPress={onNextDay} disabled={isViewingToday}>
+          <Icon name="chevron-forward-outline" size={28} color={isViewingToday ? currentStyles.dayHeaderArrowDisabled.color : currentStyles.dayHeaderArrow.color} />
+        </TouchableOpacity>
       </View>
 
-      <View style={currentStyles.statsContainer}>
-        <AnimatedStatItem icon={<FontAwesome5 name="walking" size={22} color={currentStyles.animatedStatIcon.color} />} value={calculatedSteps} label={translation.statSteps} formatter={(v, lang) => Math.round(v).toLocaleString(lang === 'ar' ? 'ar-EG' : 'en-US')} currentStyles={currentStyles} language={language} />
-        <AnimatedStatItem icon={<FontAwesome5 name="fire" size={22} color={currentStyles.animatedStatIcon.color} />} value={calculatedCalories} label={translation.statKcal} formatter={(v, lang) => v.toLocaleString(lang === 'ar' ? 'ar-EG' : 'en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} currentStyles={currentStyles} language={language} />
-        <AnimatedStatItem icon={<MaterialIcon name="location-pin" size={24} color={currentStyles.animatedStatIcon.color} />} value={calculatedDistanceKm} label={translation.statKm} formatter={(v, lang) => v.toLocaleString(lang === 'ar' ? 'ar-EG' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} currentStyles={currentStyles} language={language} />
-      </View>
+       {/* باقي محتوى الصفحة (الدائرة والإحصائيات) */}
+       {renderCircleContent(currentStyles, SVG_VIEWBOX_SIZE, CENTER_X, CENTER_Y, PATH_RADIUS, CIRCLE_BORDER_WIDTH, progressPathD, displayTimeText, onOpenGoalModal, goalHour, goalMinute, translation, dynamicDotStyle, calculatedSteps, calculatedCalories, calculatedDistanceKm, language)}
     </View>
   );
 };
+
+// دالة مساعدة لعدم تكرار كود الدائرة والإحصائيات مرتين
+const renderCircleContent = (currentStyles, SVG_VIEWBOX_SIZE, CENTER_X, CENTER_Y, PATH_RADIUS, CIRCLE_BORDER_WIDTH, progressPathD, displayTimeText, onOpenGoalModal, goalHour, goalMinute, translation, dynamicDotStyle, calculatedSteps, calculatedCalories, calculatedDistanceKm, language) => {
+    const formatTime = (num) => num.toString().padStart(2, '0');
+    return (
+        <>
+            <View style={currentStyles.progressCircleContainer}>
+                <View style={currentStyles.circle}>
+<Svg 
+    width={SVG_VIEWBOX_SIZE} 
+    height={SVG_VIEWBOX_SIZE} 
+    viewBox={`0 0 ${SVG_VIEWBOX_SIZE} ${SVG_VIEWBOX_SIZE}`}
+    // ثبتناها 1 عشان نمنع القلب
+    style={{ transform: [{ scaleX: 1 }] }}
+>
+    <Circle stroke={currentStyles.progressCircleBackground.stroke} fill="none" cx={CENTER_X} cy={CENTER_Y} r={PATH_RADIUS} strokeWidth={CIRCLE_BORDER_WIDTH} />
+    <Path d={progressPathD} stroke={currentStyles.progressCircleForeground.stroke} fill="none" strokeWidth={CIRCLE_BORDER_WIDTH} strokeLinecap="round" />
+</Svg>
+                
+                <View style={currentStyles.circleContentOverlay}>
+                    <MaterialIcon name="timer" size={30} color={currentStyles.timerIcon.color} />
+                    <Text style={currentStyles.timerText}>{displayTimeText}</Text>
+                    <TouchableOpacity style={currentStyles.goalContainer} onPress={onOpenGoalModal}>
+                        <Text style={currentStyles.goalText}>{translation.goalPrefix}: {formatTime(goalHour)}:{formatTime(goalMinute)}</Text>
+                        <MaterialIcon name="edit" size={16} color={currentStyles.goalText.color} style={{ [language === 'ar' ? 'marginRight' : 'marginLeft']: 5 }} />
+                    </TouchableOpacity>
+                </View>
+
+                <Animated.View style={dynamicDotStyle}>
+                    <View style={[currentStyles.movingDot, { borderColor: currentStyles.container.backgroundColor }]} />
+                </Animated.View>
+                
+                </View>
+            </View>
+
+            <View style={currentStyles.statsContainer}>
+                <AnimatedStatItem icon={<FontAwesome5 name="walking" size={22} color={currentStyles.animatedStatIcon.color} />} value={calculatedSteps} label={translation.statSteps} formatter={(v, lang) => Math.round(v).toLocaleString(lang === 'ar' ? 'ar-EG' : 'en-US')} currentStyles={currentStyles} language={language} />
+                <AnimatedStatItem icon={<FontAwesome5 name="fire" size={22} color={currentStyles.animatedStatIcon.color} />} value={calculatedCalories} label={translation.statKcal} formatter={(v, lang) => v.toLocaleString(lang === 'ar' ? 'ar-EG' : 'en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} currentStyles={currentStyles} language={language} />
+                <AnimatedStatItem icon={<MaterialIcon name="location-pin" size={24} color={currentStyles.animatedStatIcon.color} />} value={calculatedDistanceKm} label={translation.statKm} formatter={(v, lang) => v.toLocaleString(lang === 'ar' ? 'ar-EG' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} currentStyles={currentStyles} language={language} />
+            </View>
+        </>
+    );
+}
 
 const ChallengeCard = ({ onPress, currentChallengeDuration, remainingDays, currentStyles, translation, language }) => {
   const locale = language === 'ar' ? 'ar-EG' : 'en-US';
@@ -434,6 +478,40 @@ const ChallengeCard = ({ onPress, currentChallengeDuration, remainingDays, curre
   const subText = remainingDays > 0 ? `${remainingDays.toLocaleString(locale)} ${remainingDays === 1 ? translation.challengeRemainingSingular : translation.challengeRemainingPlural}` : translation.challengeCompleted;
   const mainText = `${currentChallengeDuration.toLocaleString(locale)} ${translation.challengePrefix}`;
   
+  // ---------------------------------------------------------
+  // (1) الجزء الخاص باللغة العربية فقط
+  // ---------------------------------------------------------
+  if (language === 'ar') {
+    return (
+      <TouchableOpacity style={currentStyles.challengeCardWrapper} activeOpacity={0.8} onPress={onPress}>
+        <View style={currentStyles.summaryCard}>
+          <View style={currentStyles.badgeContainer}>
+            <Svg height={BADGE_SVG_SIZE} width={BADGE_SVG_SIZE} viewBox={`0 0 ${BADGE_SVG_SIZE} ${BADGE_SVG_SIZE}`}>
+              <Circle cx={BADGE_CENTER_X} cy={BADGE_CENTER_Y} r={BADGE_PATH_RADIUS} stroke={currentStyles.badgeBackgroundCircle.stroke} strokeWidth={BADGE_CIRCLE_BORDER_WIDTH} fill="none" />
+              <Path d={badgeProgressPathD} stroke={currentStyles.badgeProgressCircle.stroke} strokeWidth={BADGE_CIRCLE_BORDER_WIDTH} fill="none" strokeLinecap="round" />
+            </Svg>
+            <View style={currentStyles.badgeTextContainer}>
+              <Text style={currentStyles.badgeText}>{remainingDays > 0 ? `${remainingDays.toLocaleString(locale)}${translation.challengeDaySuffix}` : '✓'}</Text>
+            </View>
+          </View>
+          <View style={currentStyles.summaryTextContainer}>
+            <Text style={currentStyles.summaryMainText}>{mainText}</Text>
+            <Text style={currentStyles.summarySubText}>{subText}</Text>
+          </View>
+          
+          {/* ---- تعديل السهم للعربي هنا ---- */}
+          {/* chevron-back = سهم لليسار (<) */}
+          {/* chevron-forward = سهم لليمين (>) */}
+          <Icon name="chevron-back" size={24} color={currentStyles.summaryChevron.color} />
+          
+        </View>
+      </TouchableOpacity>
+    );
+  }
+
+  // ---------------------------------------------------------
+  // (2) الجزء الخاص باللغة الإنجليزية (وباقي اللغات)
+  // ---------------------------------------------------------
   return (
     <TouchableOpacity style={currentStyles.challengeCardWrapper} activeOpacity={0.8} onPress={onPress}>
       <View style={currentStyles.summaryCard}>
@@ -450,7 +528,11 @@ const ChallengeCard = ({ onPress, currentChallengeDuration, remainingDays, curre
           <Text style={currentStyles.summaryMainText}>{mainText}</Text>
           <Text style={currentStyles.summarySubText}>{subText}</Text>
         </View>
-        <Icon name={I18nManager.isRTL ? "chevron-forward" : "chevron-forward"} size={24} color={currentStyles.summaryChevron.color} />
+
+        {/* ---- تعديل السهم للإنجليزي هنا ---- */}
+        {/* chevron-forward = سهم لليمين (>) */}
+        <Icon name="chevron-forward" size={24} color={currentStyles.summaryChevron.color} />
+
       </View>
     </TouchableOpacity>
   );
@@ -800,7 +882,16 @@ const lightStyles = StyleSheet.create({
 
   // *** أنماط الدائرة الجديدة (مثل كود المسافة) ***
   progressCircleContainer: { width: '100%', alignItems: 'center', marginVertical: 5, paddingBottom: 10, paddingHorizontal: 15 },
-  circle: { width: CIRCLE_SIZE, height: CIRCLE_SIZE, justifyContent: 'center', alignItems: 'center', position: 'relative' },
+circle: { 
+    width: CIRCLE_SIZE, 
+    height: CIRCLE_SIZE, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    position: 'relative',
+    
+    // ضيف السطر ده ضروري جداً
+    direction: 'ltr' 
+},
   progressCircleBackground: { stroke: '#e0f2f1' },
   progressCircleForeground: { stroke: '#4caf50' },
   circleContentOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', zIndex: 1, padding: CIRCLE_BORDER_WIDTH + 5 },

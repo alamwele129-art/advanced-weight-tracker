@@ -80,10 +80,10 @@ const calculateIconPositionOnPath = (angleDegrees) => {
     const angleRad = (angleDegrees * Math.PI) / 180; 
     const iconRadius = PATH_RADIUS; 
     
-    // التعديل هنا: إزالة السالب (-) ليصبح التحرك يمينًا (مع عقارب الساعة)
+    // معادلة ثابتة: موجب يعني يمين (مع العقارب)
     const xOffset = iconRadius * Math.sin(angleRad); 
     
-    // Y يبقى كما هو بالسالب
+    // سالب يعني فوق
     const yOffset = -iconRadius * Math.cos(angleRad); 
 
     const iconCenterX = CENTER_X + xOffset; 
@@ -103,7 +103,6 @@ const calculateIconPositionOnPath = (angleDegrees) => {
         alignItems: 'center' 
     }; 
 };
-
 
 const describeArc = (x, y, radius, startAngleDeg, endAngleDeg) => { const clampedEndAngle = Math.min(endAngleDeg, 359.999); const startAngleRad = ((startAngleDeg - 90) * Math.PI) / 180.0; const endAngleRad = ((clampedEndAngle - 90) * Math.PI) / 180.0; const startX = x + radius * Math.cos(startAngleRad); const startY = y + radius * Math.sin(startAngleRad); const endX = x + radius * Math.cos(endAngleRad); const endY = y + radius * Math.sin(endAngleRad); const largeArcFlag = clampedEndAngle - startAngleDeg <= 180 ? '0' : '1'; const sweepFlag = '1'; const d = [ 'M', startX, startY, 'A', radius, radius, 0, largeArcFlag, sweepFlag, endX, endY ].join(' '); return d; };
 
@@ -465,26 +464,62 @@ const CaloriesScreen = (props) => {
             <ScrollView contentContainerStyle={currentStyles.scrollViewContent} showsVerticalScrollIndicator={false} key={`${selectedPeriod}-${language}-${isDarkMode}`}>
                 {selectedPeriod === 'day' && (
                     <>
-<View style={currentStyles.dayHeader}>
-    <TouchableOpacity onPress={handleNextDay} disabled={isViewingToday}>
-        {/* تم تغيير الجزء الأخير ليكون forward بدلاً من back */}
-        <Ionicons name={I18nManager.isRTL ? "chevron-forward-outline" : "chevron-forward-outline"} size={28} color={isViewingToday ? currentStyles.dayHeaderArrowDisabled.color : currentStyles.dayHeaderArrow.color} />
-    </TouchableOpacity>
-    
-    <Text style={currentStyles.dayHeaderText}>{formatDisplayDate(currentDate)}</Text>
-    
-    <TouchableOpacity onPress={handlePreviousDay}>
-        {/* تم تغيير الجزء الأخير ليكون back بدلاً من forward */}
-        <Ionicons name={I18nManager.isRTL ? "chevron-back-outline" : "chevron-back-outline"} size={28} color={currentStyles.dayHeaderArrow.color} />
-    </TouchableOpacity>
-</View>
+{language === 'ar' ? (
+    // ============================================
+    // (1) ترتيب العربي (تقدر تبدل أماكن الزراير هنا براحتك)
+    // ============================================
+    <View style={[currentStyles.dayHeader, { flexDirection: 'row' }]}>
+        
+        {/* الزرار اللي هيظهر ع اليمين (عشان العربي بيبدأ من اليمين) */}
+        {/* خليناه هنا: زرار "السابق" وأيقونته باصة يمين */}
+        <TouchableOpacity onPress={handlePreviousDay}>
+            <Ionicons name="chevron-forward-outline" size={28} color={currentStyles.dayHeaderArrow.color} />
+        </TouchableOpacity>
+
+        <Text style={currentStyles.dayHeaderText}>{formatDisplayDate(currentDate)}</Text>
+
+        {/* الزرار اللي هيظهر ع الشمال */}
+        {/* خليناه هنا: زرار "التالي" وأيقونته باصة شمال */}
+        <TouchableOpacity onPress={handleNextDay} disabled={isViewingToday}>
+             <Ionicons name="chevron-back-outline" size={28} color={isViewingToday ? currentStyles.dayHeaderArrowDisabled.color : currentStyles.dayHeaderArrow.color} />
+        </TouchableOpacity>
+    </View>
+) : (
+    // ============================================
+    // (2) ترتيب الانجليزي (زي ما هو ماتغيرش)
+    // ============================================
+    <View style={[currentStyles.dayHeader, { flexDirection: 'row' }]}>
+        
+        {/* Left Button (Previous) */}
+        <TouchableOpacity onPress={handlePreviousDay}>
+            <Ionicons name="chevron-back-outline" size={28} color={currentStyles.dayHeaderArrow.color} />
+        </TouchableOpacity>
+
+        <Text style={currentStyles.dayHeaderText}>{formatDisplayDate(currentDate)}</Text>
+
+        {/* Right Button (Next) */}
+        <TouchableOpacity onPress={handleNextDay} disabled={isViewingToday}>
+             <Ionicons name="chevron-forward-outline" size={28} color={isViewingToday ? currentStyles.dayHeaderArrowDisabled.color : currentStyles.dayHeaderArrow.color} />
+        </TouchableOpacity>
+    </View>
+)}
+
+
 
                         <View style={currentStyles.mainDisplayArea}>
                             <View style={currentStyles.circle}>
-                                <Svg height={SVG_VIEWBOX_SIZE} width={SVG_VIEWBOX_SIZE} viewBox={`0 0 ${SVG_VIEWBOX_SIZE} ${SVG_VIEWBOX_SIZE}`}>
-                                    <SvgCircle cx={CENTER_X} cy={CENTER_Y} r={PATH_RADIUS} stroke={currentStyles.circleBackground.stroke} strokeWidth={CIRCLE_BORDER_WIDTH} fill="none" />
-                                    <Path d={progressPathD} stroke={currentStyles.circleProgress.stroke} strokeWidth={CIRCLE_BORDER_WIDTH} fill="none" strokeLinecap="round" />
-                                </Svg>
+                                <Svg 
+    height={SVG_VIEWBOX_SIZE} 
+    width={SVG_VIEWBOX_SIZE} 
+    viewBox={`0 0 ${SVG_VIEWBOX_SIZE} ${SVG_VIEWBOX_SIZE}`}
+    // ثبتناها 1 عشان نمنع القلب
+    style={{ transform: [{ scaleX: 1 }] }}
+>
+    <SvgCircle cx={CENTER_X} cy={CENTER_Y} r={PATH_RADIUS} stroke={currentStyles.circleBackground.stroke} strokeWidth={CIRCLE_BORDER_WIDTH} fill="none" />
+    <Path d={progressPathD} stroke={currentStyles.circleProgress.stroke} strokeWidth={CIRCLE_BORDER_WIDTH} fill="none" strokeLinecap="round" />
+</Svg>
+
+
                                 
                                 <View style={currentStyles.circleContentOverlay}>
                                     <MaterialCommunityIcon name="fire" size={40} color={currentStyles.mainIcon.color} />
@@ -524,7 +559,12 @@ const CaloriesScreen = (props) => {
                                     <Text style={currentStyles.summaryMainText}>{`${currentChallengeDuration.toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US')} ${translation.challengePrefix}`}</Text>
                                     <Text style={currentStyles.summarySubText}>{remainingDays > 0 ? `${remainingDays.toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US')} ${remainingDays === 1 ? translation.challengeRemainingSingular : translation.challengeRemainingPlural}` : translation.challengeCompleted}</Text>
                                 </View>
-                                <Ionicons name={I18nManager.isRTL ? "chevron-forward" : "chevron-forward"} size={24} color={currentStyles.summaryChevron.color} />
+                                <Ionicons 
+    name={language === 'ar' ? "chevron-back" : "chevron-forward"} 
+    size={24} 
+    color={currentStyles.summaryChevron.color} 
+/>
+
                             </View>
                         </TouchableOpacity>
                         
@@ -633,7 +673,16 @@ const lightStyles = StyleSheet.create({
     dayHeaderArrow: { color: '#2e7d32' },
     dayHeaderArrowDisabled: { color: '#a5d6a7' },
 
-    circle: { width: CIRCLE_SIZE, height: CIRCLE_SIZE, justifyContent: 'center', alignItems: 'center', position: 'relative' },
+circle: { 
+    width: CIRCLE_SIZE, 
+    height: CIRCLE_SIZE, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    position: 'relative',
+    
+    // ضيف السطر ده.. ده اللي بيعزل المربع ده عن العربي
+    direction: 'ltr' 
+},
     circleBackground: { stroke: "#e0f2f1" },
     circleProgress: { stroke: "#4caf50" }, 
     movingDot: { width: ICON_SIZE, height: ICON_SIZE, borderRadius: ICON_SIZE / 2, backgroundColor: '#4caf50', borderWidth: 2, },

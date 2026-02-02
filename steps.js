@@ -87,17 +87,28 @@ const calculateIconPositionOnPath = (angleDegrees) => {
     const angleRad = (angleDegrees * Math.PI) / 180; 
     const iconRadius = PATH_RADIUS; 
     
-    // التعديل هنا: إزالة علامة السالب (-) ليصبح التحرك يمينًا (مع عقارب الساعة)
+    // معادلة ثابتة بدون شروط وبدون ضرب في سالب
+    // ده معناه: كل ما الزاوية تزيد، امشي ناحية اليمين
     const xOffset = iconRadius * Math.sin(angleRad); 
     
-    // Y يبقى كما هو (بالسالب لكي يبدأ من الأعلى)
     const yOffset = -iconRadius * Math.cos(angleRad); 
-    
+
     const iconCenterX = CENTER_X + xOffset; 
     const iconCenterY = CENTER_Y + yOffset; 
+
     const top = iconCenterY - (ICON_SIZE / 2); 
     const left = iconCenterX - (ICON_SIZE / 2); 
-    return { position: 'absolute', width: ICON_SIZE, height: ICON_SIZE, top, left, zIndex: 10, justifyContent: 'center', alignItems: 'center' }; 
+
+    return { 
+        position: 'absolute', 
+        width: ICON_SIZE, 
+        height: ICON_SIZE, 
+        top, 
+        left, 
+        zIndex: 10, 
+        justifyContent: 'center', 
+        alignItems: 'center' 
+    }; 
 };
 
 
@@ -239,6 +250,75 @@ const DailyStepsChart = React.memo(({ dailySteps = [], goalSteps = DEFAULT_GOAL,
         </Pressable>
     );
 });
+
+// --- المكوّن الجديد المنفصل ---
+const ChallengeCard = ({ onPress, currentChallengeDuration, remainingDays, translation, styles, language }) => {
+    const locale = language === 'ar' ? 'ar-EG' : 'en-US';
+    
+    // حساب زاوية الدائرة
+    const badgeProgressAngle = React.useMemo(() => { 
+        if (remainingDays <= 0 || currentChallengeDuration <= 0) return 359.999; 
+        if (remainingDays >= currentChallengeDuration) return 0; 
+        const daysCompleted = currentChallengeDuration - remainingDays; 
+        const angle = (daysCompleted / currentChallengeDuration) * 360; 
+        return Math.min(359.999, Math.max(0.01, angle || 0)); 
+    }, [remainingDays, currentChallengeDuration]);
+
+    const badgeProgressPathD = React.useMemo(() => (badgeProgressAngle > 0.1 ? describeArc(BADGE_CENTER_X, BADGE_CENTER_Y, BADGE_PATH_RADIUS, 0.01, badgeProgressAngle) : ''), [badgeProgressAngle]);
+
+    const mainText = `${currentChallengeDuration.toLocaleString(locale)} ${translation.challengePrefix}`;
+    const subText = remainingDays > 0 ? `${remainingDays.toLocaleString(locale)} ${remainingDays === 1 ? translation.challengeRemainingSingular : translation.challengeRemainingPlural}` : translation.challengeCompleted;
+
+    // --- (1) الجزء الخاص باللغة العربية ---
+    if (language === 'ar') {
+        return (
+            <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
+                <View style={styles.summaryCard}>
+                    <View style={styles.badgeContainer}>
+                        <Svg height={BADGE_SVG_SIZE} width={BADGE_SVG_SIZE} viewBox={`0 0 ${BADGE_SVG_SIZE} ${BADGE_SVG_SIZE}`}>
+                            <SvgCircle cx={BADGE_CENTER_X} cy={BADGE_CENTER_Y} r={BADGE_PATH_RADIUS} stroke={styles.badgeBackgroundCircle.stroke} strokeWidth={BADGE_CIRCLE_BORDER_WIDTH} fill="none" />
+                            <Path d={badgeProgressPathD} stroke={styles.badgeProgressCircle.stroke} strokeWidth={BADGE_CIRCLE_BORDER_WIDTH} fill="none" strokeLinecap="round" />
+                        </Svg>
+                        <View style={styles.badgeTextContainer}>
+                            <Text style={styles.badgeText}>{remainingDays > 0 ? `${remainingDays.toLocaleString(locale)}${translation.challengeDaySuffix}` : '✓'}</Text>
+                        </View>
+                    </View>
+                    <View style={styles.summaryTextContainer}>
+                        <Text style={styles.summaryMainText}>{mainText}</Text>
+                        <Text style={styles.summarySubText}>{subText}</Text>
+                    </View>
+                    
+                    {/* تعديل السهم للعربي هنا: chevron-back = سهم لليسار */}
+                    <Ionicons name="chevron-back" size={24} color={styles.summaryChevron.color} />
+                </View>
+            </TouchableOpacity>
+        );
+    }
+
+    // --- (2) الجزء الخاص باللغة الإنجليزية ---
+    return (
+        <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
+            <View style={styles.summaryCard}>
+                <View style={styles.badgeContainer}>
+                    <Svg height={BADGE_SVG_SIZE} width={BADGE_SVG_SIZE} viewBox={`0 0 ${BADGE_SVG_SIZE} ${BADGE_SVG_SIZE}`}>
+                        <SvgCircle cx={BADGE_CENTER_X} cy={BADGE_CENTER_Y} r={BADGE_PATH_RADIUS} stroke={styles.badgeBackgroundCircle.stroke} strokeWidth={BADGE_CIRCLE_BORDER_WIDTH} fill="none" />
+                        <Path d={badgeProgressPathD} stroke={styles.badgeProgressCircle.stroke} strokeWidth={BADGE_CIRCLE_BORDER_WIDTH} fill="none" strokeLinecap="round" />
+                    </Svg>
+                    <View style={styles.badgeTextContainer}>
+                        <Text style={styles.badgeText}>{remainingDays > 0 ? `${remainingDays.toLocaleString(locale)}${translation.challengeDaySuffix}` : '✓'}</Text>
+                    </View>
+                </View>
+                <View style={styles.summaryTextContainer}>
+                    <Text style={styles.summaryMainText}>{mainText}</Text>
+                    <Text style={styles.summarySubText}>{subText}</Text>
+                </View>
+
+                {/* تعديل السهم للإنجليزي هنا: chevron-forward = سهم لليمين */}
+                <Ionicons name="chevron-forward" size={24} color={styles.summaryChevron.color} />
+            </View>
+        </TouchableOpacity>
+    );
+};
 
 const StepsScreen = (props) => {
     const { 
@@ -388,9 +468,6 @@ const StepsScreen = (props) => {
         loadInitialData(); 
     }, [getStoredStepsHistory]);
 
-    // ============================================================
-    // 👇👇👇 الكود الذي تم إضافته لإصلاح مشكلة الرسم البياني الشهري 👇👇👇
-    // ============================================================
     
     // مراقبة تغيير حالة الشهر الحالي
     useEffect(() => {
@@ -409,7 +486,7 @@ const StepsScreen = (props) => {
         const fetchPeriodData = async () => {
             const history = await getStoredStepsHistory();
             const todayStr = getDateString(new Date());
-            history[todayStr] = currentSteps; // التأكد من وجود خطوات اليوم الحالية في السجل المؤقت
+            history[todayStr] = currentSteps; 
 
             // --- التعامل مع بيانات الشهر ---
             if (selectedPeriod === 'month') {
@@ -449,7 +526,7 @@ const StepsScreen = (props) => {
                 }
             }
 
-            // --- التعامل مع بيانات الأسبوع (للتأكد) ---
+            // --- التعامل مع بيانات الأسبوع ---
             if (selectedPeriod === 'week') {
                 setIsWeeklyLoading(true);
                 try {
@@ -481,9 +558,6 @@ const StepsScreen = (props) => {
 
         fetchPeriodData();
     }, [selectedPeriod, selectedMonthStart, selectedWeekStart, getStoredStepsHistory, language, currentSteps]);
-    // ============================================================
-    // 👆👆👆 نهاية الكود المضاف 👆👆👆
-    // ============================================================
 
     const animateDisplaySteps = useCallback((startValue, endValue) => { 
         if (startValue === endValue || isNaN(startValue) || isNaN(endValue)) { 
@@ -556,9 +630,6 @@ const StepsScreen = (props) => {
         const distance = distanceKm.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); 
         return { formattedDuration: duration, formattedCalories: calories, formattedDistance: distance }; 
     }, [stepsForSelectedDay, language, goalSteps]);
-
-    const badgeProgressAngle = useMemo(() => { if (remainingDays <= 0 || currentChallengeDuration <= 0) return 359.999; if (remainingDays >= currentChallengeDuration) return 0; const daysCompleted = currentChallengeDuration - remainingDays; const angle = (daysCompleted / currentChallengeDuration) * 360; return Math.min(359.999, Math.max(0.01, angle || 0)); }, [remainingDays, currentChallengeDuration]);
-    const badgeProgressPathD = useMemo(() => (badgeProgressAngle > 0.1 ? describeArc(BADGE_CENTER_X, BADGE_CENTER_Y, BADGE_PATH_RADIUS, 0.01, badgeProgressAngle) : ''), [badgeProgressAngle]);
     
     const formattedWeekRange = useMemo(() => { const endDate = getEndOfWeek(selectedWeekStart, startOfWeekDay); return formatDateRange(selectedWeekStart, endDate, language); }, [selectedWeekStart, startOfWeekDay, language]);
     const weeklyStats = useMemo(() => { const calculateWeekMetrics = (weekDataArray) => { if (!Array.isArray(weekDataArray) || weekDataArray.length === 0) { return { total: 0, avg: 0, rawMinutes: 0, rawCals: 0, rawDist: 0, durationStr: language === 'ar' ? "٠٠:٠٠" : "00:00", calsStr: language === 'ar' ? "٠٫٠" : "0.0", distStr: language === 'ar' ? "٠٫٠٠" : "0.00" }; } const locale = language === 'ar' ? 'ar-EG' : 'en-US'; const validDaysData = weekDataArray.filter(s => typeof s === 'number' && s >= 0); const total = validDaysData.reduce((sum, steps) => sum + steps, 0); const daysWithData = validDaysData.length; const avg = daysWithData > 0 ? total / daysWithData : 0; const rawMinutes = total / STEPS_PER_MINUTE; const rawCals = total * CALORIES_PER_STEP; const rawDist = total * STEP_LENGTH_METERS / 1000; const hours = Math.floor(rawMinutes / 60); const mins = Math.floor(rawMinutes % 60); const durationStr = `${hours.toLocaleString(locale, { minimumIntegerDigits: 2 })}:${mins.toLocaleString(locale, { minimumIntegerDigits: 2 })}`; const calsStr = rawCals.toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }); const distStr = rawDist.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); return { total, avg: Math.round(avg), rawMinutes, rawCals, rawDist, durationStr, calsStr, distStr }; }; const currentMetrics = calculateWeekMetrics(actualWeekData); const previousMetrics = calculateWeekMetrics(previousWeekForComparisonData); const locale = language === 'ar' ? 'ar-EG' : 'en-US'; const stepsDiff = currentMetrics.total - previousMetrics.total; const stepsChangeStr = `${stepsDiff >= 0 ? '+' : '−'}${Math.abs(stepsDiff).toLocaleString(locale)}`; return { totalSteps: currentMetrics.total, averageSteps: currentMetrics.avg, weeklyDuration: currentMetrics.durationStr, weeklyCalories: currentMetrics.calsStr, weeklyDistance: currentMetrics.distStr, stepsChange: stepsChangeStr, }; }, [actualWeekData, previousWeekForComparisonData, language]);
@@ -684,27 +755,27 @@ const StepsScreen = (props) => {
              <ScrollView contentContainerStyle={currentStyles.scrollViewContent} showsVerticalScrollIndicator={false} key={`${selectedPeriod}-${language}-${isDarkMode}-${startOfWeekDay}`} >
                  {selectedPeriod === 'day' && (
                      <>
-                        <View style={[currentStyles.dayHeader, { flexDirection: language === 'ar' ? 'row-reverse' : 'row' }]}>
-    {/* زر اليوم السابق */}
-    <TouchableOpacity onPress={handlePreviousDay}>
-        <Ionicons 
-            name={language === 'ar' ? "chevron-forward-outline" : "chevron-back-outline"} 
-            size={28} 
-            color={currentStyles.dayHeaderArrow.color} 
-        />
-    </TouchableOpacity>
-    
-    <Text style={currentStyles.dayHeaderText}>{dayLabel}</Text>
-    
-    {/* زر اليوم التالي */}
-    <TouchableOpacity onPress={handleNextDay} disabled={isViewingToday}>
-        <Ionicons 
-            name={language === 'ar' ? "chevron-back-outline" : "chevron-forward-outline"} 
-            size={28} 
-            color={isViewingToday ? currentStyles.dayHeaderArrowDisabled.color : currentStyles.dayHeaderArrow.color} 
-        />
-    </TouchableOpacity>
-</View>
+                        <View style={[currentStyles.dayHeader, { flexDirection: language === 'ar' ? 'row' : 'row' }]}>
+                            {/* زر اليوم السابق */}
+                            <TouchableOpacity onPress={handlePreviousDay}>
+                                <Ionicons 
+                                    name={language === 'ar' ? "chevron-forward-outline" : "chevron-back-outline"} 
+                                    size={28} 
+                                    color={currentStyles.dayHeaderArrow.color} 
+                                />
+                            </TouchableOpacity>
+                            
+                            <Text style={currentStyles.dayHeaderText}>{dayLabel}</Text>
+                            
+                            {/* زر اليوم التالي */}
+                            <TouchableOpacity onPress={handleNextDay} disabled={isViewingToday}>
+                                <Ionicons 
+                                    name={language === 'ar' ? "chevron-back-outline" : "chevron-forward-outline"} 
+                                    size={28} 
+                                    color={isViewingToday ? currentStyles.dayHeaderArrowDisabled.color : currentStyles.dayHeaderArrow.color} 
+                                />
+                            </TouchableOpacity>
+                        </View>
 
                         {isLoading && isViewingToday ? (
                             <View style={[currentStyles.mainDisplayArea, { height: CIRCLE_SIZE, justifyContent: 'center', alignItems: 'center'}]}>
@@ -713,7 +784,16 @@ const StepsScreen = (props) => {
                         ) : (
                             <View style={currentStyles.mainDisplayArea}>
                                 <View style={currentStyles.circle}>
-                                    <Svg height={SVG_VIEWBOX_SIZE} width={SVG_VIEWBOX_SIZE} viewBox={`0 0 ${SVG_VIEWBOX_SIZE} ${SVG_VIEWBOX_SIZE}`}>
+                                    <Svg 
+    width={SVG_VIEWBOX_SIZE} 
+    height={SVG_VIEWBOX_SIZE} 
+    viewBox={`0 0 ${SVG_VIEWBOX_SIZE} ${SVG_VIEWBOX_SIZE}`}
+    // ثبتها 1 عشان تمنع القلب في العربي
+    style={{ transform: [{ scaleX: 1 }] }}
+>
+
+
+
                                         <SvgCircle cx={CENTER_X} cy={CENTER_Y} r={PATH_RADIUS} stroke={currentStyles.circleBackground.stroke} strokeWidth={CIRCLE_BORDER_WIDTH} fill="none"/>
                                         <Path d={progressPathD} stroke={currentStyles.circleProgress.stroke} strokeWidth={CIRCLE_BORDER_WIDTH} fill="none" strokeLinecap="round"/>
                                     </Svg>
@@ -743,24 +823,16 @@ const StepsScreen = (props) => {
                             <StatItem type="calories" value={formattedCalories} unit={translation.caloriesUnit} isDarkMode={isDarkMode} styles={currentStyles} />
                             <StatItem type="time" value={formattedDuration} unit={translation.durationUnit} isDarkMode={isDarkMode} styles={currentStyles} />
                         </View>
-                        <TouchableOpacity onPress={navigateToAchievements} activeOpacity={0.8} >
-                            <View style={currentStyles.summaryCard}>
-                                <View style={currentStyles.badgeContainer}>
-                                    <Svg height={BADGE_SVG_SIZE} width={BADGE_SVG_SIZE} viewBox={`0 0 ${BADGE_SVG_SIZE} ${BADGE_SVG_SIZE}`}>
-                                        <SvgCircle cx={BADGE_CENTER_X} cy={BADGE_CENTER_Y} r={BADGE_PATH_RADIUS} stroke={currentStyles.badgeBackgroundCircle.stroke} strokeWidth={BADGE_CIRCLE_BORDER_WIDTH} fill="none" />
-                                        <Path d={badgeProgressPathD} stroke={currentStyles.badgeProgressCircle.stroke} strokeWidth={BADGE_CIRCLE_BORDER_WIDTH} fill="none" strokeLinecap="round" />
-                                    </Svg>
-                                    <View style={currentStyles.badgeTextContainer}>
-                                        <Text style={currentStyles.badgeText}>{remainingDays > 0 ? `${remainingDays.toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US')}${translation.challengeDaySuffix}` : '✓'}</Text>
-                                    </View>
-                                </View>
-                                <View style={currentStyles.summaryTextContainer}>
-                                    <Text style={currentStyles.summaryMainText}>{`${currentChallengeDuration.toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US')} ${translation.challengePrefix}`}</Text>
-                                    <Text style={currentStyles.summarySubText}>{remainingDays > 0 ? `${remainingDays.toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US')} ${remainingDays === 1 ? translation.challengeRemainingSingular : translation.challengeRemainingPlural}` : translation.challengeCompleted}</Text>
-                                </View>
-                               <Ionicons name={I18nManager.isRTL ? "chevron-forward" : "chevron-forward"} size={24} color={currentStyles.summaryChevron.color} />
-                            </View>
-                        </TouchableOpacity>
+
+                        {/* --- تم استبدال الكود القديم بالمكون الجديد هنا --- */}
+                        <ChallengeCard 
+                            onPress={navigateToAchievements} 
+                            currentChallengeDuration={currentChallengeDuration} 
+                            remainingDays={remainingDays} 
+                            translation={translation} 
+                            styles={currentStyles} 
+                            language={language} 
+                        />
                         
                         <DailyStepsChart dailySteps={dailyChartDataForDisplay} goalSteps={goalSteps} styles={currentStyles} language={language} dayNames={chartDayNamesForDayTab} translation={translation} />
                      </>
@@ -850,7 +922,16 @@ const lightStyles = StyleSheet.create({
     dayHeaderArrow: { color: '#2e7d32' }, 
     dayHeaderArrowDisabled: { color: '#a5d6a7' }, 
     mainDisplayArea: { width: '100%', alignItems: 'center', marginVertical: 5, paddingBottom: 10, paddingHorizontal: 15 }, 
-    circle: { width: CIRCLE_SIZE, height: CIRCLE_SIZE, justifyContent: 'center', alignItems: 'center', position: 'relative' }, 
+circle: { 
+    width: CIRCLE_SIZE, 
+    height: CIRCLE_SIZE, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    position: 'relative',
+    
+    // ضيف السطر ده.. ده اللي هيخلي العربي يظبط غصب عنه
+    direction: 'ltr' 
+},
     circleBackground: { stroke: "#e0f2f1" }, 
     circleProgress: { stroke: "#4caf50" }, 
     circleContentOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', zIndex: 1, padding: CIRCLE_BORDER_WIDTH + 5 }, 
