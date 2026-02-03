@@ -1,4 +1,4 @@
-﻿// MonthlyCaloriesScreen.js (Fixed Layout & Arrow Logic)
+﻿// MonthlyCaloriesScreen.js (Fixed Layout & Separated Logic)
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
@@ -7,7 +7,6 @@ import {
   StyleSheet, 
   ScrollView,
   TouchableOpacity, 
-  I18nManager, 
   ActivityIndicator, 
   Pressable,
 } from 'react-native';
@@ -21,7 +20,7 @@ const CALORIES_PER_STEP = 0.04;
 const STEPS_PER_MINUTE = 100;
 const STEP_LENGTH_METERS = 0.762;
 
-// --- كائن الترجمة (عربي وإنجليزي) ---
+// --- كائن الترجمة ---
 const translations = {
   ar: {
     headerTitle: "السعرات الشهرية",
@@ -61,8 +60,9 @@ const translations = {
   },
 };
 
-// --- دوال مساعدة معتمدة على اللغة ---
+// --- دوال مساعدة ---
 const getDateString = (date) => new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())).toISOString().slice(0, 10);
+
 const formatNumber = (num, lang) => {
     if (num === null || num === undefined) return '';
     const numStr = String(num);
@@ -72,6 +72,7 @@ const formatNumber = (num, lang) => {
     }
     return numStr;
 };
+
 const formatHours = (totalMinutes, lang) => {
     if (isNaN(totalMinutes) || totalMinutes < 0) return formatNumber('0.0', lang);
     const hours = totalMinutes / 60;
@@ -79,7 +80,7 @@ const formatHours = (totalMinutes, lang) => {
     return hours.toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 };
 
-// --- ألوان الوضع الفاتح والداكن ---
+// --- الثيمات ---
 const lightTheme = {
     safeArea: '#F7FDF9', cardBackground: '#FFFFFF', headerText: '#2e7d32',
     mainText: '#388e3c', secondaryText: '#757575', inactiveBar: '#e0e0e0',
@@ -99,77 +100,145 @@ const darkTheme = {
     calorieValueColor: '#80CBC4',
 };
 
-// --- المكونات الفرعية (تم التعديل هنا MonthlyChart) ---
+// --- مكون الرسم البياني (MonthlyChart) ---
 const MonthlyChart = ({ aggregatedData, dateRange, total, average, styles, lang, onPrev, onNext, isNextDisabled, formatNumber, language }) => {
     const [selectedBarIndex, setSelectedBarIndex] = useState(null);
+    
     const MAX_CHART_VALUE = useMemo(() => Math.max(...aggregatedData.map(d => d.value), 400), [aggregatedData]);
     const yAxisLabels = useMemo(() => Array.from({ length: 5 }, (_, i) => formatNumber(Math.round(MAX_CHART_VALUE - i * (MAX_CHART_VALUE / 4)), language)), [MAX_CHART_VALUE, formatNumber, language]);
+    
     const getBarHeight = useCallback((value) => `${Math.min((value / MAX_CHART_VALUE) * 100, 100)}%`, [MAX_CHART_VALUE]);
     const handleBarPress = (index) => setSelectedBarIndex(prev => prev === index ? null : index);
     
     // ==========================================================
-    // منطق الأسهم (التحكم الكامل)
+    // منطق التحكم الكامل في اتجاه الأسهم والوظائف
     // ==========================================================
-    let leftButtonIconName;
-    let rightButtonIconName;
+    let leftButtonConfig = {};
+    let rightButtonConfig = {};
 
     if (language === 'ar') {
-        // --- إعدادات العربي ---
-        leftButtonIconName = "chevron-forward-outline"; // سهم يمين
-        rightButtonIconName = "chevron-back-outline";   // سهم يسار
+        // --- الوضع العربي (RTL) ---
+        // الزر الأيسر: للشهر التالي (مستقبل) -> سهم يشير لليمين أو اليسار حسب الرغبة، عادة في العربي "التالي" يكون يساراً
+        // الزر الأيمن: للشهر السابق (ماضي)
+        
+        leftButtonConfig = {
+            icon: "chevron-forward-outline", // سهم يشير لليمين (للدلالة على السابق)
+            action: onPrev,                  // وظيفة الرجوع للخلف
+            disabled: false                  // لا يتم تعطيله عادة
+        };
+        rightButtonConfig = {
+            icon: "chevron-back-outline",    // سهم يشير لليسار (للدلالة على التالي)
+            action: onNext,                  // وظيفة التقدم للأمام
+            disabled: isNextDisabled         // يتم تعطيله إذا كان الشهر الحالي
+        };
     } else {
-        // --- إعدادات الإنجليزي ---
-        leftButtonIconName = "chevron-back-outline";     // سهم يسار
-        rightButtonIconName = "chevron-forward-outline"; // سهم يمين
+        // --- الوضع الإنجليزي (LTR) ---
+        // الزر الأيسر: للشهر السابق (Back)
+        // الزر الأيمن: للشهر التالي (Next)
+        
+        leftButtonConfig = {
+            icon: "chevron-back-outline", // سهم يشير لليسار (السابق)
+            action: onPrev,
+            disabled: false
+        };
+        rightButtonConfig = {
+            icon: "chevron-forward-outline", // سهم يشير لليمين (التالي)
+            action: onNext,
+            disabled: isNextDisabled
+        };
     }
 
     return (
         <View style={styles.chartCard}>
+            {/* شريط التنقل بين التواريخ */}
             <View style={styles.dateNavigator}>
-                {/* الزر الأيسر: للشهر السابق */}
-                <TouchableOpacity onPress={onPrev}>
-                    <Icon name={leftButtonIconName} size={24} color={styles.arrowColor.color} />
+                {/* الزر الأيسر */}
+                <TouchableOpacity onPress={leftButtonConfig.action} disabled={leftButtonConfig.disabled}>
+                    <Icon 
+                        name={leftButtonConfig.icon} 
+                        size={24} 
+                        color={leftButtonConfig.disabled ? styles.arrowDisabled.color : styles.arrowColor.color} 
+                    />
                 </TouchableOpacity>
 
                 <Text style={styles.dateText}>{dateRange}</Text>
 
-                {/* الزر الأيمن: للشهر التالي */}
-                <TouchableOpacity onPress={onNext} disabled={isNextDisabled}>
+                {/* الزر الأيمن */}
+                <TouchableOpacity onPress={rightButtonConfig.action} disabled={rightButtonConfig.disabled}>
                     <Icon 
-                        name={rightButtonIconName} 
+                        name={rightButtonConfig.icon} 
                         size={24} 
-                        color={isNextDisabled ? styles.arrowDisabled.color : styles.arrowColor.color} 
+                        color={rightButtonConfig.disabled ? styles.arrowDisabled.color : styles.arrowColor.color} 
                     />
                 </TouchableOpacity>
             </View>
 
             <View style={styles.cardSeparator} />
+            
+            {/* ملخص الأرقام (متوسط وإجمالي) */}
             <View style={styles.summaryContainer}>
-                <View style={styles.summaryBox}><Text style={styles.summaryValue}>{formatNumber(Math.round(average), language)}</Text><Text style={styles.summaryLabel}>{lang.averageKcal}</Text></View>
-                <View style={styles.summaryBox}><Text style={styles.summaryValue}>{formatNumber(Math.round(total), language)}</Text><Text style={styles.summaryLabel}>{lang.totalKcal}</Text></View>
+                {/* تم عكس الترتيب في الستايل، لذا نضع العناصر بترتيب منطقي */}
+                <View style={styles.summaryBox}>
+                    <Text style={styles.summaryValue}>{formatNumber(Math.round(average), language)}</Text>
+                    <Text style={styles.summaryLabel}>{lang.averageKcal}</Text>
+                </View>
+                <View style={styles.summaryBox}>
+                    <Text style={styles.summaryValue}>{formatNumber(Math.round(total), language)}</Text>
+                    <Text style={styles.summaryLabel}>{lang.totalKcal}</Text>
+                </View>
             </View>
+
+            {/* الرسم البياني */}
              <View style={styles.graphContainer}>
-                <View style={styles.yAxis}>{yAxisLabels.map((label, i) => <Text key={i} style={styles.yAxisLabel}>{label}</Text>)}</View>
+                {/* محور Y */}
+                <View style={styles.yAxis}>
+                    {yAxisLabels.map((label, i) => (
+                        <Text key={i} style={styles.yAxisLabel}>{label}</Text>
+                    ))}
+                </View>
+
+                {/* منطقة الأعمدة */}
                 <Pressable style={styles.barsAreaWrapper} onPress={() => setSelectedBarIndex(null)}>
                     <View style={styles.barsArea} collapsable={false}>
-                        <View style={styles.bars}>{aggregatedData.map((dataPoint, index) => { 
-                            const height = getBarHeight(dataPoint.value); 
-                            const isSelected = selectedBarIndex === index; 
-                            const hasValue = dataPoint.value > 0; 
-                            return ( 
-                                <Pressable key={index} style={styles.barWrapper} onPress={() => handleBarPress(index)} disabled={!hasValue}>
-                                    {isSelected && ( 
-                                        <View style={[styles.tooltipPositioner, { bottom: height }]}>
-                                            <View style={styles.tooltipContainer}><Text style={styles.tooltipValueText}>{`${lang.averageTooltip} ${formatNumber(Math.round(dataPoint.value), language)}`}</Text></View>
-                                            <View style={styles.tooltipPointer} />
-                                        </View> 
-                                    )}
-                                    <View style={[styles.bar, { height }, isSelected ? styles.selectedBar : (hasValue ? styles.activeBar : styles.inactiveBar)]} />
-                                </Pressable> 
-                            );
-                        })}
+                        <View style={styles.bars}>
+                            {aggregatedData.map((dataPoint, index) => { 
+                                const height = getBarHeight(dataPoint.value); 
+                                const isSelected = selectedBarIndex === index; 
+                                const hasValue = dataPoint.value > 0; 
+                                return ( 
+                                    <Pressable 
+                                        key={index} 
+                                        style={styles.barWrapper} 
+                                        onPress={() => handleBarPress(index)} 
+                                        disabled={!hasValue}
+                                    >
+                                        {isSelected && ( 
+                                            <View style={[styles.tooltipPositioner, { bottom: height }]}>
+                                                <View style={styles.tooltipContainer}>
+                                                    <Text style={styles.tooltipValueText}>
+                                                        {`${lang.averageTooltip} ${formatNumber(Math.round(dataPoint.value), language)}`}
+                                                    </Text>
+                                                </View>
+                                                <View style={styles.tooltipPointer} />
+                                            </View> 
+                                        )}
+                                        <View style={[
+                                            styles.bar, 
+                                            { height }, 
+                                            isSelected ? styles.selectedBar : (hasValue ? styles.activeBar : styles.inactiveBar)
+                                        ]} />
+                                    </Pressable> 
+                                );
+                            })}
                         </View>
-                        <View style={styles.xAxis}>{aggregatedData.map((dataPoint, index) => <Text key={index} style={styles.xAxisLabel}>{formatNumber(dataPoint.label, language)}</Text>)}</View>
+                        {/* محور X */}
+                        <View style={styles.xAxis}>
+                            {aggregatedData.map((dataPoint, index) => (
+                                <Text key={index} style={styles.xAxisLabel}>
+                                    {formatNumber(dataPoint.label, language)}
+                                </Text>
+                            ))}
+                        </View>
                     </View>
                 </Pressable>
             </View>
@@ -177,19 +246,55 @@ const MonthlyChart = ({ aggregatedData, dateRange, total, average, styles, lang,
     );
 };
 
-// ... باقي المكونات الفرعية كما هي ...
-const StatRow = ({label, value, styles, valueStyle}) => ( <View style={styles.summaryStatRow}><Text style={[styles.detailValueSmall, valueStyle]}>{value}</Text><Text style={styles.summaryStatLabel}>{label}</Text></View> );
-const MetricBlock = ({iconName, value, unit, styles}) => ( <View style={styles.metricBlock}><View style={styles.metricIconCircle}><Icon name={iconName} size={24} color={styles.metricIconCircle.iconColor} /></View><Text style={styles.metricValue}>{value}</Text><Text style={styles.metricUnit}>{unit}</Text></View> );
+// --- مكونات التفاصيل (Summary) ---
+const StatRow = ({label, value, styles, valueStyle, language}) => ( 
+    <View style={styles.summaryStatRow}>
+        {/* الترتيب يعتمد على FlexDirection في الستايل */}
+        <Text style={[styles.detailValueSmall, valueStyle]}>{value}</Text>
+        <Text style={styles.summaryStatLabel}>{label}</Text>
+    </View> 
+);
+
+const MetricBlock = ({iconName, value, unit, styles}) => ( 
+    <View style={styles.metricBlock}>
+        <View style={styles.metricIconCircle}>
+            <Icon name={iconName} size={24} color={styles.metricIconCircle.iconColor} />
+        </View>
+        <Text style={styles.metricValue}>{value}</Text>
+        <Text style={styles.metricUnit}>{unit}</Text>
+    </View> 
+);
+
 const ActivitySummary = ({ stats, styles, lang, theme, formatNumber, language }) => (
     <>
       <Text style={styles.summaryHeaderTitle}>{lang.summaryTitle}</Text>
+      
       <View style={styles.detailsCard}>
-          <StatRow label={lang.calories} value={formatNumber(Math.round(stats.totalCalories), language)} styles={styles} valueStyle={styles.calorieValue} />
+          <StatRow 
+            label={lang.calories} 
+            value={formatNumber(Math.round(stats.totalCalories), language)} 
+            styles={styles} 
+            valueStyle={styles.calorieValue} 
+            language={language}
+          />
           <View style={styles.divider} />
-          <StatRow label={lang.trends} value={stats.trendText} styles={styles} valueStyle={{ color: theme.mainText, fontWeight: 'bold' }}/>
+          <StatRow 
+            label={lang.trends} 
+            value={stats.trendText} 
+            styles={styles} 
+            valueStyle={{ color: theme.mainText, fontWeight: 'bold' }}
+            language={language}
+          />
           <View style={styles.divider} />
-          <StatRow label={lang.mostActiveTime} value={stats.mostActiveDayText} styles={styles} valueStyle={{ color: theme.mainText, fontWeight: 'bold' }} />
+          <StatRow 
+            label={lang.mostActiveTime} 
+            value={stats.mostActiveDayText} 
+            styles={styles} 
+            valueStyle={{ color: theme.mainText, fontWeight: 'bold' }} 
+            language={language}
+          />
       </View>
+
       <View style={[styles.card, styles.metricsCard]}>
           <MetricBlock iconName="walk-outline" value={formatNumber(Math.round(stats.totalSteps), language)} unit={lang.steps} styles={styles} />
           <MetricBlock iconName="location-outline" value={formatNumber(stats.distance.toFixed(1), language)} unit={lang.distanceUnit} styles={styles} />
@@ -198,7 +303,7 @@ const ActivitySummary = ({ stats, styles, lang, theme, formatNumber, language })
     </>
 );
 
-// --- المكون الرئيسي للصفحة ---
+// --- الشاشة الرئيسية ---
 const MonthlyCaloriesScreen = ({ language = 'ar', isDarkMode = false }) => {
     
     const theme = useMemo(() => isDarkMode ? darkTheme : lightTheme, [isDarkMode]);
@@ -241,8 +346,14 @@ const MonthlyCaloriesScreen = ({ language = 'ar', isDarkMode = false }) => {
                     const totalStepsPrevMonth = prevMonthFullData.reduce((sum, day) => sum + day.steps, 0);
                     
                     let trendText = lang.noData;
-                    if (totalStepsPrevMonth > 0) { const changePercent = (totalSteps - totalStepsPrevMonth) / totalStepsPrevMonth; if (changePercent > 0.1) trendText = lang.trendHigh; else if (changePercent < -0.1) trendText = lang.trendLow; else trendText = lang.trendStable; } 
-                    else if (totalSteps > 0) { trendText = lang.trendHigh; }
+                    if (totalStepsPrevMonth > 0) { 
+                        const changePercent = (totalSteps - totalStepsPrevMonth) / totalStepsPrevMonth; 
+                        if (changePercent > 0.1) trendText = lang.trendHigh; 
+                        else if (changePercent < -0.1) trendText = lang.trendLow; 
+                        else trendText = lang.trendStable; 
+                    } else if (totalSteps > 0) { 
+                        trendText = lang.trendHigh; 
+                    }
                     
                     let mostActiveDayText = lang.noData;
                     const maxSteps = Math.max(...dataForStats.map(d => d.steps));
@@ -298,16 +409,12 @@ const MonthlyCaloriesScreen = ({ language = 'ar', isDarkMode = false }) => {
     const formattedDateRange = useMemo(() => {
         const year = viewedMonth.getFullYear();
         const month = viewedMonth.getMonth();
-
         const startDate = new Date(year, month, 1);
         const endDate = new Date(year, month + 1, 0);
-
         const locale = language === 'ar' ? 'ar-EG' : 'en-US';
         const options = { day: 'numeric', month: 'long' };
-
         const formattedStart = startDate.toLocaleDateString(locale, options);
         const formattedEnd = endDate.toLocaleDateString(locale, options);
-
         return `${formattedStart} - ${formattedEnd}`;
     }, [viewedMonth, language]);
 
@@ -345,17 +452,26 @@ const MonthlyCaloriesScreen = ({ language = 'ar', isDarkMode = false }) => {
     );
 };
 
-// --- الأنماط الديناميكية ---
+// --- الأنماط الديناميكية (العمود الفقري للفصل بين اللغتين) ---
 const getStyles = (theme, language) => StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: theme.safeArea },
-    headerContainer: { paddingVertical: 15, paddingHorizontal: 20, alignItems: language === 'ar' ? 'flex-end' : 'flex-start' },
+    
+    // محاذاة العنوان الرئيسي
+    headerContainer: { 
+        paddingVertical: 15, 
+        paddingHorizontal: 20, 
+        alignItems: language === 'ar' ? 'flex-start' : 'flex-start' 
+    },
     headerTitle: { fontSize: 24, fontWeight: 'bold', color: theme.headerText },
+    
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     mainContainer: { padding: 15, paddingBottom: 50 },
+    
     card: { backgroundColor: theme.cardBackground, borderRadius: 12, paddingHorizontal: 15, paddingVertical: 5, marginBottom: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 },
     chartCard: { backgroundColor: theme.cardBackground, borderRadius: 12, marginBottom: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 2, overflow: 'hidden' },
     
-    // --- التعديل هنا: استخدام row دائماً ---
+    // --- التحكم في اتجاه شريط التنقل العلوي للرسم البياني ---
+    // هنا نستخدم 'row' دائماً لأننا عكسنا ترتيب الأزرار يدوياً في كود MonthlyChart
     dateNavigator: { 
         flexDirection: 'row', 
         justifyContent: 'space-between', 
@@ -368,13 +484,21 @@ const getStyles = (theme, language) => StyleSheet.create({
     arrowColor: { color: theme.arrowColor },
     arrowDisabled: { color: theme.arrowDisabled },
     cardSeparator: { height: 1, backgroundColor: theme.separator, marginHorizontal: 15 },
-    summaryContainer: { flexDirection: language === 'ar' ? 'row-reverse' : 'row', justifyContent: 'space-around', paddingVertical: 20 },
+    
+    // --- ملخص (Average/Total) ---
+    // عربي: يمين لليسار | إنجليزي: يسار لليمين
+    summaryContainer: { 
+        flexDirection: language === 'ar' ? 'row-reverse' : 'row-reverse', 
+        justifyContent: 'space-around', 
+        paddingVertical: 20 
+    },
     summaryBox: { alignItems: 'center', flex:1 },
     summaryValue: { fontSize: 32, fontWeight: 'bold', color: theme.mainText, fontVariant: ['tabular-nums'] },
     summaryLabel: { fontSize: 14, color: theme.secondaryText, marginTop: 4, textAlign:'center' },
     
+    // --- حاوية الرسم البياني ---
     graphContainer: { 
-        flexDirection: language === 'ar' ? 'row-reverse' : 'row', 
+        flexDirection: language === 'ar' ? 'row' : 'row', 
         paddingHorizontal: 15, 
         paddingTop: 10, 
         paddingBottom: 10, 
@@ -382,30 +506,77 @@ const getStyles = (theme, language) => StyleSheet.create({
         alignItems: 'stretch'
     },
     
-    yAxis: { width: 35, justifyContent: 'space-between', paddingLeft: language === 'ar' ? 8 : 0, paddingRight: language === 'ar' ? 0 : 8, height: '100%', paddingBottom: 25, alignItems: language === 'ar' ? 'flex-start' : 'flex-end' },
+    // المحور الصادي (الأرقام)
+    yAxis: { 
+        width: 35, 
+        justifyContent: 'space-between', 
+        paddingLeft: language === 'ar' ? 8 : 0, 
+        paddingRight: language === 'ar' ? 0 : 8, 
+        height: '100%', 
+        paddingBottom: 25, 
+        alignItems: language === 'ar' ? 'flex-end' : 'flex-start' 
+    },
     yAxisLabel: { fontSize: 11, color: theme.secondaryText },
+    
     barsAreaWrapper: { flex: 1, marginHorizontal: language === 'ar' ? 5 : 0, marginLeft: language === 'ar' ? 0 : 5 },
     barsArea: { flex: 1, borderBottomWidth: 1, borderBottomColor: theme.graphLine, position: 'relative', marginBottom: 25 },
-    bars: { position: 'absolute', bottom: 0, left: 0, right: 0, top: 0, flexDirection: language === 'ar' ? 'row-reverse' : 'row', justifyContent: 'space-around', alignItems: 'flex-end', paddingHorizontal: '2%' },
+    
+    // الأعمدة نفسها
+    bars: { 
+        position: 'absolute', bottom: 0, left: 0, right: 0, top: 0, 
+        flexDirection: language === 'ar' ? 'row' : 'row', 
+        justifyContent: 'space-around', alignItems: 'flex-end', paddingHorizontal: '2%' 
+    },
     barWrapper: { width: '14%', height: '100%', justifyContent: 'flex-end', alignItems: 'center', position: 'relative' },
     bar: { width: 12, borderTopLeftRadius: 6, borderTopRightRadius: 6 }, 
     inactiveBar: { backgroundColor: theme.inactiveBar, height: 2, minHeight: 2 },
     activeBar: { backgroundColor: theme.activeBar, minHeight: 2, }, 
     selectedBar: { backgroundColor: theme.selectedBar, minHeight: 2, },
-    xAxis: { position: 'absolute', bottom: -25, left: 0, right: 0, height: 20, flexDirection: language === 'ar' ? 'row-reverse' : 'row', justifyContent: 'space-around', alignItems: 'center', paddingHorizontal: '2%' },
+    
+    // المحور السيني (أرقام الأيام)
+    xAxis: { 
+        position: 'absolute', bottom: -25, left: 0, right: 0, height: 20, 
+        flexDirection: language === 'ar' ? 'row' : 'row', 
+        justifyContent: 'space-around', alignItems: 'center', paddingHorizontal: '2%' 
+    },
     xAxisLabel: { fontSize: 11, color: theme.secondaryText, textAlign: 'center', flex:1, fontWeight: '500' },
+    
     tooltipPositioner: { position: 'absolute', alignItems: 'center', zIndex: 10, marginBottom: 5, left: '50%', transform: [{ translateX: -45 }] },
     tooltipContainer: { backgroundColor: theme.tooltipBg, borderRadius: 8, paddingVertical: 6, paddingHorizontal: 12, minWidth: 90, alignItems: 'center' },
     tooltipValueText: { color: theme.tooltipText, fontSize: 13, fontWeight: 'bold'},
     tooltipPointer: { width: 0, height: 0, borderLeftWidth: 6, borderRightWidth: 6, borderTopWidth: 6, borderStyle: 'solid', backgroundColor: 'transparent', borderLeftColor: 'transparent', borderRightColor: 'transparent', borderTopColor: theme.tooltipBg, marginTop: -1 },
-    summaryHeaderTitle: { fontSize: 18, fontWeight: 'bold', color: theme.headerText, marginBottom: 15, width: '100%', textAlign: language === 'ar' ? 'right' : 'left' },
+    
+    // عنوان الملخص
+    summaryHeaderTitle: { 
+        fontSize: 18, 
+        fontWeight: 'bold', 
+        color: theme.headerText, 
+        marginBottom: 15, 
+        width: '100%', 
+        textAlign: language === 'ar' ? 'left' : 'left' 
+    },
+    
     detailsCard: { backgroundColor: theme.cardBackground, borderRadius: 12, paddingVertical: 5, paddingHorizontal: 20, marginBottom: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 },
-    summaryStatRow: { flexDirection: language === 'ar' ? 'row-reverse' : 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 16, },
+    
+    // صفوف التفاصيل (السعرات، الاتجاهات...)
+    summaryStatRow: { 
+        flexDirection: language === 'ar' ? 'row-reverse' : 'row-reverse', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        paddingVertical: 16, 
+    },
     summaryStatLabel: { fontSize: 14, color: theme.secondaryText, },
     detailValueSmall: { fontSize: 14, color: theme.detailValueColor, fontWeight: '500', textAlign: language === 'ar' ? 'left' : 'right', },
     calorieValue: { color: theme.calorieValueColor, fontWeight: 'bold', fontSize: 16, },
     divider: { height: 1, backgroundColor: theme.separator, marginHorizontal: -20, },
-    metricsCard: { flexDirection: language === 'ar' ? 'row-reverse' : 'row', justifyContent: 'space-around', alignItems: 'center', paddingVertical: 15, },
+    
+    // كارت المقاييس (Steps, Km, Hours)
+    metricsCard: { 
+        flexDirection: language === 'ar' ? 'row' : 'row-reverse', 
+        justifyContent: 'space-around', 
+        alignItems: 'center', 
+        paddingVertical: 15, 
+    },
     metricBlock: { alignItems: 'center', flex: 1 },
     metricIconCircle: { backgroundColor: theme.iconCircleBg, width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', marginBottom: 10, iconColor: theme.icon },
     metricValue: { fontSize: 22, fontWeight: 'bold', color: theme.mainText, fontVariant: ['tabular-nums'] },

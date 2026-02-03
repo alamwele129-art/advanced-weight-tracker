@@ -1,4 +1,4 @@
-﻿// WeeklyCaloriesScreen.js
+﻿// WeeklyCaloriesScreen.js (Fixed & Separated Logic)
 
 import React, { useState, useMemo, useCallback } from 'react';
 import {
@@ -7,7 +7,6 @@ import {
   StyleSheet, 
   ScrollView,
   TouchableOpacity, 
-  I18nManager, 
   ActivityIndicator, 
   Pressable
 } from 'react-native';
@@ -15,13 +14,13 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 
-// --- الثوابت المشتركة (كما هي) ---
+// --- الثوابت ---
 const DAILY_STEPS_HISTORY_KEY = '@Steps:DailyHistory';
 const CALORIES_PER_STEP = 0.04;
 const STEP_LENGTH_METERS = 0.762;
 const STEPS_PER_MINUTE = 100;
 
-// --- كائن الترجمة (كما هو) ---
+// --- الترجمة ---
 const translations = {
     ar: {
         headerTitle: "السعرات الأسبوعية",
@@ -61,7 +60,7 @@ const translations = {
     }
 };
 
-// --- دوال مساعدة (كما هي) ---
+// --- دوال مساعدة ---
 const getDateString = (date) => new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())).toISOString().slice(0, 10);
 const addDays = (date, days) => { const result = new Date(date); result.setDate(result.getDate() + days); return result; };
 const isSameDay = (d1, d2) => d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate();
@@ -91,15 +90,23 @@ const getStartOfWeek = (date, lang) => {
     return d;
 };
 
-// --- ألوان الوضع الفاتح والداكن (كما هي) ---
+// --- الألوان ---
 const lightTheme = { safeArea: '#F7FDF9', cardBackground: '#FFFFFF', headerText: '#2e7d32', mainText: '#388e3c', secondaryText: '#757575', activeBar: '#81c784', todayBar: '#4caf50', selectedBar: '#2E7D32', todayText: '#000000', graphLine: '#eee', tooltipBg: '#333333', tooltipText: '#FFFFFF', separator: '#eee', icon: '#4caf50', iconCircleBg: 'rgba(76, 175, 80, 0.1)', arrowColor: '#2e7d32', arrowDisabled: '#a5d6a7' };
 const darkTheme = { safeArea: '#121212', cardBackground: '#1E1E1E', headerText: '#E0E0E0', mainText: '#80CBC4', secondaryText: '#A0A0A0', activeBar: '#00796B', todayBar: '#80CBC4', selectedBar: '#A7FFEB', todayText: '#FFFFFF', graphLine: '#333333', tooltipBg: '#E0E0E0', tooltipText: '#121212', separator: '#424242', icon: '#80CBC4', iconCircleBg: 'rgba(128, 203, 196, 0.1)', arrowColor: '#E0E0E0', arrowDisabled: '#555555' };
 
-// --- مكون الرسم البياني (تم التعديل هنا) ---
+// --- الكومبوننت (WeeklyChart) ---
 const WeeklyChart = ({ weeklyData, dateRange, styles, lang, onPrev, onNext, isNextDisabled, formatNumber, language }) => {
     const [selectedBarIndex, setSelectedBarIndex] = useState(null);
     const today = new Date();
-    const { yAxisLabels, yAxisMax } = useMemo(() => { const maxCalorie = Math.max(...weeklyData.map(d => d.calories), 200); const yMax = Math.ceil(maxCalorie / 100) * 100; const labels = []; for (let i = yMax; i >= 0; i -= (yMax / 4 || 50)) { labels.push(Math.round(i).toString()); } return { yAxisLabels: labels.map(l => formatNumber(l, language)), yAxisMax: yMax }; }, [weeklyData, formatNumber, language]);
+    
+    const { yAxisLabels, yAxisMax } = useMemo(() => { 
+        const maxCalorie = Math.max(...weeklyData.map(d => d.calories), 200); 
+        const yMax = Math.ceil(maxCalorie / 100) * 100; 
+        const labels = []; 
+        for (let i = yMax; i >= 0; i -= (yMax / 4 || 50)) { labels.push(Math.round(i).toString()); } 
+        return { yAxisLabels: labels.map(l => formatNumber(l, language)), yAxisMax: yMax }; 
+    }, [weeklyData, formatNumber, language]);
+    
     const getBarHeight = useCallback((value) => `${Math.min((value / (yAxisMax || 1)) * 100, 100)}%`, [yAxisMax]);
     const handleBarPress = (index) => setSelectedBarIndex(prev => prev === index ? null : index);
     const handleDismissTooltip = () => setSelectedBarIndex(null);
@@ -108,49 +115,79 @@ const WeeklyChart = ({ weeklyData, dateRange, styles, lang, onPrev, onNext, isNe
     const avgCalories = activeDays > 0 ? totalCalories / activeDays : 0;
     
     // ==========================================================
-    // 1. منطق الأسهم (نفس فكرة الكود الثاني)
+    // منطقة التحكم في الأسهم (المهمة جداً)
     // ==========================================================
-    let leftButtonIconName;
-    let rightButtonIconName;
+    let leftButtonConfig = {};
+    let rightButtonConfig = {};
 
     if (language === 'ar') {
-        // --- إعدادات العربي ---
-        // الزر الأيسر (السابق): أيقونة تشير لليمين (لأن الماضي يمين في بعض المفاهيم أو العكس حسب رغبتك)
-        leftButtonIconName = "chevron-forward-outline"; 
+        // ==========================================
+        //  <<< عدل هنا للعربي فقط (بدون ما تأثر على الإنجليزي) >>>
+        // ==========================================
         
-        // الزر الأيمن (التالي): أيقونة تشير لليسار
-        rightButtonIconName = "chevron-back-outline";    
+        // 1. الزر اللي علي الشمال في الشاشة (الجهة اليسرى)
+        leftButtonConfig = {
+            icon: "chevron-forward-outline", // شكل السهم (باصص يمين)
+            action: onPrev,                  // الوظيفة: يرجع للأسبوع السابق
+            disabled: false                  // هل هو مقفول؟ لا
+        };
 
+        // 2. الزر اللي علي اليمين في الشاشة (الجهة اليمنى)
+        rightButtonConfig = {
+            icon: "chevron-back-outline",    // شكل السهم (باصص شمال)
+            action: onNext,                  // الوظيفة: يروح للأسبوع التالي
+            disabled: isNextDisabled         // مقفول لو ده الأسبوع الحالي
+        };
+
+        // * عايز تعكسهم؟ *
+        // بدل الـ action: خلي اللي فوق onNext واللي تحت onPrev
+        // وبدل الـ icon: خلي اللي فوق back واللي تحت forward
+        
     } else {
-        // --- إعدادات الإنجليزي ---
-        // الزر الأيسر (Previous): سهم لليسار
-        leftButtonIconName = "chevron-back-outline";     
-
-        // الزر الأيمن (Next): سهم لليمين
-        rightButtonIconName = "chevron-forward-outline"; 
+        // ==========================================
+        //  <<< إعدادات الإنجليزي (ثابتة لا تلمسها) >>>
+        // ==========================================
+        
+        // Left Button (Physically Left)
+        leftButtonConfig = {
+            icon: "chevron-back-outline",    // Arrow pointing Left
+            action: onPrev,                  // Go Previous
+            disabled: false
+        };
+        // Right Button (Physically Right)
+        rightButtonConfig = {
+            icon: "chevron-forward-outline", // Arrow pointing Right
+            action: onNext,                  // Go Next
+            disabled: isNextDisabled
+        };
     }
 
     return (
         <View style={styles.chartCard}>
             {/* 
-               تم تعديل الـ dateNavigator في الـ styles بالأسفل ليكون دائماً 'row'
-               وهنا نقوم بترتيب الأزرار يدوياً: (زر أيسر - نص - زر أيمن)
+               خليت الاتجاه هنا دائماً row 
+               عشان الزر "الأيسر" يفضل شمال والزر "الأيمن" يفضل يمين
+               واحنا بنتحكم في المحتوى من الكود اللي فوق
             */}
-            <View style={styles.dateNavigator}>
+            <View style={[styles.dateNavigator, { flexDirection: 'row' }]}>
                 
-                {/* الزر الموجود على اليسار (للأسبوع السابق) */}
-                <TouchableOpacity onPress={onPrev}>
-                    <Icon name={leftButtonIconName} size={24} color={styles.arrowColor.color} />
+                {/* الزر الأيسر */}
+                <TouchableOpacity onPress={leftButtonConfig.action} disabled={leftButtonConfig.disabled}>
+                    <Icon 
+                        name={leftButtonConfig.icon} 
+                        size={24} 
+                        color={leftButtonConfig.disabled ? styles.arrowDisabled.color : styles.arrowColor.color} 
+                    />
                 </TouchableOpacity>
 
                 <Text style={styles.dateText}>{dateRange}</Text>
 
-                {/* الزر الموجود على اليمين (للأسبوع التالي) */}
-                <TouchableOpacity onPress={onNext} disabled={isNextDisabled}>
+                {/* الزر الأيمن */}
+                <TouchableOpacity onPress={rightButtonConfig.action} disabled={rightButtonConfig.disabled}>
                     <Icon 
-                        name={rightButtonIconName} 
+                        name={rightButtonConfig.icon} 
                         size={24} 
-                        color={isNextDisabled ? styles.arrowDisabled.color : styles.arrowColor.color} 
+                        color={rightButtonConfig.disabled ? styles.arrowDisabled.color : styles.arrowColor.color} 
                     />
                 </TouchableOpacity>
             </View>
@@ -185,9 +222,10 @@ const WeeklyChart = ({ weeklyData, dateRange, styles, lang, onPrev, onNext, isNe
     );
 };
 
-// --- باقي المكونات (كما هي) ---
+// --- باقي المكونات ---
 const StatRow = ({label, value, styles}) => ( <View style={styles.summaryStatRow}><Text style={styles.summaryStatValue}>{value}</Text><Text style={styles.summaryStatLabel}>{label}</Text></View> );
 const MetricBlock = ({iconName, value, unit, styles}) => ( <View style={styles.metricBlock}><View style={styles.metricIconCircle}><Icon name={iconName} size={28} color={styles.metricIconCircle.iconColor} /></View><Text style={styles.metricValue}>{value}</Text><Text style={styles.metricUnit}>{unit}</Text></View> );
+
 const ActivitySummary = ({ stats, styles, lang, formatNumber, language }) => {
     return (
     <>
@@ -206,6 +244,7 @@ const ActivitySummary = ({ stats, styles, lang, formatNumber, language }) => {
       </View>
     </>);
 };
+
 const WeeklyCaloriesScreen = ({ language = 'ar', isDarkMode = false }) => {
     const theme = useMemo(() => isDarkMode ? darkTheme : lightTheme, [isDarkMode]);
     const lang = useMemo(() => translations[language] || translations.ar, [language]);
@@ -214,6 +253,7 @@ const WeeklyCaloriesScreen = ({ language = 'ar', isDarkMode = false }) => {
     const [viewedDate, setViewedDate] = useState(new Date()); 
     const [weeklyData, setWeeklyData] = useState([]);
     const [stats, setStats] = useState(null);
+
     useFocusEffect(
         useCallback(() => {
             const fetchDataForWeek = async (currentDate) => {
@@ -260,10 +300,12 @@ const WeeklyCaloriesScreen = ({ language = 'ar', isDarkMode = false }) => {
             fetchDataForWeek(viewedDate);
         }, [viewedDate, language, lang])
     );
+
     const handlePreviousWeek = () => { setViewedDate(prevDate => addDays(prevDate, -7)); };
     const handleNextWeek = () => { setViewedDate(prevDate => addDays(prevDate, 7)); };
     const isNextWeekDisabled = useMemo(() => { const currentWeekStart = getStartOfWeek(new Date(), language); const viewedWeekStart = getStartOfWeek(viewedDate, language); return viewedWeekStart.getTime() >= currentWeekStart.getTime(); }, [viewedDate, language]);
     const dateRange = useMemo(() => { if (weeklyData.length < 7) return ''; const locale = language === 'ar' ? 'ar-EG' : 'en-US'; const options = { month: 'long', day: 'numeric' }; const startDate = weeklyData[0].date; const endDate = weeklyData[6].date; const formattedStart = startDate.toLocaleDateString(locale, options); const formattedEnd = endDate.toLocaleDateString(locale, options); return `${formatNumber(formattedStart, language)} - ${formatNumber(formattedEnd, language)}`; }, [weeklyData, language]);
+    
     return (
         <View style={styles.safeArea}>
              <View style={styles.headerContainer}>
@@ -273,7 +315,17 @@ const WeeklyCaloriesScreen = ({ language = 'ar', isDarkMode = false }) => {
             {isLoading ? ( <View style={[styles.centerSpinner, {height: 400}]}><ActivityIndicator size="large" color={theme.mainText} /></View> ) 
              : stats && weeklyData.length > 0 ? (
                 <>
-                    <WeeklyChart weeklyData={weeklyData} dateRange={dateRange} styles={styles} lang={lang} onPrev={handlePreviousWeek} onNext={handleNextWeek} isNextDisabled={isNextWeekDisabled} formatNumber={formatNumber} language={language}/>
+                    <WeeklyChart 
+                        weeklyData={weeklyData} 
+                        dateRange={dateRange} 
+                        styles={styles} 
+                        lang={lang} 
+                        onPrev={handlePreviousWeek} 
+                        onNext={handleNextWeek} 
+                        isNextDisabled={isNextWeekDisabled} 
+                        formatNumber={formatNumber} 
+                        language={language}
+                    />
                     <ActivitySummary stats={stats} styles={styles} lang={lang} formatNumber={formatNumber} language={language}/>
                 </>
             ) : ( <View style={styles.centerSpinner}><Text style={styles.loadingText}>{lang.noData}</Text></View> )}
@@ -282,19 +334,19 @@ const WeeklyCaloriesScreen = ({ language = 'ar', isDarkMode = false }) => {
     );
 };
 
-// --- الأنماط الديناميكية (تم تعديل dateNavigator) ---
+// --- الأنماط ---
 const getStyles = (theme, language) => StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: theme.safeArea },
-    headerContainer: { paddingVertical: 15, paddingHorizontal: 20, alignItems: language === 'ar' ? 'flex-end' : 'flex-start' },
+    headerContainer: { paddingVertical: 15, paddingHorizontal: 20, alignItems: language === 'ar' ? 'flex-start' : 'flex-start' },
     headerTitle: { fontSize: 24, fontWeight: 'bold', color: theme.headerText },
     mainContainer: { padding: 15, paddingBottom: 50, flexGrow: 1 },
     centerSpinner: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     loadingText: { color: theme.secondaryText, marginTop: 10 },
     chartCard: { backgroundColor: theme.cardBackground, borderRadius: 20, marginBottom: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 5, elevation: 2, overflow: 'hidden' },
     
-    // --- التعديل هنا: استخدام row دائماً للتحكم يدوياً ---
+    // --- هام: شريط الأسهم دائماً من اليسار لليمين برمجياً ---
     dateNavigator: {
-        flexDirection: 'row', // بدل row-reverse، نجعله دائماً row ونتحكم بالأيقونات
+        flexDirection: 'row', // ثابت لا يتغير
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 20,
@@ -303,38 +355,44 @@ const getStyles = (theme, language) => StyleSheet.create({
     },
 
     dateText: { fontSize: 18, fontWeight: '600', color: theme.headerText, marginHorizontal: 10, flexShrink: 1, textAlign: 'center' },
+    
+    // باقي التنسيقات تعكس حسب اللغة (للأعمدة والنصوص)
     summaryContainer: { flexDirection: language === 'ar' ? 'row-reverse' : 'row', justifyContent: 'space-around', paddingVertical: 20 },
     summaryBox: { alignItems: 'center', flex: 1 },
     summaryValue: { fontSize: 32, fontWeight: 'bold', color: theme.mainText, fontVariant: ['tabular-nums'] },
     summaryLabel: { fontSize: 14, color: theme.secondaryText, marginTop: 4, textAlign: 'center' },
     graphContainer: { 
-        flexDirection: language === 'ar' ? 'row-reverse' : 'row', 
+        flexDirection: language === 'ar' ? 'row' : 'row', 
         paddingHorizontal: 15, 
         paddingTop: 10, 
         paddingBottom: 10, 
         height: 300, 
         alignItems: 'stretch'
     },
-    yAxis: { width: 35, justifyContent: 'space-between', paddingLeft: language === 'ar' ? 8 : 0, paddingRight: language === 'ar' ? 0 : 8, height: '100%', paddingBottom: 25, alignItems: language === 'ar' ? 'flex-start' : 'flex-end' },
+    yAxis: { width: 35, justifyContent: 'space-between', paddingLeft: language === 'ar' ? 8 : 0, paddingRight: language === 'ar' ? 0 : 8, height: '100%', paddingBottom: 25, alignItems: language === 'ar' ? 'flex-start' : 'flex-start' },
     yAxisLabel: { fontSize: 11, color: theme.secondaryText, fontVariant: ['tabular-nums'] },
     barsAreaWrapper: { flex: 1, marginHorizontal: 5 },
     barsArea: { flex: 1, borderBottomWidth: 1, borderBottomColor: theme.graphLine, position: 'relative', marginBottom: 25 },
-    bars: { position: 'absolute', bottom: 0, left: 0, right: 0, top: 0, flexDirection: language === 'ar' ? 'row-reverse' : 'row', justifyContent: 'space-around', alignItems: 'flex-end' },
+    
+    // ترتيب الأعمدة: عربي (يمين لشمال) انجليزي (شمال ليمين)
+    bars: { position: 'absolute', bottom: 0, left: 0, right: 0, top: 0, flexDirection: language === 'ar' ? 'row' : 'row', justifyContent: 'space-around', alignItems: 'flex-end' },
     barWrapper: { width: `${100 / 7}%`, height: '100%', justifyContent: 'flex-end', alignItems: 'center', position: 'relative' },
     bar: { width: 18, borderTopLeftRadius: 7, borderTopRightRadius: 7 },
     activeBar: { backgroundColor: theme.activeBar }, 
     todayBar: { backgroundColor: theme.todayBar },
     selectedBar: { backgroundColor: theme.selectedBar },
-    xAxis: { position: 'absolute', bottom: -25, left: 0, right: 0, height: 20, flexDirection: language === 'ar' ? 'row-reverse' : 'row', justifyContent: 'space-around', alignItems: 'center' },
+    
+    // ترتيب أيام الأسبوع أسفل الأعمدة
+    xAxis: { position: 'absolute', bottom: -25, left: 0, right: 0, height: 20, flexDirection: language === 'ar' ? 'row' : 'row', justifyContent: 'space-around', alignItems: 'center' },
     xAxisLabel: { fontSize: 12, color: theme.secondaryText, textAlign: 'center', flex: 1 },
     todayXAxisLabel: { color: theme.todayText, fontWeight: 'bold' },
     tooltipPositioner: { position: 'absolute', alignItems: 'center', zIndex: 10, marginBottom: 5, left: '50%', transform: [{ translateX: -30 }] },
     tooltipContainer: { backgroundColor: theme.tooltipBg, borderRadius: 8, paddingVertical: 5, paddingHorizontal: 10, minWidth: 60, alignItems: 'center' },
     tooltipText: { color: theme.tooltipText, fontSize: 12, fontWeight: 'bold' },
     tooltipPointer: { width: 0, height: 0, borderLeftWidth: 6, borderRightWidth: 6, borderTopWidth: 6, borderStyle: 'solid', backgroundColor: 'transparent', borderLeftColor: 'transparent', borderRightColor: 'transparent', borderTopColor: theme.tooltipBg, marginTop: -1 },
-    summaryHeaderTitle: { fontSize: 18, fontWeight: 'bold', color: theme.headerText, marginBottom: 15, width: '100%', textAlign: language === 'ar' ? 'right' : 'left' },
+    summaryHeaderTitle: { fontSize: 18, fontWeight: 'bold', color: theme.headerText, marginBottom: 15, width: '100%', textAlign: language === 'ar' ? 'left' : 'left' },
     summaryMainCard: { backgroundColor: theme.cardBackground, borderRadius: 15, padding: 20, width: '100%', marginBottom: 20 },
-    summaryStatRow: { flexDirection: language === 'ar' ? 'row-reverse' : 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%' },
+    summaryStatRow: { flexDirection: language === 'ar' ? 'row-reverse' : 'row-reverse', justifyContent: 'space-between', alignItems: 'center', width: '100%' },
     summaryStatLabel: { fontSize: 16, color: theme.secondaryText },
     summaryStatValue: { fontSize: 18, fontWeight: 'bold', color: theme.mainText, fontVariant: ['tabular-nums'] },
     divider: { height: 1, backgroundColor: theme.separator, marginVertical: 15 },

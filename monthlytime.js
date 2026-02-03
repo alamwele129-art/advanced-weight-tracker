@@ -318,7 +318,7 @@ const getStyles = (theme, isRTL) => StyleSheet.create({
     tooltipPointer: { width: 0, height: 0, borderLeftWidth: 6, borderRightWidth: 6, borderTopWidth: 6, borderStyle: 'solid', backgroundColor: 'transparent', borderLeftColor: 'transparent', borderRightColor: 'transparent', borderTopColor: theme.tooltipBg, marginTop: -1 },
     summaryHeaderTitle: { fontSize: 18, fontWeight: 'bold', color: theme.headerTitle, marginBottom: 15, width: '100%', textAlign: I18nManager.isRTL ? 'right' : 'left' },
     summaryMainCard: { backgroundColor: theme.cardBackground, borderRadius: 15, padding: 20, width: '100%', marginBottom: 20 },
-    summaryStatRow: { flexDirection: isRTL ? 'row-reverse' : 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%' },
+    summaryStatRow: { flexDirection: isRTL ? 'row-reverse' : 'row-reverse', justifyContent: 'space-between', alignItems: 'center', width: '100%' },
     summaryStatLabel: { fontSize: 16, color: theme.secondaryText, textAlign: I18nManager.isRTL ? 'right' : 'left' },
     summaryStatValue: { fontSize: 18, fontWeight: 'bold', color: theme.mainText, fontVariant: ['tabular-nums'] },
     divider: { height: 1, backgroundColor: theme.separator, marginVertical: 15 },
