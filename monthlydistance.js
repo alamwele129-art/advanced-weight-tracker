@@ -310,7 +310,7 @@ const getStyles = (theme, isRTL) => StyleSheet.create({
     summaryStatRow: { flexDirection: isRTL ? 'row-reverse' : 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%' },
     summaryStatLabel: { fontSize: 16, color: theme.secondaryText },
     summaryStatValue: { fontSize: 18, fontWeight: 'bold', color: theme.mainText, fontVariant: ['tabular-nums'] },
-    divider: { height: 1, backgroundColor: theme.separator, marginVertical: 15 },
+    divider: { height: 1, backgroundColor: theme.separator, marginVertical: 15 }, 
     metricsCard: { backgroundColor: theme.cardBackground, borderRadius: 15, paddingVertical: 20, width: '100%', flexDirection: isRTL ? 'row-reverse' : 'row', justifyContent: 'space-around', alignItems: 'center' },
     metricBlock: { alignItems: 'center', flex: 1 },
     metricIconCircle: { backgroundColor: theme.iconCircleBg, width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center', marginBottom: 12, iconColor: theme.icon },
