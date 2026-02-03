@@ -51,10 +51,53 @@ const addDays = (date, days) => {
 
 // --- Theming ---
 const lightTheme = {
-    safeArea: '#F7FDF9', cardBackground: '#FFFFFF', headerTitle: '#2e7d32', mainText: '#388e3c', secondaryText: '#757575', inactiveBar: '#c8e6c9', activeBar: '#66bb6a', achievedBar: '#4caf50', selectedBar: '#2E7D32', graphLine: '#eee', tooltipBg: '#333333', tooltipText: '#FFFFFF', shadowColor: '#000', separator: '#eee', icon: '#4caf50', iconCircleBg: 'rgba(76, 175, 80, 0.1)', chevron: '#757575', disabledChevron: '#e0e0e0', activeDayLabelColor: '#000000'
+    safeArea: '#F7FDF9', 
+    cardBackground: '#FFFFFF', 
+    headerTitle: '#2e7d32', 
+    mainText: '#388e3c', 
+    secondaryText: '#757575', 
+    inactiveBar: '#c8e6c9', 
+    activeBar: '#66bb6a', 
+    achievedBar: '#4caf50', 
+    selectedBar: '#2E7D32', 
+    graphLine: '#eee', 
+    tooltipBg: '#333333', 
+    tooltipText: '#FFFFFF', 
+    shadowColor: '#000', 
+    separator: '#eee', 
+    icon: '#4caf50', 
+    iconCircleBg: 'rgba(76, 175, 80, 0.1)', 
+    
+    // --- التعديل هنا: الألوان الخضراء للأسهم ---
+    chevron: '#2e7d32', 
+    disabledChevron: '#a5d6a7', 
+    
+    activeDayLabelColor: '#000000'
 };
+
 const darkTheme = {
-    safeArea: '#121212', cardBackground: '#1E1E1E', headerTitle: '#E0E0E0', mainText: '#80CBC4', secondaryText: '#A0A0A0', inactiveBar: '#3E5052', activeBar: '#00796B', achievedBar: '#80CBC4', selectedBar: '#A7FFEB', graphLine: '#333333', tooltipBg: '#E0E0E0', tooltipText: '#121212', shadowColor: '#000', separator: '#424242', icon: '#80CBC4', iconCircleBg: 'rgba(128, 203, 196, 0.1)', chevron: '#A0A0A0', disabledChevron: '#424242', activeDayLabelColor: '#FFFFFF'
+    safeArea: '#121212', 
+    cardBackground: '#1E1E1E', 
+    headerTitle: '#E0E0E0', 
+    mainText: '#80CBC4', 
+    secondaryText: '#A0A0A0', 
+    inactiveBar: '#3E5052', 
+    activeBar: '#00796B', 
+    achievedBar: '#80CBC4', 
+    selectedBar: '#A7FFEB', 
+    graphLine: '#333333', 
+    tooltipBg: '#E0E0E0', 
+    tooltipText: '#121212', 
+    shadowColor: '#000', 
+    separator: '#424242', 
+    icon: '#80CBC4', 
+    iconCircleBg: 'rgba(128, 203, 196, 0.1)', 
+    
+    // --- التعديل هنا أيضاً للوضع الليلي ---
+    chevron: '#2e7d32', 
+    disabledChevron: '#424242', 
+    
+    activeDayLabelColor: '#FFFFFF'
 };
 
 // =================================================================
@@ -147,33 +190,14 @@ const WeeklySteps = ({
     }, [isCurrentWeek, language]);
 
 
-    // ==========================================================
-    // إعدادات أيقونات الأسهم (Icon Controls)
-    // ==========================================================
-    let leftButtonIconName;  // اسم أيقونة الزر الأيسر
-    let rightButtonIconName; // اسم أيقونة الزر الأيمن
+    let leftButtonIconName;  
+    let rightButtonIconName; 
 
-    // التعديل الجديد: بنعتمد على المتغير language مباشرة عشان يضمن التغيير
     if (language === 'ar') {
-        // -----------------------------------------------------------
-        // (1) منطقة تعديل العربي فقط
-        // -----------------------------------------------------------
-        
-        // ده الزرار اللي ع الشمال (عايزه يبقى باصص فين؟)
         leftButtonIconName = "chevron-forward-outline";  
-        
-        // ده الزرار اللي ع اليمين (عايزه يبقى باصص فين؟)
         rightButtonIconName = "chevron-back-outline";    
-
     } else {
-        // -----------------------------------------------------------
-        // (2) منطقة تعديل الإنجليزي (English) فقط
-        // -----------------------------------------------------------
-
-        // ده الزرار اللي ع الشمال (Left Button)
         leftButtonIconName = "chevron-back-outline";     
-
-        // ده الزرار اللي ع اليمين (Right Button)
         rightButtonIconName = "chevron-forward-outline"; 
     }
 
@@ -211,10 +235,9 @@ const WeeklySteps = ({
                     {/* Header Navigator */}
                     <View style={styles.dateNavigator}>
                         
-                         {/* زر الأسبوع السابق (على اليسار) */}
                          <TouchableOpacity onPress={onPreviousWeek}>
                             <Ionicons 
-                                name={leftButtonIconName} // بياخد الاسم من المتغير اللي فوق
+                                name={leftButtonIconName} 
                                 size={26} 
                                 color={theme.chevron} 
                             />
@@ -222,10 +245,9 @@ const WeeklySteps = ({
 
                         <Text style={styles.dateText}>{formattedDateRange}</Text>
 
-                        {/* زر الأسبوع القادم (على اليمين) */}
                         <TouchableOpacity onPress={onNextWeek} disabled={isCurrentWeek}>
                             <Ionicons 
-                                name={rightButtonIconName} // بياخد الاسم من المتغير اللي فوق
+                                name={rightButtonIconName} 
                                 size={26} 
                                 color={isCurrentWeek ? theme.disabledChevron : theme.chevron} 
                             />
@@ -339,13 +361,12 @@ const getStyles = (theme, isRTL) => StyleSheet.create({
     summaryValue: { fontSize: 32, fontWeight: 'bold', color: theme.mainText, fontVariant: ['tabular-nums'] },
     summaryLabel: { fontSize: 14, color: theme.secondaryText, marginTop: 4, textAlign:'center' },
     
-    // --- FIX HERE: Fixed height prevents infinite stretching ---
     graphContainer: { 
-        flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row', // Force RTL direction
+        flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row', 
         paddingHorizontal: 15, 
         paddingTop: 30, 
         paddingBottom: 10, 
-        height: 300, // <--- IMPORTANT: Fixed Height
+        height: 300, 
         alignItems: 'stretch'
     },
     

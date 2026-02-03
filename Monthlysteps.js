@@ -1,4 +1,6 @@
-﻿import React, { useState, useEffect, useMemo, useCallback } from 'react';
+﻿// MonthlySteps.js (نسخة معدلة - ألوان الأسهم خضراء)
+
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
     StyleSheet,
     Text,
@@ -11,7 +13,7 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
-// --- Constants (كما هي) ---
+// --- Constants ---
 const STEPS_PER_MINUTE = 100;
 const CALORIES_PER_STEP = 0.04;
 const STEP_LENGTH_METERS = 0.762;
@@ -19,7 +21,7 @@ const TOOLTIP_WIDTH = 65;
 const TOOLTIP_POINTER_HEIGHT = 5;
 const TOOLTIP_VERTICAL_OFFSET = 3;
 
-// --- Theme Colors (كما هي) ---
+// --- Theme Colors ---
 const lightTheme = {
     backgroundColor: '#F7FDF9', cardBackgroundColor: '#FFFFFF', textColor: '#424242',
     primaryText: '#2e7d32', secondaryText: '#757575', accentColor: '#4caf50',
@@ -38,7 +40,7 @@ const darkTheme = {
     loadingColor: '#424242', disabledColor: '#424242', shadowColor: '#000',
 };
 
-// --- Translations (كما هي) ---
+// --- Translations ---
 const translations = {
     ar: {
         total: "الإجمالي", average: "متوسط", loading: "...", loadingCalculating: "جارٍ الحساب...",
@@ -74,7 +76,7 @@ const translations = {
     }
 };
 
-// --- Helper Functions (كما هي) ---
+// --- Helper Functions ---
 const formatNumber = (num, lang, options = {}) => {
     const locale = lang === 'ar' ? 'ar-EG' : 'en-US';
     if (typeof num !== 'number' || isNaN(num)) {
@@ -327,15 +329,11 @@ const MonthlySteps = ({
     // استخدام MaterialCommunityIcons (chevron-left / chevron-right)
     if (effectiveLang === 'ar') {
         // --- إعدادات العربي ---
-        // الزر الأيسر (السابق) يشير لليمين في العربية
         leftButtonIconName = "chevron-right"; 
-        // الزر الأيمن (التالي) يشير لليسار في العربية
         rightButtonIconName = "chevron-left";    
     } else {
         // --- إعدادات الإنجليزي ---
-        // الزر الأيسر (Previous) يشير لليسار
         leftButtonIconName = "chevron-left";     
-        // الزر الأيمن (Next) يشير لليمين
         rightButtonIconName = "chevron-right"; 
     }
 
@@ -347,18 +345,29 @@ const MonthlySteps = ({
                          تم تعديل dateNavigator هنا
                          الترتيب: [زر السابق] - [النص] - [زر التالي]
                          ويتم التحكم بالأيقونة ديناميكياً
+                         وتم تعديل الألوان
                      */}
                      <View style={S.dateNavigator}>
-                         {/* الزر الأيسر: دائماً للأسبوع السابق */}
+                         {/* الزر الأيسر */}
                          <TouchableOpacity onPress={onPreviousMonth} disabled={isLoading}>
-                            <Icon name={leftButtonIconName} size={28} color={isLoading ? theme.disabledColor : theme.secondaryText} />
+                            <Icon 
+                                name={leftButtonIconName} 
+                                size={28} 
+                                // استخدام اللون الأخضر للنشط والرمادي المخضر للمعطل
+                                color={isLoading ? S.disabledChevron.color : S.chevron.color} 
+                            />
                          </TouchableOpacity>
 
                          <Text style={S.dateText}>{displayDateRange}</Text>
 
-                         {/* الزر الأيمن: دائماً للأسبوع التالي */}
+                         {/* الزر الأيمن */}
                          <TouchableOpacity onPress={onNextMonth} disabled={isLoading || isCurrentMonth}>
-                            <Icon name={rightButtonIconName} size={28} color={isLoading || isCurrentMonth ? theme.disabledColor : theme.secondaryText} />
+                            <Icon 
+                                name={rightButtonIconName} 
+                                size={28} 
+                                // استخدام اللون الأخضر للنشط والرمادي المخضر للمعطل
+                                color={isLoading || isCurrentMonth ? S.disabledChevron.color : S.chevron.color} 
+                            />
                          </TouchableOpacity>
                      </View>
 
@@ -504,6 +513,11 @@ const styles = (theme) => StyleSheet.create({
         paddingHorizontal: 20, 
         paddingVertical: 15,
     },
+    
+    // --- تعريف الألوان المطلوبة هنا ---
+    chevron: { color: '#2e7d32' }, 
+    disabledChevron: { color: '#a5d6a7' },
+    // --------------------------------
 
     dateText: {
         fontSize: 18, fontWeight: 'bold', color: theme.primaryText,

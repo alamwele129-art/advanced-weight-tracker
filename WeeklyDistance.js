@@ -1,8 +1,8 @@
-﻿// WeeklyDistance.js (Fixed Layout & Infinite Scroll)
+﻿// WeeklyDistance.js
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
-  View, // Changed from SafeAreaView
+  View, 
   Text, 
   StyleSheet, 
   ScrollView, 
@@ -32,7 +32,7 @@ const getStartOfWeek = (date, startOfWeekDay) => { const d = new Date(date); d.s
 // =================================================================
 // Sub-components
 // =================================================================
-const WeeklyChart = ({ styles, chartData, totalDistance, averageDistance, dateRange, onPreviousWeek, onNextWeek, isNextWeekDisabled, todayIndex, translation, language }) => { // أضفنا language هنا
+const WeeklyChart = ({ styles, chartData, totalDistance, averageDistance, dateRange, onPreviousWeek, onNextWeek, isNextWeekDisabled, todayIndex, translation, language }) => { 
     const [selectedBarIndex, setSelectedBarIndex] = useState(null);
     const { yAxisLabels, yMax } = useMemo(() => { const dataMax = Math.max(...chartData, 1); const topValue = Math.ceil(dataMax / 5) * 5; const finalMax = Math.max(topValue, 5); const labels = []; for (let i = finalMax; i >= 0; i -= (finalMax / 4)) { labels.push(Math.round(i).toString()); } return { yAxisLabels: [...new Set(labels)], yMax: finalMax }; }, [chartData]);
     const getBarHeight = useCallback((value) => (yMax === 0 ? '0%' : `${Math.min((value / yMax) * 100, 100)}%`), [yMax]);
@@ -41,33 +41,27 @@ const WeeklyChart = ({ styles, chartData, totalDistance, averageDistance, dateRa
     const chartDayLabels = translation.dayNamesShort;
     const locale = I18nManager.isRTL ? 'ar-EG' : 'en-US';
 
-    // --- بداية التعديل: منطق تحديد الأيقونات ---
     let leftButtonIconName;
     let rightButtonIconName;
 
     if (language === 'ar') {
-        // في العربي: الزر الأيسر (السابق) يشير لليمين، والأيمن (القادم) يشير لليسار
         leftButtonIconName = "chevron-forward-outline"; 
         rightButtonIconName = "chevron-back-outline";   
     } else {
-        // في الإنجليزي: العكس
         leftButtonIconName = "chevron-back-outline";
         rightButtonIconName = "chevron-forward-outline";
     }
-    // --- نهاية التعديل ---
 
     return (
         <View style={styles.chartCard}>
             <View>
                 <View style={styles.dateNavigator}>
-                    {/* الزر الأيسر: الأسبوع السابق */}
                     <TouchableOpacity onPress={onPreviousWeek}>
                         <Icon name={leftButtonIconName} size={24} color={styles.chevron.color} />
                     </TouchableOpacity>
                     
                     <Text style={styles.dateText}>{dateRange}</Text>
                     
-                    {/* الزر الأيمن: الأسبوع القادم */}
                     <TouchableOpacity onPress={onNextWeek} disabled={isNextWeekDisabled}>
                         <Icon name={rightButtonIconName} size={24} color={isNextWeekDisabled ? styles.disabledChevron.color : styles.chevron.color} />
                     </TouchableOpacity>
@@ -197,7 +191,6 @@ const WeeklyDistance = ({ language = 'ar', isDarkMode = false }) => {
 return (
     <View style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.mainContainer}>
-        {/* التعديل هنا: أضفنا language={language} */}
         <WeeklyChart 
             styles={styles} 
             chartData={weeklyData.chartData} 
@@ -209,7 +202,7 @@ return (
             isNextWeekDisabled={weekOffset === 0} 
             todayIndex={weeklyData.todayIndex} 
             translation={translation}
-            language={language} // <--- أضف هذا السطر
+            language={language}
         />
         <ActivitySummary styles={styles} totalKm={weeklyData.totalKm} totalSteps={weeklyData.totalSteps} totalCalories={weeklyData.totalCalories} totalHours={weeklyData.totalHours} trend={weeklyData.trend} mostActiveTime={weeklyData.mostActiveTime} translation={translation} />
       </ScrollView>
@@ -226,19 +219,23 @@ const getStyles = (theme, isRTL) => StyleSheet.create({
     chartCard: { backgroundColor: theme.cardBackground, borderRadius: 20, marginBottom: 20, shadowColor: theme.shadowColor, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 5, elevation: 2, overflow: 'hidden' },
     dateNavigator: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 15 },
     dateText: { fontSize: 18, fontWeight: '600', color: theme.headerTitle },
-    chevron: { color: theme.chevron }, disabledChevron: { color: theme.disabledChevron },
+    
+    // --- التغيير هنا: تم توحيد اللون الأخضر ---
+    chevron: { color: '#2e7d32' }, 
+    disabledChevron: { color: '#a5d6a7' },
+    // ------------------------------------------
+
     summaryContainer: { flexDirection: isRTL ? 'row-reverse' : 'row', justifyContent: 'space-around', paddingVertical: 20, paddingTop: 10 },
     summaryBox: { alignItems: 'center', flex:1 },
     summaryValue: { fontSize: 32, fontWeight: 'bold', color: theme.mainText, fontVariant: ['tabular-nums'] },
     summaryLabel: { fontSize: 14, color: theme.secondaryText, marginTop: 4, textAlign:'center' },
     
-    // --- FIX IS HERE: Fixed Height prevents infinite scrolling ---
     graphContainer: { 
         flexDirection: isRTL ? 'row-reverse' : 'row', 
         paddingHorizontal: 15, 
         paddingTop: 10, 
         paddingBottom: 10, 
-        height: 300, // Fixed height added here
+        height: 300, 
         alignItems: 'stretch'
     },
     

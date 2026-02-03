@@ -1,4 +1,4 @@
-﻿// MonthlyDistance.js (Fixed Layout and Infinite Scroll Issue & Arrow Logic)
+﻿// MonthlyDistance.js (نسخة معدلة - ألوان الأسهم خضراء)
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
@@ -26,7 +26,7 @@ const DAILY_DISTANCE_HISTORY_KEY = '@DistanceScreen:DailyHistory';
 const getDateString = (date) => { if (!date || !(date instanceof Date)) return null; return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())).toISOString().slice(0, 10); };
 
 // =================================================================
-// Sub-components (تم التعديل هنا MonthlyChart)
+// Sub-components
 // =================================================================
 const MonthlyChart = ({ styles, weeklyAggregates, totalDistance, averageDistance, dateRange, onPreviousMonth, onNextMonth, isNextMonthDisabled, translation, language }) => {
     const [selectedBarIndex, setSelectedBarIndex] = useState(null);
@@ -47,28 +47,22 @@ const MonthlyChart = ({ styles, weeklyAggregates, totalDistance, averageDistance
     const handleDismissTooltip = () => setSelectedBarIndex(null);
 
     // ==========================================================
-    // منطق الأسهم (التحكم الكامل)
+    // منطق الأسهم
     // ==========================================================
     let leftButtonIconName;
     let rightButtonIconName;
 
     if (language === 'ar') {
-        // --- إعدادات العربي ---
-        leftButtonIconName = "chevron-forward-outline"; // سهم يمين
-        rightButtonIconName = "chevron-back-outline";   // سهم يسار
+        leftButtonIconName = "chevron-forward-outline"; 
+        rightButtonIconName = "chevron-back-outline";   
     } else {
-        // --- إعدادات الإنجليزي ---
-        leftButtonIconName = "chevron-back-outline";     // سهم يسار
-        rightButtonIconName = "chevron-forward-outline"; // سهم يمين
+        leftButtonIconName = "chevron-back-outline";     
+        rightButtonIconName = "chevron-forward-outline"; 
     }
 
     return (
         <View style={styles.chartCard}>
             <View>
-                {/* 
-                    تم ترتيب العناصر يدوياً: (زر السابق - التاريخ - زر التالي)
-                    واستخدام المتغيرات للتحكم في شكل الأيقونة
-                */}
                 <View style={styles.dateNavigator}>
                     {/* الزر الأيسر: للشهر السابق */}
                     <TouchableOpacity onPress={onPreviousMonth}>
@@ -238,7 +232,6 @@ const MonthlyDistance = ({ language = 'ar', isDarkMode = false }) => {
   return ( 
     <View style={styles.safeArea}> 
         <ScrollView contentContainerStyle={styles.mainContainer}> 
-            {/* تم تمرير language هنا */}
             <MonthlyChart 
                 styles={styles} 
                 weeklyAggregates={monthlyData.weeklyAggregates} 
@@ -265,9 +258,8 @@ const getStyles = (theme, isRTL) => StyleSheet.create({
     mainContainer: { padding: 15, paddingBottom: 50 },
     chartCard: { backgroundColor: theme.cardBackground, borderRadius: 20, marginBottom: 20, shadowColor: theme.shadowColor, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 5, elevation: 2, overflow: 'hidden' },
     
-    // --- التعديل هنا: استخدام row دائماً ---
     dateNavigator: { 
-        flexDirection: 'row', // دائماً row
+        flexDirection: 'row', 
         justifyContent: 'space-between', 
         alignItems: 'center', 
         paddingHorizontal: 20, 
@@ -275,8 +267,14 @@ const getStyles = (theme, isRTL) => StyleSheet.create({
     },
 
     dateText: { fontSize: 18, fontWeight: '600', color: theme.headerTitle, fontVariant: ['tabular-nums'], textAlign: 'center' },
-    chevron: { color: theme.chevron },
-    disabledChevron: { color: theme.disabledChevron },
+    
+    // =========================================================
+    // تم التعديل هنا: تثبيت اللون الأخضر مثل الأكواد السابقة
+    // =========================================================
+    chevron: { color: '#2e7d32' }, 
+    disabledChevron: { color: '#a5d6a7' },
+    // =========================================================
+
     summaryContainer: { flexDirection: isRTL ? 'row-reverse' : 'row', justifyContent: 'space-around', paddingVertical: 20, paddingTop: 10 },
     summaryBox: { alignItems: 'center', flex:1 },
     summaryValue: { fontSize: 32, fontWeight: 'bold', color: theme.mainText, fontVariant: ['tabular-nums'] },

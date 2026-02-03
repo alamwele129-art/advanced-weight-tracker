@@ -14,17 +14,16 @@ import { supabase } from './supabaseClient';
 import WeeklyDistance from './WeeklyDistance'; 
 import MonthlyDistance from './monthlydistance';
 
-// --- الثوابت والأبعاد (تم التحديث لتطابق صفحة الخطوات) ---
+// --- الثوابت والأبعاد ---
 const { width, height } = Dimensions.get('window');
 
-// *** تعديلات لتطابق الكود الثاني ***
-const CIRCLE_SIZE = width * 0.60; // نفس حجم دائرة الخطوات
-const CIRCLE_BORDER_WIDTH = 15;   // نفس سمك خط دائرة الخطوات
+const CIRCLE_SIZE = width * 0.60;
+const CIRCLE_BORDER_WIDTH = 15;
 const SVG_VIEWBOX_SIZE = CIRCLE_SIZE;
 const PATH_RADIUS = (CIRCLE_SIZE / 2) - (CIRCLE_BORDER_WIDTH / 2);
 const CENTER_X = SVG_VIEWBOX_SIZE / 2;
 const CENTER_Y = SVG_VIEWBOX_SIZE / 2;
-const ICON_SIZE = 22; // حجم النقطة
+const ICON_SIZE = 22;
 
 const MENU_VERTICAL_OFFSET = 5;
 const MENU_ARROW_WIDTH = 14;
@@ -44,7 +43,13 @@ const GOAL_KEY = '@Distance:goal';
 // --- كائن الترجمة ---
 const translations = {
     ar: {
-        headerTitle: 'المسافة', today: 'اليوم', week: 'أسبوع', month: 'شهر', yesterday: 'أمس', goalPrefix: 'الهدف', kmUnit: 'كم', miUnit: 'ميل',
+        headerTitle: 'المسافة', 
+        today: 'اليوم',       // يستخدم للتاريخ
+        dayPeriod: 'يوم',     // يستخدم للزر العلوي (تم التعديل هنا)
+        week: 'أسبوع', 
+        month: 'شهر', 
+        yesterday: 'أمس', 
+        goalPrefix: 'الهدف', kmUnit: 'كم', miUnit: 'ميل',
         caloriesLabel: 'كيلوكالوري', timeLabel: 'ساعات', stepsLabel: 'خطوة',
         challengePrefix: 'أيام تحدي', challengeCompleted: 'اكتمل التحدي!', challengeRemainingSingular: 'يوم متبقي', challengeRemainingPlural: 'أيام متبقية', challengeDaySuffix: 'ي',
         goalModalTitle: 'هدف المسافه', save: 'حفظ', cancel: 'إلغاء',
@@ -54,7 +59,13 @@ const translations = {
         errorTitle: "خطأ", pedometerNotAvailable: "عداد الخطى غير متوفر", cannotSaveGoalError: "لم نتمكن من حفظ الهدف."
     },
     en: {
-        headerTitle: 'Distance', today: 'Today', week: 'Week', month: 'Month', yesterday: 'Yesterday', goalPrefix: 'Goal', kmUnit: 'km', miUnit: 'mi',
+        headerTitle: 'Distance', 
+        today: 'Today',       // Uses for date
+        dayPeriod: 'Day',     // Uses for top button (Added here)
+        week: 'Week', 
+        month: 'Month', 
+        yesterday: 'Yesterday', 
+        goalPrefix: 'Goal', kmUnit: 'km', miUnit: 'mi',
         caloriesLabel: 'Kcal', timeLabel: 'Hours', stepsLabel: 'Steps',
         challengePrefix: 'Day Challenge', challengeCompleted: 'Challenge Completed!', challengeRemainingSingular: 'day remaining', challengeRemainingPlural: 'days remaining', challengeDaySuffix: 'd',
         goalModalTitle: 'Distance Goal', save: 'Save', cancel: 'Cancel',
@@ -65,9 +76,9 @@ const translations = {
     }
 };
 
-// --- الدوال المساعدة (تم تحديث دوال الرسم لتطابق الكود الثاني) ---
+// --- الدوال المساعدة ---
 
-// رسم القوس (نفس الكود الثاني)
+// رسم القوس
 const describeArc = (x, y, radius, startAngleDeg, endAngleDeg) => { 
     const clampedEndAngle = Math.min(endAngleDeg, 359.999); 
     const startAngleRad = ((startAngleDeg - 90) * Math.PI) / 180.0; 
@@ -82,7 +93,7 @@ const describeArc = (x, y, radius, startAngleDeg, endAngleDeg) => {
     return d; 
 };
 
-// حساب موقع النقطة (نفس الكود الثاني لضمان التطابق)
+// حساب موقع النقطة
 const calculateIconPositionOnPath = (angleDegrees) => { 
     const angleRad = (angleDegrees * Math.PI) / 180; 
     const iconRadius = PATH_RADIUS; 
@@ -111,8 +122,6 @@ const calculateIconPositionOnPath = (angleDegrees) => {
     }; 
 };
 
-
-
 const getDateString = (date) => { if (!date || !(date instanceof Date)) return null; return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())).toISOString().slice(0, 10); };
 const isToday = (someDate) => { const today = new Date(); return someDate.getUTCFullYear() === today.getUTCFullYear() && someDate.getUTCMonth() === today.getUTCMonth() && someDate.getUTCDate() === today.getUTCDate(); };
 const isYesterday = (someDate) => { const today = new Date(); const yesterday = new Date(today); yesterday.setUTCDate(yesterday.getUTCDate() - 1); return someDate.getUTCFullYear() === yesterday.getUTCFullYear() && someDate.getUTCMonth() === yesterday.getUTCMonth() && someDate.getUTCDate() === yesterday.getUTCDate(); };
@@ -129,18 +138,13 @@ const getDaysInMonth = (date) => new Date(Date.UTC(date.getUTCFullYear(), date.g
 const GoalModal = ({ visible, onClose, onSave, currentValue, currentUnit, translation, styles }) => { const [tempValue, setTempValue] = useState(currentValue); const [tempUnit, setTempUnit] = useState(currentUnit); const distanceValues = Array.from({ length: 120 }, (_, i) => ((i + 1) * 0.5).toFixed(1)); const unitValues = [translation.kmUnit, translation.miUnit]; useEffect(() => { if (visible) { setTempValue(currentValue); setTempUnit(currentUnit); } }, [visible, currentValue, currentUnit]); const handleSave = () => { onSave(tempValue, tempUnit); }; return ( <Modal animationType="fade" transparent={true} visible={visible} onRequestClose={onClose}><View style={styles.modalOverlay}><View style={styles.modalCard}><Text style={styles.modalTitle}>{translation.goalModalTitle}</Text><View style={styles.pickersContainer}><Picker height={180} initialSelectedIndex={distanceValues.indexOf(tempValue.toFixed(1))} items={distanceValues.map(val => ({ label: val, value: val }))} onChange={({ item }) => setTempValue(parseFloat(item.value))} renderItem={(item, i, isSelected) => ( <Text style={isSelected ? styles.selectedPickerItemText : styles.pickerItemText}>{item.label}</Text> )} haptics /><Picker height={180} width={120} initialSelectedIndex={unitValues.indexOf(tempUnit)} items={unitValues.map(val => ({ label: val, value: val }))} onChange={({ item }) => setTempUnit(item.value)} renderItem={(item, i, isSelected) => ( <Text style={isSelected ? styles.selectedPickerItemText : styles.pickerItemText}>{item.label}</Text> )} haptics /></View><View style={styles.buttonRow}><TouchableOpacity style={[styles.modalButton, styles.cancelButton]} onPress={onClose}><Text style={styles.cancelButtonText}>{translation.cancel}</Text></TouchableOpacity><TouchableOpacity style={[styles.modalButton, styles.saveButton]} onPress={handleSave}><Text style={styles.saveButtonText}>{translation.save}</Text></TouchableOpacity></View></View></View></Modal> ); };
 const AnimatedStatCard = ({ iconName, value, label, formatter, styles }) => { const animatedValue = useRef(new Animated.Value(value || 0)).current; const [displayValue, setDisplayValue] = useState(() => formatter(value || 0)); useEffect(() => { Animated.timing(animatedValue, { toValue: value || 0, duration: 750, useNativeDriver: false }).start(); }, [value]); useEffect(() => { const listenerId = animatedValue.addListener((v) => { setDisplayValue(formatter(v.value)); }); return () => { animatedValue.removeListener(listenerId); }; }, [formatter, animatedValue]); return ( <View style={styles.statCard}><View style={styles.iconContainer}><Icon name={iconName} size={24} color={styles.animatedStatIcon.color} /></View><Text style={styles.statValue}>{displayValue}</Text><Text style={styles.statLabel}>{label}</Text></View> ); };
 const ChallengeCard = ({ onPress, currentChallengeDuration, remainingDays, translation, styles, language }) => { 
-  // تحديد اللغة للتنسيق
   const locale = language === 'ar' ? 'ar-EG' : 'en-US';
-  
   const daysCompleted = currentChallengeDuration - remainingDays; 
   const badgeProgressAngle = remainingDays <= 0 || currentChallengeDuration <= 0 ? 359.999 : remainingDays >= currentChallengeDuration ? 0 : (daysCompleted / currentChallengeDuration) * 360; 
   const badgeProgressPathD = describeArc(BADGE_CENTER_X, BADGE_CENTER_Y, BADGE_PATH_RADIUS, 0.01, badgeProgressAngle); 
   const subText = remainingDays > 0 ? `${remainingDays.toLocaleString(locale)} ${remainingDays === 1 ? translation.challengeRemainingSingular : translation.challengeRemainingPlural}` : translation.challengeCompleted; 
   const mainText = `${currentChallengeDuration.toLocaleString(locale)} ${translation.challengePrefix}`; 
 
-  // ---------------------------------------------------------
-  // (1) الجزء الخاص باللغة العربية فقط
-  // ---------------------------------------------------------
   if (language === 'ar') {
     return ( 
       <TouchableOpacity style={styles.challengeCardWrapper} onPress={onPress} activeOpacity={0.8}>
@@ -158,20 +162,12 @@ const ChallengeCard = ({ onPress, currentChallengeDuration, remainingDays, trans
             <Text style={styles.summaryMainText}>{mainText}</Text>
             <Text style={styles.summarySubText}>{subText}</Text>
           </View>
-          
-          {/* ---- تعديل السهم للعربي هنا ---- */}
-          {/* chevron-back = سهم لليسار (<) */}
-          {/* chevron-forward = سهم لليمين (>) */}
           <Ionicons name="chevron-back" size={24} color={styles.summaryChevron.color} />
-          
         </View>
       </TouchableOpacity> 
     );
   }
 
-  // ---------------------------------------------------------
-  // (2) الجزء الخاص باللغة الإنجليزية (وباقي اللغات)
-  // ---------------------------------------------------------
   return ( 
     <TouchableOpacity style={styles.challengeCardWrapper} onPress={onPress} activeOpacity={0.8}>
       <View style={styles.summaryCard}>
@@ -188,17 +184,12 @@ const ChallengeCard = ({ onPress, currentChallengeDuration, remainingDays, trans
           <Text style={styles.summaryMainText}>{mainText}</Text>
           <Text style={styles.summarySubText}>{subText}</Text>
         </View>
-
-        {/* ---- تعديل السهم للإنجليزي هنا ---- */}
-        {/* chevron-forward = سهم لليمين (>) */}
         <Ionicons name="chevron-forward" size={24} color={styles.summaryChevron.color} />
-
       </View>
     </TouchableOpacity> 
   ); 
 };
 
-// *** هذا المكون الجديد المستبدل ***
 const DistanceWeeklyChart = ({ weeklyDistanceData, goalDistance, onTestIncrement, onResetData, translation, styles, language }) => { 
     const [tooltipVisible, setTooltipVisible] = useState(false); 
     const [selectedBarIndex, setSelectedBarIndex] = useState(null); 
@@ -209,12 +200,7 @@ const DistanceWeeklyChart = ({ weeklyDistanceData, goalDistance, onTestIncrement
     const jsDayIndex = today.getDay(); 
     const displayDayIndex = (jsDayIndex - startOfWeekDay + 7) % 7; 
     
-    // تحديد الاتجاه بناءً على اللغة (نفس منطق صفحة السعرات)
-    // العربي: row (عشان يبدأ من اليمين في وضع RTL)
-    // الإنجليزي: row-reverse (عشان نعكس الترتيب ويبدأ من اليسار)
     const chartDirection = 'row';
-    
-    // تحديد محاذاة العنوان
     const headerAlign = 'flex-start';
 
     const { yAxisMax, yAxisLabels } = useMemo(() => { 
@@ -243,7 +229,6 @@ const DistanceWeeklyChart = ({ weeklyDistanceData, goalDistance, onTestIncrement
     
     return ( 
         <Pressable style={styles.card} onPress={handleOutsidePress}>
-            {/* تعديل محاذاة العنوان */}
             <View style={[styles.chartHeader, { alignItems: headerAlign }]}>
                 <Text style={styles.chartTitle}>{translation.weeklyChartTitle}</Text>
             </View>
@@ -257,14 +242,12 @@ const DistanceWeeklyChart = ({ weeklyDistanceData, goalDistance, onTestIncrement
                 </TouchableOpacity>
             </View>
             
-            {/* تطبيق الاتجاه الديناميكي على الحاوية الرئيسية */}
             <View style={[styles.chartAreaContainer, { flexDirection: chartDirection }]}>
                 <View style={styles.yAxisLabels}>
                     {yAxisLabels.map(label => <Text key={label} style={styles.axisLabelY}>{label}</Text>)}
                 </View>
                 
                 <View style={[styles.chartContent, { [language === 'ar' ? 'marginLeft' : 'marginRight']: 10 }]}>
-                    {/* تطبيق الاتجاه الديناميكي على حاوية الأعمدة لترتيب الأيام */}
                     <View style={[styles.barsAndLabelsContainer, { flexDirection: chartDirection }]}>
                         {days.map((dayName, index) => { 
                             const value = weeklyDistanceData[index] || 0; 
@@ -340,6 +323,7 @@ const DistanceScreen = (props) => {
   const [appState, setAppState] = useState(AppState.currentState);
 
   const isViewingToday = useMemo(() => isToday(currentDate), [currentDate]);
+  // سيستخدم translation.today وبالتالي سيعرض "اليوم"
   const dayLabel = useMemo(() => formatDisplayDate(currentDate, language, translation), [currentDate, language, translation]);
 
   const getStoredStepsHistory = useCallback(async () => {
@@ -480,7 +464,6 @@ const DistanceScreen = (props) => {
   const progressPercentage = goalDistance > 0 ? (distanceForDisplay / goalDistance) * 100 : 0;
   const clampedProgressPercentage = Math.min(100, progressPercentage);
   
-  // --- الأنيميشن (تم تحديثه) ---
   useEffect(() => { 
       const targetAngle = Math.min(359.999, (clampedProgressPercentage || 0) * 3.6); 
       Animated.timing(animatedAngle, { 
@@ -490,12 +473,9 @@ const DistanceScreen = (props) => {
       }).start(); 
   }, [clampedProgressPercentage]);
 
-  // تحديث النقطة والمسار (تم التحديث ليطابق الكود الثاني)
   useEffect(() => { 
       const listenerId = animatedAngle.addListener(({ value }) => { 
-          // 1. تحديث موقع النقطة
           setDynamicIconStyle(calculateIconPositionOnPath(value)); 
-          // 2. تحديث رسم الخط
           setProgressPathD(value > 0.01 ? describeArc(CENTER_X, CENTER_Y, PATH_RADIUS, 0.01, value) : ''); 
       }); 
       return () => { animatedAngle.removeListener(listenerId); }; 
@@ -573,27 +553,24 @@ const DistanceScreen = (props) => {
                      <Text style={[ currentStyles.periodText, selectedPeriod === 'week' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.week}</Text>
                  </TouchableOpacity>
                  <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'day' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('day')}>
-                     <Text style={[ currentStyles.periodText, selectedPeriod === 'day' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.today}</Text>
+                     {/* هنا التغيير لاستخدام dayPeriod بدلاً من today */}
+                     <Text style={[ currentStyles.periodText, selectedPeriod === 'day' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.dayPeriod}</Text>
                  </TouchableOpacity>
              </>
          ) : (
-    <>
-        {/* زر الشهر أصبح في البداية */}
-        <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'month' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('month')}>
-            <Text style={[ currentStyles.periodText, selectedPeriod === 'month' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.month}</Text>
-        </TouchableOpacity>
-        
-        {/* زر الأسبوع يبقى في المنتصف */}
-        <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'week' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('week')}>
-            <Text style={[ currentStyles.periodText, selectedPeriod === 'week' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.week}</Text>
-        </TouchableOpacity>
-
-        {/* زر اليوم أصبح في النهاية */}
-        <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'day' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('day')}>
-            <Text style={[ currentStyles.periodText, selectedPeriod === 'day' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.today}</Text>
-        </TouchableOpacity>
-    </>
-)}
+            <>
+                <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'month' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('month')}>
+                    <Text style={[ currentStyles.periodText, selectedPeriod === 'month' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.month}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'week' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('week')}>
+                    <Text style={[ currentStyles.periodText, selectedPeriod === 'week' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.week}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'day' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('day')}>
+                     {/* هنا التغيير لاستخدام dayPeriod بدلاً من today */}
+                    <Text style={[ currentStyles.periodText, selectedPeriod === 'day' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.dayPeriod}</Text>
+                </TouchableOpacity>
+            </>
+        )}
       </View>
 
       <ScrollView contentContainerStyle={currentStyles.scrollContainer} key={`${selectedPeriod}-${language}-${isDarkMode}`}>
@@ -601,57 +578,54 @@ const DistanceScreen = (props) => {
         {selectedPeriod === 'day' && (
           <View style={currentStyles.dayViewContainer}>
             {/* --- متصفح الأيام --- */}
-<View style={[currentStyles.dayHeader, { flexDirection: language === 'ar' ? 'row' : 'row' }]}>
-    {/* زر اليوم السابق */}
-    <TouchableOpacity onPress={handlePreviousDay}>
-        <Ionicons 
-            name={language === 'ar' ? "chevron-forward-outline" : "chevron-back-outline"} 
-            size={28} 
-            color={currentStyles.dayHeaderArrow.color} 
-        />
-    </TouchableOpacity>
-    
-    <Text style={currentStyles.dayHeaderText}>{dayLabel}</Text>
-    
-    {/* زر اليوم التالي */}
-    <TouchableOpacity onPress={handleNextDay} disabled={isViewingToday}>
-        <Ionicons 
-            name={language === 'ar' ? "chevron-back-outline" : "chevron-forward-outline"} 
-            size={28} 
-            color={isViewingToday ? currentStyles.dayHeaderArrowDisabled.color : currentStyles.dayHeaderArrow.color} 
-        />
-    </TouchableOpacity>
-</View>
+            <View style={[currentStyles.dayHeader, { flexDirection: language === 'ar' ? 'row' : 'row' }]}>
+                <TouchableOpacity onPress={handlePreviousDay}>
+                    <Ionicons 
+                        name={language === 'ar' ? "chevron-forward-outline" : "chevron-back-outline"} 
+                        size={28} 
+                        color={currentStyles.dayHeaderArrow.color} 
+                    />
+                </TouchableOpacity>
+                
+                {/* dayLabel يستخدم translation.today وبالتالي سيبقى "اليوم" */}
+                <Text style={currentStyles.dayHeaderText}>{dayLabel}</Text>
+                
+                <TouchableOpacity onPress={handleNextDay} disabled={isViewingToday}>
+                    <Ionicons 
+                        name={language === 'ar' ? "chevron-back-outline" : "chevron-forward-outline"} 
+                        size={28} 
+                        color={isViewingToday ? currentStyles.dayHeaderArrowDisabled.color : currentStyles.dayHeaderArrow.color} 
+                    />
+                </TouchableOpacity>
+            </View>
 
-            {/* --- دائرة التقدم (تم تحديثها لتطابق صفحة الخطوات) --- */}
-<View style={currentStyles.progressCircleContainer}> 
-    {/* تم إزالة transform لكي تظهر الدائرة بطبيعتها ولا تنعكس */}
-    <View style={currentStyles.circle}>
-<Svg 
-    width={SVG_VIEWBOX_SIZE} 
-    height={SVG_VIEWBOX_SIZE} 
-    viewBox={`0 0 ${SVG_VIEWBOX_SIZE} ${SVG_VIEWBOX_SIZE}`}
-    // ثبتناها 1 عشان نمنع القلب
-    style={{ transform: [{ scaleX: 1 }] }}
->           <Circle stroke={currentStyles.progressCircleBackground.stroke} fill="none" cx={CENTER_X} cy={CENTER_Y} r={PATH_RADIUS} strokeWidth={CIRCLE_BORDER_WIDTH}/> 
-    <Path d={progressPathD} stroke={currentStyles.progressCircleForeground.stroke} fill="none" strokeWidth={CIRCLE_BORDER_WIDTH} strokeLinecap="round" />
-</Svg> 
-        
-        {/* المحتوى الداخلي بدون عكس أيضاً */}
-        <View style={currentStyles.circleContentOverlay}> 
-            <Icon name="map-marker" size={30} color={currentStyles.progressText.color} /> 
-            <Text style={currentStyles.progressText}>{displayDistanceText}</Text> 
-            <TouchableOpacity style={currentStyles.goalContainer} onPress={() => setModalVisible(true)}> 
-            <Text style={currentStyles.goalText}>{translation.goalPrefix}: {goalDistance.toLocaleString(locale, {minimumFractionDigits: 1, maximumFractionDigits: 1})} {goalUnit}</Text> 
-            <Icon name="pencil" size={16} color={currentStyles.goalText.color} style={{ marginHorizontal: 5 }}/> 
-            </TouchableOpacity> 
-        </View> 
+            {/* --- دائرة التقدم --- */}
+            <View style={currentStyles.progressCircleContainer}> 
+                <View style={currentStyles.circle}>
+                    <Svg 
+                        width={SVG_VIEWBOX_SIZE} 
+                        height={SVG_VIEWBOX_SIZE} 
+                        viewBox={`0 0 ${SVG_VIEWBOX_SIZE} ${SVG_VIEWBOX_SIZE}`}
+                        style={{ transform: [{ scaleX: 1 }] }}
+                    >           
+                    <Circle stroke={currentStyles.progressCircleBackground.stroke} fill="none" cx={CENTER_X} cy={CENTER_Y} r={PATH_RADIUS} strokeWidth={CIRCLE_BORDER_WIDTH}/> 
+                    <Path d={progressPathD} stroke={currentStyles.progressCircleForeground.stroke} fill="none" strokeWidth={CIRCLE_BORDER_WIDTH} strokeLinecap="round" />
+                    </Svg> 
+                    
+                    <View style={currentStyles.circleContentOverlay}> 
+                        <Icon name="map-marker" size={30} color={currentStyles.progressText.color} /> 
+                        <Text style={currentStyles.progressText}>{displayDistanceText}</Text> 
+                        <TouchableOpacity style={currentStyles.goalContainer} onPress={() => setModalVisible(true)}> 
+                        <Text style={currentStyles.goalText}>{translation.goalPrefix}: {goalDistance.toLocaleString(locale, {minimumFractionDigits: 1, maximumFractionDigits: 1})} {goalUnit}</Text> 
+                        <Icon name="pencil" size={16} color={currentStyles.goalText.color} style={{ marginHorizontal: 5 }}/> 
+                        </TouchableOpacity> 
+                    </View> 
 
-        <Animated.View style={dynamicIconStyle}>
-            <View style={[currentStyles.movingDot, { borderColor: currentStyles.safeArea.backgroundColor }]} />
-        </Animated.View>
-    </View>
-</View>
+                    <Animated.View style={dynamicIconStyle}>
+                        <View style={[currentStyles.movingDot, { borderColor: currentStyles.safeArea.backgroundColor }]} />
+                    </Animated.View>
+                </View>
+            </View>
             <View style={currentStyles.statsContainer}>
               <AnimatedStatCard iconName="fire" value={rawCalories} label={translation.caloriesLabel} formatter={v => v.toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} styles={currentStyles}/>
               <AnimatedStatCard iconName="clock-outline" value={rawMinutes} label={translation.timeLabel} formatter={v => { const h = Math.floor(v / 60); const m = Math.floor(v % 60); return `${h.toLocaleString(locale, {minimumIntegerDigits: 2})}:${m.toLocaleString(locale, {minimumIntegerDigits: 2})}`}} styles={currentStyles}/> 
@@ -710,7 +684,7 @@ const lightStyles = StyleSheet.create({
   periodButton: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 8 },
   periodButtonInactive: { backgroundColor: 'transparent' },
   periodButtonSelected: { backgroundColor: '#388e3c', borderRadius: 20 },
-  periodText: { fontSize: 16, fontWeight: 'bold' },
+  periodText: { fontSize: 14.6, fontWeight: 'bold' },
   periodTextInactive: { color: '#388e3c' },
   periodTextSelected: { color: '#ffffff' },
   
@@ -719,19 +693,15 @@ const lightStyles = StyleSheet.create({
   dayHeaderArrow: { color: '#2e7d32' },
   dayHeaderArrowDisabled: { color: '#a5d6a7' },
 
-  // --- أنماط الدائرة الجديدة ---
   progressCircleContainer: { width: '100%', alignItems: 'center', marginVertical: 5, paddingBottom: 10, paddingHorizontal: 15  },
-circle: { 
-    width: CIRCLE_SIZE, 
-    height: CIRCLE_SIZE, 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    position: 'relative',
-    
-    // ضيف السطر ده.. ده اللي بيحل المشكلة جذرياً
-    // بيخلي المربع ده بس يعامل الاتجاهات كأنها انجليزي حتى لو الموبايل عربي
-    direction: 'ltr' 
-},
+  circle: { 
+      width: CIRCLE_SIZE, 
+      height: CIRCLE_SIZE, 
+      justifyContent: 'center', 
+      alignItems: 'center', 
+      position: 'relative',
+      direction: 'ltr' 
+  },
   progressCircleBackground: { stroke: '#e0f2f1' },
   progressCircleForeground: { stroke: '#4caf50' },
   circleContentOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', zIndex: 1, padding: CIRCLE_BORDER_WIDTH + 5 },

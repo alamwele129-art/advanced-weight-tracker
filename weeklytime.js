@@ -1,4 +1,4 @@
-﻿// WeeklyTime.js (نسخة معدلة للتحكم بالأسهم)
+﻿// WeeklyTime.js (نسخة معدلة - ألوان الأسهم خضراء)
 
 import React, { useState, useMemo, useCallback } from 'react';
 import {
@@ -78,7 +78,7 @@ const addDays = (date, days) => { const result = new Date(date); result.setDate(
 const getStartOfWeek = (date, startOfWeekDay = 6) => { const d = new Date(date); const day = d.getDay(); const diff = (day < startOfWeekDay) ? (day - startOfWeekDay + 7) : (day - startOfWeekDay); d.setDate(d.getDate() - diff); return d; };
 const isSameDay = (d1, d2) => d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate();
 
-// --- Sub-Components (تم التعديل هنا NewMonthlyChart) ---
+// --- Sub-Components ---
 const NewMonthlyChart = ({ styles, data, todayIndex, onNextWeek, onPrevWeek, weekDateRange, totalHours, avgHours, isNextButtonDisabled, translation, language }) => {
     const [selectedBarIndex, setSelectedBarIndex] = useState(null);
     const handleBarPress = (index) => setSelectedBarIndex(prev => prev === index ? null : index);
@@ -91,30 +91,22 @@ const NewMonthlyChart = ({ styles, data, todayIndex, onNextWeek, onPrevWeek, wee
     const getBarHeight = useCallback((value) => yAxisMax > 0 ? `${Math.min((value / yAxisMax) * 100, 100)}%` : '0%', [yAxisMax]);
 
     // ==========================================================
-    // منطق الأسهم (نفس الكود السابق)
+    // منطق الأسهم
     // ==========================================================
     let leftButtonIconName;
     let rightButtonIconName;
 
     if (language === 'ar') {
-        // --- إعدادات العربي ---
-        leftButtonIconName = "chevron-forward-outline"; // سهم يمين
-        rightButtonIconName = "chevron-back-outline";   // سهم يسار
+        leftButtonIconName = "chevron-forward-outline"; 
+        rightButtonIconName = "chevron-back-outline";   
     } else {
-        // --- إعدادات الإنجليزي ---
-        leftButtonIconName = "chevron-back-outline";     // سهم يسار
-        rightButtonIconName = "chevron-forward-outline"; // سهم يمين
+        leftButtonIconName = "chevron-back-outline";     
+        rightButtonIconName = "chevron-forward-outline"; 
     }
 
     return (
         <View style={styles.chartCard}>
             <View>
-                {/* 
-                    تم ترتيب العناصر هنا يدوياً:
-                    1. زر اليسار (السابق دائماً)
-                    2. التاريخ
-                    3. زر اليمين (التالي دائماً)
-                */}
                 <View style={styles.dateNavigator}>
                     {/* الزر الأيسر: للأسبوع السابق */}
                     <TouchableOpacity onPress={onPrevWeek}>
@@ -155,7 +147,7 @@ const NewMonthlyChart = ({ styles, data, todayIndex, onNextWeek, onPrevWeek, wee
     );
 };
 
-// --- باقي المكونات (كما هي) ---
+// --- باقي المكونات ---
 const StatRow = ({label, value, styles}) => ( <View style={styles.summaryStatRow}><Text style={styles.summaryStatValue}>{value}</Text><Text style={styles.summaryStatLabel}>{label}</Text></View> );
 const MetricBlock = ({iconName, value, unit, styles}) => ( 
     <View style={styles.metricBlock}>
@@ -214,12 +206,10 @@ const WeeklyTime = ({ language = 'ar', isDarkMode = false }) => {
   );
 
   const handleNextWeek = () => { 
-    // Logic for next week
     const today = new Date();
     const startOfCurrentSystemWeek = getStartOfWeek(today, startOfWeekDay);
     const startOfViewedWeek = getStartOfWeek(currentDate, startOfWeekDay);
     
-    // Prevent going to future weeks
     if (getDateString(startOfViewedWeek) >= getDateString(startOfCurrentSystemWeek)) return;
 
     setCurrentDate(prev => addDays(prev, 7)); 
@@ -299,9 +289,8 @@ const getStyles = (theme, isRTL) => StyleSheet.create({
     mainContainer: { padding: 15, paddingBottom: 50 },
     chartCard: { backgroundColor: theme.cardBackground, borderRadius: 20, marginBottom: 20, shadowColor: theme.shadowColor, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 5, elevation: 2, overflow: 'hidden' },
     
-    // --- التعديل هنا: استخدام row دائماً ---
     dateNavigator: { 
-        flexDirection: 'row', // دائماً row
+        flexDirection: 'row', 
         justifyContent: 'space-between', 
         alignItems: 'center', 
         paddingHorizontal: 20, 
@@ -309,8 +298,14 @@ const getStyles = (theme, isRTL) => StyleSheet.create({
     },
 
     dateText: { fontSize: 18, fontWeight: '600', color: theme.headerTitle },
-    chevron: { color: theme.chevron },
-    disabledChevron: { color: theme.disabledChevron },
+    
+    // =========================================================
+    // تم التعديل هنا: تثبيت اللون الأخضر مثل الكود الثاني
+    // =========================================================
+    chevron: { color: '#2e7d32' }, 
+    disabledChevron: { color: '#a5d6a7' },
+    // =========================================================
+
     summaryContainer: { flexDirection: isRTL ? 'row-reverse' : 'row', justifyContent: 'space-around', paddingVertical: 20, paddingTop: 10 },
     summaryBox: { alignItems: 'center', flex:1 },
     summaryValue: { fontSize: 32, fontWeight: 'bold', color: theme.mainText, fontVariant: ['tabular-nums'] },

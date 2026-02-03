@@ -1,4 +1,4 @@
-﻿// MonthlyTime.js (Fixed Layout & Infinite Scroll & Arrow Logic)
+﻿// MonthlyTime.js (نسخة معدلة - ألوان الأسهم خضراء)
 
 import React, { useState, useMemo, useCallback } from 'react';
 import {
@@ -76,7 +76,7 @@ const addMonths = (date, months) => { const d = new Date(date); d.setMonth(d.get
 const getStartOfMonth = (date) => new Date(date.getFullYear(), date.getMonth(), 1);
 const getEndOfMonth = (date) => new Date(date.getFullYear(), date.getMonth() + 1, 0);
 
-// --- Sub-Components (تم التعديل هنا MonthlyChart) ---
+// --- Sub-Components ---
 const MonthlyChart = ({ styles, onNextMonth, onPrevMonth, isNextButtonDisabled, dateRangeDisplay, totalHours, avgHours, weeklyAggregates, translation, locale, language }) => {
     const [selectedBarIndex, setSelectedBarIndex] = useState(null);
     const MAX_WEEKLY_VALUE = useMemo(() => Math.max(2500, ...weeklyAggregates.map(w => w.value)), [weeklyAggregates]);
@@ -86,28 +86,22 @@ const MonthlyChart = ({ styles, onNextMonth, onPrevMonth, isNextButtonDisabled, 
     const handleDismissTooltip = () => setSelectedBarIndex(null);
 
     // ==========================================================
-    // منطق الأسهم (التحكم الكامل)
+    // منطق الأسهم
     // ==========================================================
     let leftButtonIconName;
     let rightButtonIconName;
 
     if (language === 'ar') {
-        // --- إعدادات العربي ---
-        leftButtonIconName = "chevron-forward-outline"; // سهم يمين
-        rightButtonIconName = "chevron-back-outline";   // سهم يسار
+        leftButtonIconName = "chevron-forward-outline"; 
+        rightButtonIconName = "chevron-back-outline";   
     } else {
-        // --- إعدادات الإنجليزي ---
-        leftButtonIconName = "chevron-back-outline";     // سهم يسار
-        rightButtonIconName = "chevron-forward-outline"; // سهم يمين
+        leftButtonIconName = "chevron-back-outline";     
+        rightButtonIconName = "chevron-forward-outline"; 
     }
 
     return (
         <View style={styles.chartCard}>
             <View>
-                {/* 
-                   تعديل التخطيط يدوياً:
-                   [زر السابق] - [النص] - [زر التالي]
-                */}
                 <View style={styles.dateNavigator}>
                   {/* الزر الأيسر: للشهر السابق */}
                   <TouchableOpacity onPress={onPrevMonth}>
@@ -273,7 +267,6 @@ const getStyles = (theme, isRTL) => StyleSheet.create({
     mainContainer: { padding: 15, paddingBottom: 50 },
     chartCard: { backgroundColor: theme.cardBackground, borderRadius: 20, marginBottom: 20, shadowColor: theme.shadowColor, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 5, elevation: 2, overflow: 'hidden' },
     
-    // --- التعديل هنا: استخدام row دائماً ---
     dateNavigator: { 
         flexDirection: 'row', 
         justifyContent: 'space-between', 
@@ -283,8 +276,14 @@ const getStyles = (theme, isRTL) => StyleSheet.create({
     },
 
     dateText: { fontSize: 18, fontWeight: '600', color: theme.headerTitle },
-    chevron: { color: theme.chevron },
-    disabledChevron: { color: theme.disabledChevron },
+
+    // =========================================================
+    // تم التعديل هنا: تثبيت اللون الأخضر مثل الكود الثاني
+    // =========================================================
+    chevron: { color: '#2e7d32' }, 
+    disabledChevron: { color: '#a5d6a7' },
+    // =========================================================
+
     summaryContainer: { flexDirection: isRTL ? 'row-reverse' : 'row', justifyContent: 'space-around', paddingVertical: 20, paddingTop: 10 },
     summaryBox: { alignItems: 'center', flex:1 },
     summaryValue: { fontSize: 32, fontWeight: 'bold', color: theme.mainText, fontVariant: ['tabular-nums'] },

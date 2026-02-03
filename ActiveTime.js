@@ -868,7 +868,7 @@ const lightStyles = StyleSheet.create({
   periodButton: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 8 },
   periodButtonInactive: { backgroundColor: 'transparent' },
   periodButtonSelected: { backgroundColor: '#388e3c', borderRadius: 20 },
-  periodText: { fontSize: 16, fontWeight: 'bold' },
+  periodText: { fontSize: 14.6, fontWeight: 'bold' },
   periodTextInactive: { color: '#388e3c' },
   periodTextSelected: { color: '#ffffff' },
 
