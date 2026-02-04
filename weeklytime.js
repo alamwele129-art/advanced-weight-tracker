@@ -148,7 +148,12 @@ const NewMonthlyChart = ({ styles, data, todayIndex, onNextWeek, onPrevWeek, wee
 };
 
 // --- باقي المكونات ---
-const StatRow = ({label, value, styles}) => ( <View style={styles.summaryStatRow}><Text style={styles.summaryStatValue}>{value}</Text><Text style={styles.summaryStatLabel}>{label}</Text></View> );
+const StatRow = ({label, value, styles}) => ( 
+    <View style={styles.summaryStatRow}>
+        <Text style={styles.summaryStatLabel}>{label}</Text>
+        <Text style={styles.summaryStatValue}>{value}</Text>
+    </View> 
+);
 const MetricBlock = ({iconName, value, unit, styles}) => ( 
     <View style={styles.metricBlock}>
         <View style={styles.metricIconCircle}>
@@ -312,7 +317,7 @@ const getStyles = (theme, isRTL) => StyleSheet.create({
     summaryLabel: { fontSize: 14, color: theme.secondaryText, marginTop: 4, textAlign:'center' },
     
     graphContainer: { 
-        flexDirection: isRTL ? 'row-reverse' : 'row', 
+        flexDirection: isRTL ? 'row' : 'row', 
         paddingHorizontal: 15, 
         paddingTop: 10, 
         paddingBottom: 10, 
@@ -324,23 +329,22 @@ const getStyles = (theme, isRTL) => StyleSheet.create({
     yAxisLabel: { fontSize: 11, color: theme.secondaryText, fontVariant: ['tabular-nums'] },
     barsAreaWrapper: { flex: 1, [isRTL ? 'marginRight' : 'marginLeft']: 5 },
     barsArea: { flex: 1, borderBottomWidth: 1, borderBottomColor: theme.graphLine, position: 'relative', marginBottom: 25 },
-    bars: { position: 'absolute', bottom: 0, left: 0, right: 0, top: 0, flexDirection: isRTL ? 'row-reverse' : 'row', justifyContent: 'space-around', alignItems: 'flex-end' },
+    bars: { position: 'absolute', bottom: 0, left: 0, right: 0, top: 0, flexDirection: isRTL ? 'row' : 'row', justifyContent: 'space-around', alignItems: 'flex-end' },
     barWrapper: { width: `${100 / 7}%`, height: '100%', justifyContent: 'flex-end', alignItems: 'center', position: 'relative' },
     bar: { width: 14, borderTopLeftRadius: 7, borderTopRightRadius: 7 },
     achievedBar: { backgroundColor: theme.inactiveBar }, 
     activeBar: { backgroundColor: theme.activeBar },
     selectedBar: { backgroundColor: theme.selectedBar }, 
-    xAxis: { position: 'absolute', bottom: -25, left: 0, right: 0, height: 20, flexDirection: isRTL ? 'row-reverse' : 'row', justifyContent: 'space-around', alignItems: 'center' },
+    xAxis: { position: 'absolute', bottom: -25, left: 0, right: 0, height: 20, flexDirection: isRTL ? 'row' : 'row', justifyContent: 'space-around', alignItems: 'center' },
     xAxisLabel: { fontSize: 12, color: theme.secondaryText, textAlign: 'center', flex: 1 },
     activeXAxisLabel: { fontWeight: 'bold', color: theme.activeDayLabelColor },
     tooltipPositioner: { position: 'absolute', alignItems: 'center', zIndex: 10, marginBottom: 5, left: '50%', transform: [{ translateX: -30 }] },
     tooltipContainer: { backgroundColor: theme.tooltipBg, borderRadius: 8, paddingVertical: 5, paddingHorizontal: 10, minWidth: 60, alignItems: 'center' },
     tooltipText: { color: theme.tooltipText, fontSize: 12, fontWeight: 'bold' },
     tooltipPointer: { width: 0, height: 0, borderLeftWidth: 6, borderRightWidth: 6, borderTopWidth: 6, borderStyle: 'solid', backgroundColor: 'transparent', borderLeftColor: 'transparent', borderRightColor: 'transparent', borderTopColor: theme.tooltipBg, marginTop: -1 },
-    summaryHeaderTitle: { fontSize: 18, fontWeight: 'bold', color: theme.headerTitle, marginBottom: 15, width: '100%', textAlign: isRTL ? 'right' : 'left' },
+    summaryHeaderTitle: { fontSize: 18, fontWeight: 'bold', color: theme.headerTitle, marginBottom: 15, width: '100%', textAlign: isRTL ? 'left' : 'left' },
     summaryMainCard: { backgroundColor: theme.cardBackground, borderRadius: 15, padding: 20, width: '100%', marginBottom: 20 },
-    summaryStatRow: { flexDirection: isRTL ? 'row-reverse' : 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%' },
-    summaryStatLabel: { fontSize: 16, color: theme.secondaryText },
+summaryStatRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%' },    summaryStatLabel: { fontSize: 16, color: theme.secondaryText },
     summaryStatValue: { fontSize: 18, fontWeight: 'bold', color: theme.mainText, fontVariant: ['tabular-nums'] },
     divider: { height: 1, backgroundColor: theme.separator, marginVertical: 15 },
     metricsCard: { backgroundColor: theme.cardBackground, borderRadius: 15, paddingVertical: 20, width: '100%', flexDirection: isRTL ? 'row-reverse' : 'row', justifyContent: 'space-around', alignItems: 'center' },
