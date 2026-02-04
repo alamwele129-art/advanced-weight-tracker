@@ -270,7 +270,14 @@ const DistanceWeeklyChart = ({ weeklyDistanceData, goalDistance, onTestIncrement
 
 // --- الشاشة الرئيسية ---
 const DistanceScreen = (props) => {
-  const { onNavigate, currentScreenName, onNavigateToAchievements, language: initialLanguage, isDarkMode: initialIsDarkMode } = props;
+  const { 
+      navigation, // <-- Added navigation prop
+      onNavigate, 
+      currentScreenName, 
+      onNavigateToAchievements, 
+      language: initialLanguage, 
+      isDarkMode: initialIsDarkMode 
+  } = props;
   
   const systemColorScheme = useColorScheme();
   const [language, setLanguage] = useState(initialLanguage || (I18nManager.isRTL ? 'ar' : 'en'));
@@ -446,7 +453,22 @@ const DistanceScreen = (props) => {
       }
   };
 
-  const handleNavigateToAchievements = () => { if (onNavigateToAchievements) onNavigateToAchievements(Math.round(rawSteps)); };
+  // ** Updated Navigation Function **
+  const handleNavigateToAchievements = () => {
+    // Calculate steps from current data (rawSteps is already calculated in useMemo)
+    const stepsToPass = Math.round(rawSteps);
+
+    if (navigation) {
+        navigation.navigate('Achievements', {
+            currentDailySteps: stepsToPass,
+            language: language,
+            isDarkMode: isDarkMode
+        });
+    } else if (onNavigateToAchievements) {
+        onNavigateToAchievements(stepsToPass);
+    }
+  };
+
   const openTitleMenu = useCallback(() => { titleMenuTriggerRef.current.measure((fx, fy, w, h, px, py) => { const top = py + h - 25; const positionStyle = I18nManager.isRTL ? { top, right: width - (px + w) } : { top, left: px }; setTitleMenuPosition(positionStyle); setIsTitleMenuVisible(true); }); }, [width]);
   const closeTitleMenu = useCallback(() => setIsTitleMenuVisible(false), []);
   const navigateTo = (screenName) => { closeTitleMenu(); if (onNavigate) onNavigate(screenName); };
@@ -622,7 +644,6 @@ const DistanceScreen = (props) => {
               <AnimatedStatCard iconName="walk" value={rawSteps} label={translation.stepsLabel} formatter={v => Math.round(v).toLocaleString(locale)} styles={currentStyles}/> 
             </View> 
             
-            {/* --- تم استبدال الكود القديم بالمكون الموحد هنا --- */}
             <ChallengeCard 
                 onPress={handleNavigateToAchievements} 
                 currentChallengeDuration={currentChallengeDuration} 

@@ -38,7 +38,7 @@ const TOOLTIP_ARROW_HEIGHT = 6;
 const TOOLTIP_ARROW_WIDTH = 12;
 const TOOLTIP_OFFSET = 5;
 
-// ثوابت البطاقة الموحدة (نفس باقي الصفحات)
+// ثوابت البطاقة الموحدة
 const BADGE_CONTAINER_SIZE = 60;
 const BADGE_SVG_SIZE = BADGE_CONTAINER_SIZE;
 const BADGE_CIRCLE_BORDER_WIDTH = 5;
@@ -46,7 +46,7 @@ const BADGE_PATH_RADIUS = (BADGE_SVG_SIZE / 2) - (BADGE_CIRCLE_BORDER_WIDTH / 2)
 const BADGE_CENTER_X = BADGE_SVG_SIZE / 2;
 const BADGE_CENTER_Y = BADGE_SVG_SIZE / 2;
 
-// مفاتيح التحدي (تمت إضافتها لتعمل مثل باقي الصفحات)
+// مفاتيح التحدي
 const CHALLENGE_DURATIONS = [7, 14, 30, 60, 100, 180, 270, 360];
 const INITIAL_CHALLENGE_DURATION = CHALLENGE_DURATIONS[0];
 const LAST_PARTICIPATION_DATE_KEY = '@StepsChallenge:lastParticipationDate';
@@ -378,7 +378,6 @@ const StepsScreen = (props) => {
         } catch (error) { console.error("Save daily steps fail:", error); } 
     }, []);
 
-    // *** الدالة الجديدة لتحديث حالة التحدي (لجعل العداد يعمل مثل باقي الصفحات) ***
     const updateChallengeStatus = useCallback(async () => {
         const todayString = getDateString(new Date()); 
         if (!todayString) return; 
@@ -436,7 +435,6 @@ const StepsScreen = (props) => {
         } catch (error) { console.error("Challenge update fail:", error); } 
     }, []);
 
-    // *** تشغيل تحديث التحدي عند بدء التطبيق أو العودة إليه ***
     useEffect(() => { 
         const runInitialChecks = async () => { await updateChallengeStatus(); }; 
         runInitialChecks(); 
@@ -449,7 +447,6 @@ const StepsScreen = (props) => {
         return () => { subscription.remove(); }; 
     }, [appState, updateChallengeStatus]);
 
-    // تحديث بيانات الشارت اليومي
     useEffect(() => {
         const updateChartData = async () => {
             const history = await getStoredStepsHistory();
@@ -507,31 +504,25 @@ const StepsScreen = (props) => {
         loadInitialData(); 
     }, [getStoredStepsHistory]);
 
-    
-    // مراقبة تغيير حالة الشهر الحالي
     useEffect(() => {
         const now = new Date();
         const startOfCurrentMonth = getStartOfMonth(now);
         setIsCurrentMonthSelected(selectedMonthStart.getTime() === startOfCurrentMonth.getTime());
     }, [selectedMonthStart]);
 
-    // مراقبة تغيير حالة الأسبوع الحالي
     useEffect(() => {
         setIsCurrentWeekSelected(isSameWeek(selectedWeekStart, new Date(), startOfWeekDay));
     }, [selectedWeekStart, startOfWeekDay]);
 
-    // دالة جلب البيانات الشهرية والأسبوعية
     useEffect(() => {
         const fetchPeriodData = async () => {
             const history = await getStoredStepsHistory();
             const todayStr = getDateString(new Date());
             history[todayStr] = currentSteps; 
 
-            // --- التعامل مع بيانات الشهر ---
             if (selectedPeriod === 'month') {
                 setIsMonthlyLoading(true);
                 try {
-                    // الشهر الحالي المختار
                     const daysInMonth = getDaysInMonth(selectedMonthStart);
                     const monthData = [];
                     for (let i = 1; i <= daysInMonth; i++) {
@@ -542,7 +533,6 @@ const StepsScreen = (props) => {
                     }
                     setCurrentMonthData(monthData);
 
-                    // الشهر السابق (للمقارنة)
                     const prevMonthStart = addMonths(selectedMonthStart, -1);
                     const daysInPrevMonth = getDaysInMonth(prevMonthStart);
                     const prevMonthData = [];
@@ -554,7 +544,6 @@ const StepsScreen = (props) => {
                     }
                     setPreviousMonthDataForComparison(prevMonthData);
 
-                    // تحديث نص التاريخ
                     const endOfMonth = new Date(selectedMonthStart);
                     endOfMonth.setUTCDate(daysInMonth);
                     setFormattedMonthRange(formatDateRange(selectedMonthStart, endOfMonth, language));
@@ -565,11 +554,9 @@ const StepsScreen = (props) => {
                 }
             }
 
-            // --- التعامل مع بيانات الأسبوع ---
             if (selectedPeriod === 'week') {
                 setIsWeeklyLoading(true);
                 try {
-                    // الأسبوع الحالي المختار
                     const weekData = [];
                     for(let i=0; i<7; i++) {
                         const d = addDays(selectedWeekStart, i);
@@ -578,7 +565,6 @@ const StepsScreen = (props) => {
                     }
                     setActualWeekData(weekData);
 
-                    // الأسبوع السابق (للمقارنة)
                     const prevWeekStart = addDays(selectedWeekStart, -7);
                     const prevWeekData = [];
                      for(let i=0; i<7; i++) {
@@ -722,6 +708,23 @@ const StepsScreen = (props) => {
     const handleCancelGoal = useCallback(() => { setIsGoalModalVisible(false); }, []);
     const openMenuModal = useCallback(() => { if (menuButtonRef.current) { menuButtonRef.current.measure((fx, fy, w, h, px, py) => { const top = py + h + MENU_VERTICAL_OFFSET; const positionStyle = I18nManager.isRTL ? { top, right: width - (px + w), left: undefined } : { top, left: px, right: undefined }; setMenuPosition({ ...positionStyle, triggerX: px, triggerWidth: w }); setIsMenuModalVisible(true); }); } }, [width]);
     const openTitleMenu = useCallback(() => { if (titleMenuTriggerRef.current) { titleMenuTriggerRef.current.measure((fx, fy, w, h, px, py) => { const top = py + h - 25; setTitleMenuPosition({ top, left: undefined, right: undefined, triggerX: 0, triggerWidth: 0 }); setIsTitleMenuVisible(true); }); } }, []);
+    
+    // **Navigation Function Updated**
+    const navigateToAchievements = useCallback(() => {
+        const params = {
+            currentDailySteps: currentSteps,
+            language: language,
+            isDarkMode: isDarkMode
+        };
+        if (navigation) {
+            navigation.navigate('Achievements', params);
+        } else if (onNavigateToAchievements && typeof onNavigateToAchievements === 'function') {
+            onNavigateToAchievements(currentSteps);
+        } else {
+            Alert.alert(translation.errorTitle, translation.cannotNavigateError);
+        }
+    }, [navigation, onNavigateToAchievements, currentSteps, language, isDarkMode, translation]);
+
     const navigateTo = (screenName) => { closeTitleMenu(); if (onNavigate && typeof onNavigate === 'function') { onNavigate(screenName); } else { Alert.alert(translation.errorTitle, translation.cannotNavigateError); } };
     const closeMenuModal = useCallback(() => setIsMenuModalVisible(false), []);
     const closeTitleMenu = useCallback(() => setIsTitleMenuVisible(false), []);
@@ -731,7 +734,6 @@ const StepsScreen = (props) => {
     const handleNextWeek = useCallback(() => { if (!isCurrentWeekSelected) setSelectedWeekStart(prev => addDays(prev, 7)); }, [isCurrentWeekSelected]);
     const handlePreviousMonth = useCallback(() => { setSelectedMonthStart(prev => addMonths(prev, -1)); }, []);
     const handleNextMonth = useCallback(() => { if (!isCurrentMonthSelected) setSelectedMonthStart(prev => addMonths(prev, 1)); }, [isCurrentMonthSelected]);
-    const navigateToAchievements = useCallback(() => { if (onNavigateToAchievements && typeof onNavigateToAchievements === 'function') { onNavigateToAchievements(currentSteps); } else { Alert.alert(translation.errorTitle, translation.cannotNavigateError); } }, [onNavigateToAchievements, currentSteps, translation]);
     
     const runnerImageSource = (isStepping && isViewingToday && !isRunnerVisuallyStopped) ? require('./assets/walking.gif') : require('./assets/walking.png');
     const chartDayNamesForDayTab = useMemo(() => { return language === 'ar' ? ['س', 'خ', 'ر', 'ث', 'ن', 'أ', 'س']  : ['S', 'M', 'T', 'W', 'T', 'F', 'S']; }, [language]);
@@ -773,17 +775,14 @@ const StepsScreen = (props) => {
                      </>
 ) : (
      <>
-         {/* زر الشهر أصبح في البداية */}
          <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'month' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('month')}>
              <Text style={[ currentStyles.periodText, selectedPeriod === 'month' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.month}</Text>
          </TouchableOpacity>
          
-         {/* زر الأسبوع يبقى في المنتصف */}
          <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'week' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('week')}>
              <Text style={[ currentStyles.periodText, selectedPeriod === 'week' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.week}</Text>
          </TouchableOpacity>
 
-         {/* زر اليوم أصبح في النهاية */}
          <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'day' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('day')}>
              <Text style={[ currentStyles.periodText, selectedPeriod === 'day' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.today}</Text>
          </TouchableOpacity>
@@ -795,7 +794,6 @@ const StepsScreen = (props) => {
                  {selectedPeriod === 'day' && (
                      <>
                         <View style={[currentStyles.dayHeader, { flexDirection: language === 'ar' ? 'row' : 'row' }]}>
-                            {/* زر اليوم السابق */}
                             <TouchableOpacity onPress={handlePreviousDay}>
                                 <Ionicons 
                                     name={language === 'ar' ? "chevron-forward-outline" : "chevron-back-outline"} 
@@ -806,7 +804,6 @@ const StepsScreen = (props) => {
                             
                             <Text style={currentStyles.dayHeaderText}>{dayLabel}</Text>
                             
-                            {/* زر اليوم التالي */}
                             <TouchableOpacity onPress={handleNextDay} disabled={isViewingToday}>
                                 <Ionicons 
                                     name={language === 'ar' ? "chevron-back-outline" : "chevron-forward-outline"} 
@@ -827,7 +824,6 @@ const StepsScreen = (props) => {
     width={SVG_VIEWBOX_SIZE} 
     height={SVG_VIEWBOX_SIZE} 
     viewBox={`0 0 ${SVG_VIEWBOX_SIZE} ${SVG_VIEWBOX_SIZE}`}
-    // ثبتها 1 عشان تمنع القلب في العربي
     style={{ transform: [{ scaleX: 1 }] }}
 >
 
@@ -863,7 +859,6 @@ const StepsScreen = (props) => {
                             <StatItem type="time" value={formattedDuration} unit={translation.durationUnit} isDarkMode={isDarkMode} styles={currentStyles} />
                         </View>
 
-                        {/* --- تم استبدال الكود القديم بالمكون الموحد هنا --- */}
                         <ChallengeCard 
                             onPress={navigateToAchievements} 
                             currentChallengeDuration={currentChallengeDuration} 
@@ -967,8 +962,6 @@ circle: {
     justifyContent: 'center', 
     alignItems: 'center', 
     position: 'relative',
-    
-    // ضيف السطر ده.. ده اللي هيخلي العربي يظبط غصب عنه
     direction: 'ltr' 
 },
     circleBackground: { stroke: "#e0f2f1" }, 

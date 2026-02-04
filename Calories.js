@@ -78,29 +78,13 @@ const translations = {
 const calculateIconPositionOnPath = (angleDegrees) => { 
     const angleRad = (angleDegrees * Math.PI) / 180; 
     const iconRadius = PATH_RADIUS; 
-    
-    // معادلة ثابتة: موجب يعني يمين (مع العقارب)
     const xOffset = iconRadius * Math.sin(angleRad); 
-    
-    // سالب يعني فوق
     const yOffset = -iconRadius * Math.cos(angleRad); 
-
     const iconCenterX = CENTER_X + xOffset; 
     const iconCenterY = CENTER_Y + yOffset; 
-
     const top = iconCenterY - (ICON_SIZE / 2); 
     const left = iconCenterX - (ICON_SIZE / 2); 
-
-    return { 
-        position: 'absolute', 
-        width: ICON_SIZE, 
-        height: ICON_SIZE, 
-        top, 
-        left, 
-        zIndex: 10, 
-        justifyContent: 'center', 
-        alignItems: 'center' 
-    }; 
+    return { position: 'absolute', width: ICON_SIZE, height: ICON_SIZE, top, left, zIndex: 10, justifyContent: 'center', alignItems: 'center' }; 
 };
 
 const describeArc = (x, y, radius, startAngleDeg, endAngleDeg) => { const clampedEndAngle = Math.min(endAngleDeg, 359.999); const startAngleRad = ((startAngleDeg - 90) * Math.PI) / 180.0; const endAngleRad = ((clampedEndAngle - 90) * Math.PI) / 180.0; const startX = x + radius * Math.cos(startAngleRad); const startY = y + radius * Math.sin(startAngleRad); const endX = x + radius * Math.cos(endAngleRad); const endY = y + radius * Math.sin(endAngleRad); const largeArcFlag = clampedEndAngle - startAngleDeg <= 180 ? '0' : '1'; const sweepFlag = '1'; const d = [ 'M', startX, startY, 'A', radius, radius, 0, largeArcFlag, sweepFlag, endX, endY ].join(' '); return d; };
@@ -276,7 +260,14 @@ const ChallengeCard = ({ onPress, currentChallengeDuration, remainingDays, trans
 };
 
 const CaloriesScreen = (props) => {
-    const { onNavigate, currentScreenName, onNavigateToAchievements, language: initialLanguage, isDarkMode: initialIsDarkMode } = props;
+    const { 
+        navigation, 
+        onNavigate, 
+        currentScreenName, 
+        onNavigateToAchievements, 
+        language: initialLanguage, 
+        isDarkMode: initialIsDarkMode 
+    } = props;
     
     const systemColorScheme = useColorScheme();
     const [language, setLanguage] = useState(initialLanguage || (I18nManager.isRTL ? 'ar' : 'en'));
@@ -322,7 +313,22 @@ const CaloriesScreen = (props) => {
     const [progressPathD, setProgressPathD] = useState('');
 
     const navigateTo = (screenName) => { closeTitleMenu(); if (onNavigate) onNavigate(screenName); };
-    const handleNavigateToAchievements = () => { if (onNavigateToAchievements) onNavigateToAchievements(pedometerSteps); };
+    
+    // ** Updated Navigation Function **
+    const handleNavigateToAchievements = () => { 
+        // استخدام خطوات العداد الحالية
+        const stepsToPass = pedometerSteps; 
+
+        if (navigation) {
+            navigation.navigate('Achievements', {
+                currentDailySteps: stepsToPass,
+                language: language,
+                isDarkMode: isDarkMode
+            });
+        } else if (onNavigateToAchievements) {
+            onNavigateToAchievements(stepsToPass);
+        }
+    };
 
     useEffect(() => { displayCaloriesRef.current = displayCalories; }, [displayCalories]);
     
@@ -435,7 +441,7 @@ const CaloriesScreen = (props) => {
     const handleNextDay = () => { if (!isToday(currentDate)) setCurrentDate(prevDate => addDays(prevDate, 1)); };
     const handleAddSteps = () => { if (!isToday(currentDate)) return; const newSteps = pedometerSteps + 1000; setPedometerSteps(newSteps); saveDailySteps(new Date(), newSteps); };
     const handleResetSteps = () => { if (!isToday(currentDate)) return; setPedometerSteps(0); saveDailySteps(new Date(), 0); };
-    const openTitleMenu = useCallback(() => { if (titleMenuTriggerRef.current) { titleMenuTriggerRef.current.measure((fx, fy, w, h, px, py) => { const top = py + h - 25; const positionStyle = I18nManager.isRTL ? { top, right: width - (px + w) } : { top, left: px }; setTitleMenuPosition(positionStyle); setIsTitleMenuVisible(true); }); } }, [width]);
+    const openTitleMenu = useCallback(() => { if (titleMenuTriggerRef.current) { titleMenuTriggerRef.current.measure((fx, fy, w, h, px, py) => { const top = py + h - 25; const positionStyle = I18nManager.isRTL ? { top, right: width - (px + w) } : { top, left: px, right: undefined }; setTitleMenuPosition(positionStyle); setIsTitleMenuVisible(true); }); } }, [width]);
     const closeTitleMenu = useCallback(() => setIsTitleMenuVisible(false), []);
     const updateChallengeStatus = useCallback(async () => { const todayString = getDateString(new Date()); if (!todayString) return; try { const [storedRemainingDaysStr, storedLastParticipationDate, storedChallengeDurationStr] = await Promise.all([ AsyncStorage.getItem(REMAINING_CHALLENGE_DAYS_KEY), AsyncStorage.getItem(LAST_PARTICIPATION_DATE_KEY), AsyncStorage.getItem(CURRENT_CHALLENGE_DURATION_KEY) ]); let loadedDuration = INITIAL_CHALLENGE_DURATION; if (storedChallengeDurationStr !== null) { const parsedDuration = parseInt(storedChallengeDurationStr, 10); if (!isNaN(parsedDuration) && CHALLENGE_DURATIONS.includes(parsedDuration)) loadedDuration = parsedDuration; } setCurrentChallengeDuration(loadedDuration); let currentRemainingDays = loadedDuration; if (storedRemainingDaysStr !== null) { const parsedDays = parseInt(storedRemainingDaysStr, 10); if (!isNaN(parsedDays) && parsedDays >= 0 && parsedDays <= loadedDuration) currentRemainingDays = parsedDays; } setRemainingDays(currentRemainingDays); setLastParticipationDate(storedLastParticipationDate); if (todayString !== storedLastParticipationDate && currentRemainingDays > 0) { const newRemainingDays = currentRemainingDays - 1; if (newRemainingDays <= 0) { try { const completedDuration = loadedDuration; const storedMaxStr = await AsyncStorage.getItem(MAX_COMPLETED_CHALLENGE_DAYS_KEY); const currentMax = parseInt(storedMaxStr || '0', 10); if (completedDuration > currentMax) { await AsyncStorage.multiSet([ [MAX_COMPLETED_CHALLENGE_DAYS_KEY, String(completedDuration)], [CELEBRATE_TIER_COMPLETION_KEY, String(completedDuration)] ]); } } catch (e) { console.error("Error saving max challenge or celebration flag:", e); } const currentDurationIndex = CHALLENGE_DURATIONS.indexOf(loadedDuration); const nextDurationIndex = currentDurationIndex + 1; if (nextDurationIndex < CHALLENGE_DURATIONS.length) { const nextChallengeDuration = CHALLENGE_DURATIONS[nextDurationIndex]; setRemainingDays(nextChallengeDuration); setCurrentChallengeDuration(nextChallengeDuration); setLastParticipationDate(todayString); await AsyncStorage.multiSet([ [REMAINING_CHALLENGE_DAYS_KEY, String(nextChallengeDuration)], [LAST_PARTICIPATION_DATE_KEY, todayString], [CURRENT_CHALLENGE_DURATION_KEY, String(nextChallengeDuration)] ]); } else { setRemainingDays(0); setLastParticipationDate(todayString); await AsyncStorage.multiSet([ [REMAINING_CHALLENGE_DAYS_KEY, '0'], [LAST_PARTICIPATION_DATE_KEY, todayString] ]); } } else { setRemainingDays(newRemainingDays); setLastParticipationDate(todayString); await AsyncStorage.multiSet([ [REMAINING_CHALLENGE_DAYS_KEY, String(newRemainingDays)], [LAST_PARTICIPATION_DATE_KEY, todayString] ]); } } else if (currentRemainingDays <= 0 && remainingDays !== 0) { setRemainingDays(0); } } catch (error) { console.error("Challenge update fail:", error); } }, [remainingDays]);
     useEffect(() => { const runInitialChecks = async () => { await updateChallengeStatus(); }; runInitialChecks(); const subscription = AppState.addEventListener('change', nextAppState => { if (appState.match(/inactive|background/) && nextAppState === 'active') { runInitialChecks(); } setAppState(nextAppState); }); return () => { subscription.remove(); }; }, [appState, updateChallengeStatus]);
@@ -506,46 +512,30 @@ const CaloriesScreen = (props) => {
                 {selectedPeriod === 'day' && (
                     <>
 {language === 'ar' ? (
-    // ============================================
-    // (1) ترتيب العربي (تقدر تبدل أماكن الزراير هنا براحتك)
-    // ============================================
     <View style={[currentStyles.dayHeader, { flexDirection: 'row' }]}>
-        
-        {/* الزرار اللي هيظهر ع اليمين (عشان العربي بيبدأ من اليمين) */}
-        {/* خليناه هنا: زرار "السابق" وأيقونته باصة يمين */}
         <TouchableOpacity onPress={handlePreviousDay}>
             <Ionicons name="chevron-forward-outline" size={28} color={currentStyles.dayHeaderArrow.color} />
         </TouchableOpacity>
 
         <Text style={currentStyles.dayHeaderText}>{formatDisplayDate(currentDate)}</Text>
 
-        {/* الزرار اللي هيظهر ع الشمال */}
-        {/* خليناه هنا: زرار "التالي" وأيقونته باصة شمال */}
         <TouchableOpacity onPress={handleNextDay} disabled={isViewingToday}>
              <Ionicons name="chevron-back-outline" size={28} color={isViewingToday ? currentStyles.dayHeaderArrowDisabled.color : currentStyles.dayHeaderArrow.color} />
         </TouchableOpacity>
     </View>
 ) : (
-    // ============================================
-    // (2) ترتيب الانجليزي (زي ما هو ماتغيرش)
-    // ============================================
     <View style={[currentStyles.dayHeader, { flexDirection: 'row' }]}>
-        
-        {/* Left Button (Previous) */}
         <TouchableOpacity onPress={handlePreviousDay}>
             <Ionicons name="chevron-back-outline" size={28} color={currentStyles.dayHeaderArrow.color} />
         </TouchableOpacity>
 
         <Text style={currentStyles.dayHeaderText}>{formatDisplayDate(currentDate)}</Text>
 
-        {/* Right Button (Next) */}
         <TouchableOpacity onPress={handleNextDay} disabled={isViewingToday}>
              <Ionicons name="chevron-forward-outline" size={28} color={isViewingToday ? currentStyles.dayHeaderArrowDisabled.color : currentStyles.dayHeaderArrow.color} />
         </TouchableOpacity>
     </View>
 )}
-
-
 
                         <View style={currentStyles.mainDisplayArea}>
                             <View style={currentStyles.circle}>
@@ -553,7 +543,6 @@ const CaloriesScreen = (props) => {
     height={SVG_VIEWBOX_SIZE} 
     width={SVG_VIEWBOX_SIZE} 
     viewBox={`0 0 ${SVG_VIEWBOX_SIZE} ${SVG_VIEWBOX_SIZE}`}
-    // ثبتناها 1 عشان نمنع القلب
     style={{ transform: [{ scaleX: 1 }] }}
 >
     <SvgCircle cx={CENTER_X} cy={CENTER_Y} r={PATH_RADIUS} stroke={currentStyles.circleBackground.stroke} strokeWidth={CIRCLE_BORDER_WIDTH} fill="none" />
@@ -585,7 +574,6 @@ const CaloriesScreen = (props) => {
                             <AnimatedStatItem type="distance" value={rawDistance} unit={translation.distanceUnit} styles={currentStyles} formatter={v => v.toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} />
                         </View>
                         
-                        {/* --- تم استبدال الكود القديم بالمكون الموحد هنا --- */}
                         <ChallengeCard 
                             onPress={handleNavigateToAchievements} 
                             currentChallengeDuration={currentChallengeDuration} 
@@ -606,14 +594,13 @@ const CaloriesScreen = (props) => {
 
                         {isLoading ? ( <ActivityIndicator size="large" color={currentStyles.activityIndicator.color} style={{ marginTop: 20 }} /> ) : (
                             <View style={currentStyles.chartPageContainer}>
-                                {/* تم إزالة العنوان النصي المستقل لأنه أصبح داخل ActivityChart */}
                                 <ActivityChart 
                                     data={weeklyChartData.steps.map(s => Math.min(s * CALORIES_PER_STEP, goalCalories))}
                                     goal={goalCalories} 
                                     styles={currentStyles} 
                                     language={language} 
                                     dayNames={translation.dayNamesShort}
-                                    title={translation.weeklyStatsTitle} // تمرير العنوان
+                                    title={translation.weeklyStatsTitle}
                                 />
                             </View>
                         )}
@@ -706,8 +693,6 @@ circle: {
     justifyContent: 'center', 
     alignItems: 'center', 
     position: 'relative',
-    
-    // ضيف السطر ده.. ده اللي بيعزل المربع ده عن العربي
     direction: 'ltr' 
 },
     circleBackground: { stroke: "#e0f2f1" },
@@ -751,20 +736,12 @@ circle: {
     periodTextSelected: { color: '#ffffff' },
     
     chartPageContainer: { padding: 10, alignItems: 'center', width: '100%', marginTop: 20 },
-    
-    // --- أنماط الرسم البياني الجديدة (داخل البطاقة) ---
-    // البطاقة نفسها
     card: { backgroundColor: '#FFF', borderRadius: 20, paddingVertical: 20, paddingHorizontal: 10, width: '92%', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2, alignItems: 'center', marginBottom: 20, alignSelf: 'center' },
     
-    // عنوان البطاقة
     chartHeader: { width: '100%', paddingHorizontal: 15, marginBottom: 10, paddingRight: 10 },
     weekChartTitle: { fontSize: 20, fontWeight: 'bold', color: '#2e7d32' },
 
-    // حاوية الرسم البياني الداخلية
     chartContainer: { paddingHorizontal: 5, paddingVertical: 5, width: '100%', position: 'relative' },
-    
-    // المحاور
-    // (5) تعديل الهوامش والمحاذاة لضمان رجوع الأرقام للخلف
     yAxisContainer: { width: Y_AXIS_WIDTH, height: BAR_CONTAINER_HEIGHT, justifyContent: 'space-between', alignItems: I18nManager.isRTL ? 'flex-end' : 'flex-end', paddingLeft: 0, paddingRight: 0 },
     yAxisLabel: { fontSize: 11, color: '#757575', fontVariant: ['tabular-nums'], textAlign: I18nManager.isRTL ? 'right' : 'right' },
     

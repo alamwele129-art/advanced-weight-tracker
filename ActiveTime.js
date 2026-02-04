@@ -17,14 +17,13 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Svg, { Circle, Path } from 'react-native-svg';
-// غيرنا استيراد Icon ليكون Ionicons ليتوافق مع البطاقة الموحدة
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import { supabase } from './supabaseClient'; 
 
-// Placeholders for sub-components
+// استيراد المكونات الفرعية (تأكد من وجود هذه الملفات)
 import WeeklyTime from './weeklytime';
 import MonthlyTime from './monthlytime';
 
@@ -97,14 +96,13 @@ const translations = {
 
 const { width, height } = Dimensions.get('window');
 
-// *** تعديلات الأبعاد لتطابق كود المسافة ***
 const CIRCLE_SIZE = width * 0.60;
 const CIRCLE_BORDER_WIDTH = 15;
 const SVG_VIEWBOX_SIZE = CIRCLE_SIZE;
 const PATH_RADIUS = (CIRCLE_SIZE / 2) - (CIRCLE_BORDER_WIDTH / 2);
 const CENTER_X = SVG_VIEWBOX_SIZE / 2;
 const CENTER_Y = SVG_VIEWBOX_SIZE / 2;
-const ICON_SIZE = 22; // حجم النقطة
+const ICON_SIZE = 22; 
 
 const chartHeight = 200;
 const MENU_VERTICAL_OFFSET = 5;
@@ -142,33 +140,16 @@ const describeArc = (x, y, radius, startAngleDeg, endAngleDeg) => {
   return d;
 };
 
-// *** دالة حساب موقع النقطة (مطابقة لكود المسافة) ***
 const calculateIconPositionOnPath = (angleDegrees) => { 
     const angleRad = (angleDegrees * Math.PI) / 180; 
     const iconRadius = PATH_RADIUS; 
-    
-    // التعديل هنا: إزالة السالب (-) ليصبح التحرك يمينًا (مع عقارب الساعة)
     const xOffset = iconRadius * Math.sin(angleRad); 
-    
-    // Y يبقى كما هو بالسالب
     const yOffset = -iconRadius * Math.cos(angleRad); 
-
     const iconCenterX = CENTER_X + xOffset; 
     const iconCenterY = CENTER_Y + yOffset; 
-
     const top = iconCenterY - (ICON_SIZE / 2); 
     const left = iconCenterX - (ICON_SIZE / 2); 
-
-    return { 
-        position: 'absolute', 
-        width: ICON_SIZE, 
-        height: ICON_SIZE, 
-        top, 
-        left, 
-        zIndex: 10, 
-        justifyContent: 'center', 
-        alignItems: 'center' 
-    }; 
+    return { position: 'absolute', width: ICON_SIZE, height: ICON_SIZE, top, left, zIndex: 10, justifyContent: 'center', alignItems: 'center' }; 
 };
 
 const getDateString = (date) => {
@@ -338,7 +319,6 @@ const DayView = ({ goalHour, goalMinute, onOpenGoalModal, activeTimeForDate, cur
   const calculatedCalories = calculatedSteps * CALORIES_PER_STEP;
   const calculatedDistanceKm = (calculatedSteps * STEP_LENGTH_METERS) / 1000;
 
-  // إعدادات التقدم والأنيميشن
   const progress = goalInMinutes > 0 ? (activeTimeForDate / goalInMinutes) * 100 : 0;
   const clampedProgress = Math.min(100, Math.max(0, progress));
   const animatedAngle = useRef(new Animated.Value(0)).current;
@@ -375,54 +355,40 @@ const DayView = ({ goalHour, goalMinute, onOpenGoalModal, activeTimeForDate, cur
     return () => { animatedAngle.removeListener(listenerId); animatedTime.removeListener(timeListenerId); };
   }, [animatedAngle, animatedTime]);
 
-  // **********************************************************
-  // هنا الفصل: تصميم خاص للعربي وتصميم خاص للإنجليزي
-  // **********************************************************
-
-  // ---- (1) التصميم العربي ----
   if (language === 'ar') {
     return (
       <View style={currentStyles.dayViewContainer}>
         <View style={[currentStyles.dayHeader, { flexDirection: 'row' }]}>
-          {/* زر السابق (يمين الشاشة في العربي) */}
           <TouchableOpacity onPress={onPreviousDay}>
-            {/* غير الاسم هنا للتحكم في سهم السابق للعربي فقط: chevron-forward-outline (يمين) أو chevron-back-outline (يسار) */}
             <Ionicons name="chevron-forward-outline" size={28} color={currentStyles.dayHeaderArrow.color} />
           </TouchableOpacity>
           
           <Text style={currentStyles.dayHeaderTitle}>{formatDisplayDate(currentDate)}</Text>
           
-          {/* زر التالي (يسار الشاشة في العربي) */}
           <TouchableOpacity onPress={onNextDay} disabled={isViewingToday}>
-            {/* غير الاسم هنا للتحكم في سهم التالي للعربي فقط */}
             <Ionicons name="chevron-back-outline" size={28} color={isViewingToday ? currentStyles.dayHeaderArrowDisabled.color : currentStyles.dayHeaderArrow.color} />
           </TouchableOpacity>
         </View>
 
-        {/* باقي محتوى الصفحة (الدائرة والإحصائيات) */}
         {renderCircleContent(currentStyles, SVG_VIEWBOX_SIZE, CENTER_X, CENTER_Y, PATH_RADIUS, CIRCLE_BORDER_WIDTH, progressPathD, displayTimeText, onOpenGoalModal, goalHour, goalMinute, translation, dynamicDotStyle, calculatedSteps, calculatedCalories, calculatedDistanceKm, language)}
       </View>
     );
   }
 
-  // ---- (2) التصميم الإنجليزي (وغيره) ----
   return (
     <View style={currentStyles.dayViewContainer}>
       <View style={[currentStyles.dayHeader, { flexDirection: 'row' }]}>
-        {/* Previous Button (Left side) */}
         <TouchableOpacity onPress={onPreviousDay}>
           <Ionicons name="chevron-back-outline" size={28} color={currentStyles.dayHeaderArrow.color} />
         </TouchableOpacity>
         
         <Text style={currentStyles.dayHeaderTitle}>{formatDisplayDate(currentDate)}</Text>
         
-        {/* Next Button (Right side) */}
         <TouchableOpacity onPress={onNextDay} disabled={isViewingToday}>
           <Ionicons name="chevron-forward-outline" size={28} color={isViewingToday ? currentStyles.dayHeaderArrowDisabled.color : currentStyles.dayHeaderArrow.color} />
         </TouchableOpacity>
       </View>
 
-       {/* باقي محتوى الصفحة (الدائرة والإحصائيات) */}
        {renderCircleContent(currentStyles, SVG_VIEWBOX_SIZE, CENTER_X, CENTER_Y, PATH_RADIUS, CIRCLE_BORDER_WIDTH, progressPathD, displayTimeText, onOpenGoalModal, goalHour, goalMinute, translation, dynamicDotStyle, calculatedSteps, calculatedCalories, calculatedDistanceKm, language)}
     </View>
   );
@@ -467,7 +433,6 @@ const renderCircleContent = (currentStyles, SVG_VIEWBOX_SIZE, CENTER_X, CENTER_Y
     );
 }
 
-// --- المكوّن الموحد الجديد (ChallengeCard) ---
 const ChallengeCard = ({ onPress, currentChallengeDuration, remainingDays, translation, styles, language }) => {
     const locale = language === 'ar' ? 'ar-EG' : 'en-US';
 
@@ -514,7 +479,7 @@ const WeekView = ({ weeklyTimeData, onTestIncrement, onResetData, currentStyles,
   const [selectedBarIndex, setSelectedBarIndex] = useState(null);
   const [selectedBarValue, setSelectedBarValue] = useState(null);
   const days = translation.dayNamesShort;
-  const maxVal = Math.max(60, ...weeklyTimeData); // الحد الأدنى للرسم 60 دقيقة
+  const maxVal = Math.max(60, ...weeklyTimeData);
   const today = new Date();
   const jsDayIndex = today.getDay();
   const startOfWeekDay = language === 'ar' ? 6 : 0;
@@ -604,6 +569,7 @@ const WeekView = ({ weeklyTimeData, onTestIncrement, onResetData, currentStyles,
 
 const ActiveTimeScreen = (props) => {
   const {
+    navigation, 
     onNavigate,
     currentScreenName,
     onNavigateToAchievements,
@@ -702,7 +668,23 @@ const ActiveTimeScreen = (props) => {
 
   const handleTestIncrement = () => { if (!isToday(currentDate)) return; const dateString = getDateString(currentDate); const currentTime = timeHistory[dateString] || 0; const newTime = currentTime + 5; updateAndSaveTime(currentDate, newTime); };
   const handleResetData = () => { if (!isToday(currentDate)) return; updateAndSaveTime(currentDate, 0); };
-  const handleNavigateToAchievements = () => { if (onNavigateToAchievements) { onNavigateToAchievements(Math.round(activeTimeForDate * STEPS_PER_MINUTE)); } };
+  
+  // ** Updated Navigation Function **
+  const handleNavigateToAchievements = () => {
+    // تحويل الوقت النشط إلى خطوات تقديرية (الدقيقة = 100 خطوة)
+    const estimatedSteps = Math.round(activeTimeForDate * STEPS_PER_MINUTE);
+
+    if (navigation) {
+        navigation.navigate('Achievements', {
+            currentDailySteps: estimatedSteps,
+            language: language,
+            isDarkMode: isDarkMode
+        });
+    } else if (onNavigateToAchievements) {
+        onNavigateToAchievements(estimatedSteps);
+    }
+  };
+
   const openTitleMenu = useCallback(() => { if (titleMenuTriggerRef.current) { titleMenuTriggerRef.current.measure((fx, fy, w, h, px, py) => { const top = py + h - 25 + MENU_VERTICAL_OFFSET; const positionStyle = I18nManager.isRTL ? { top, right: width - (px + w), left: undefined } : { top, left: px, right: undefined }; setTitleMenuPosition(positionStyle); setIsTitleMenuVisible(true); }); } }, [width]);
   const closeTitleMenu = useCallback(() => setIsTitleMenuVisible(false), []);
   const navigateTo = (screenName) => { closeTitleMenu(); if (onNavigate) { onNavigate(screenName); } };
@@ -773,7 +755,6 @@ const ActiveTimeScreen = (props) => {
           <ScrollView contentContainerStyle={currentStyles.scrollContent} key={`day-${language}-${isDarkMode}`}>
             <DayView goalHour={goalHour} goalMinute={goalMinute} onOpenGoalModal={() => setModalVisible(true)} activeTimeForDate={activeTimeForDate} currentDate={currentDate} onNextDay={handleNextDay} onPreviousDay={handlePreviousDay} formatDisplayDate={formatDisplayDate} currentStyles={currentStyles} translation={translation} language={language} />
             
-            {/* --- تم استبدال الكود القديم بالمكون الموحد هنا --- */}
             <ChallengeCard 
                 onPress={handleNavigateToAchievements} 
                 currentChallengeDuration={currentChallengeDuration} 
