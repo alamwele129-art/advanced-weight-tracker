@@ -521,7 +521,7 @@ const WeekView = ({ weeklyTimeData, onTestIncrement, onResetData, currentStyles,
   const displayDayIndex = (jsDayIndex - startOfWeekDay + 7) % 7;
   const locale = language === 'ar' ? 'ar-EG' : 'en-US';
 
-  const chartDirection = language === 'ar' ? 'row-reverse' : 'row';
+  const chartDirection = language === 'ar' ? 'row' : 'row';
   const headerAlign = 'flex-start';
 
   const handleBarPress = useCallback((index, value) => {
