@@ -235,8 +235,15 @@ const ProfileScreen = ({ navigation, language, darkMode, navigateToPremium, navi
   const currentThemeColors = currentThemeMode === 'dark' ? darkTheme : lightTheme;
   const profileImageSource = profileImageUri ? { uri: profileImageUri } : DEFAULT_PROFILE_ASSET;
   const imageKey = profileImageUri || 'default_asset';
-  const menuArrowIcon = I18nManager.isRTL ? "chevron-forward-outline" : "chevron-back-outline";
-  const headerBackIcon = I18nManager.isRTL ? "arrow-forward-outline" : "arrow-forward-outline";
+  const menuArrowIcon = currentLanguage === 'ar' 
+      ? "chevron-back-outline"      // أيقونة العربي
+      : "chevron-forward-outline";  // أيقونة الإنجليزي
+
+  // 2. سهم الرجوع (اللي فوق خالص في الهيدر)
+  // في العربي: بيبص يمين (->) .. في الانجليزي: بيبص شمال (<-)
+  const headerBackIcon = currentLanguage === 'ar' 
+      ? "arrow-forward-outline"     // أيقونة العربي
+      : "arrow-back-outline"; 
 
   if (!isInitialized) {
     return ( 
