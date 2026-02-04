@@ -67,11 +67,8 @@ const lightTheme = {
     separator: '#eee', 
     icon: '#4caf50', 
     iconCircleBg: 'rgba(76, 175, 80, 0.1)', 
-    
-    // --- التعديل هنا: الألوان الخضراء للأسهم ---
     chevron: '#2e7d32', 
     disabledChevron: '#a5d6a7', 
-    
     activeDayLabelColor: '#000000'
 };
 
@@ -92,17 +89,11 @@ const darkTheme = {
     separator: '#424242', 
     icon: '#80CBC4', 
     iconCircleBg: 'rgba(128, 203, 196, 0.1)', 
-    
-    // --- التعديل هنا أيضاً للوضع الليلي ---
     chevron: '#2e7d32', 
     disabledChevron: '#424242', 
-    
     activeDayLabelColor: '#FFFFFF'
 };
 
-// =================================================================
-// Main Component
-// =================================================================
 const WeeklySteps = ({
     totalSteps = 0,
     averageSteps = 0,
@@ -129,7 +120,6 @@ const WeeklySteps = ({
     const theme = useMemo(() => isDarkMode ? darkTheme : lightTheme, [isDarkMode]);
     const styles = useMemo(() => getStyles(theme, I18nManager.isRTL), [theme, I18nManager.isRTL]);
     
-    // Fallback for names if empty
     const safeDayNames = (dayNamesShort && dayNamesShort.length === 7) ? dayNamesShort : ['-', '-', '-', '-', '-', '-', '-'];
 
     const { calculatedTrendText, calculatedActiveDay } = useMemo(() => {
@@ -232,28 +222,15 @@ const WeeklySteps = ({
         <View style={styles.container}>
             <ScrollView contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
                 <View style={styles.chartCard}>
-                    {/* Header Navigator */}
                     <View style={styles.dateNavigator}>
-                        
                          <TouchableOpacity onPress={onPreviousWeek}>
-                            <Ionicons 
-                                name={leftButtonIconName} 
-                                size={26} 
-                                color={theme.chevron} 
-                            />
+                            <Ionicons name={leftButtonIconName} size={26} color={theme.chevron} />
                         </TouchableOpacity>
-
                         <Text style={styles.dateText}>{formattedDateRange}</Text>
-
                         <TouchableOpacity onPress={onNextWeek} disabled={isCurrentWeek}>
-                            <Ionicons 
-                                name={rightButtonIconName} 
-                                size={26} 
-                                color={isCurrentWeek ? theme.disabledChevron : theme.chevron} 
-                            />
+                            <Ionicons name={rightButtonIconName} size={26} color={isCurrentWeek ? theme.disabledChevron : theme.chevron} />
                         </TouchableOpacity>
                     </View>
-                    {/* Summary Boxes */}
                     <View style={styles.summaryContainer}>
                         <View style={styles.summaryBox}>
                             <Text style={styles.summaryValue}>{formatNumber(totalSteps, language)}</Text>
@@ -265,7 +242,6 @@ const WeeklySteps = ({
                         </View>
                     </View>
                     
-                    {/* THE GRAPH */}
                     <Pressable style={styles.graphContainer} onPress={handleDismissTooltip}>
                         <View style={styles.yAxis}>
                             {yAxisLabels.map((label, index) => (
@@ -299,7 +275,6 @@ const WeeklySteps = ({
                     </Pressable>
                 </View>
                 
-                {/* Bottom Summary */}
                 <Text style={styles.sectionTitle}>{t.weeklySummary || 'Summary'}</Text>
                 <View style={styles.summaryMainCard}>
                     <View style={styles.summaryStatRow}>
@@ -318,7 +293,6 @@ const WeeklySteps = ({
                     </View>
                 </View>
 
-                {/* Metrics */}
                 <View style={styles.metricsCard}>
                     <MetricBlock iconName="time-outline" value={weeklyDuration} unit={t.durationUnit || 'min'} theme={theme} styles={styles} IconComponent={Ionicons} />
                     <MetricBlock iconName="location-outline" value={weeklyDistance} unit={t.distanceUnit || 'km'} theme={theme} styles={styles} IconComponent={Ionicons} />
@@ -360,16 +334,7 @@ const getStyles = (theme, isRTL) => StyleSheet.create({
     summaryBox: { alignItems: 'center', flex:1 },
     summaryValue: { fontSize: 32, fontWeight: 'bold', color: theme.mainText, fontVariant: ['tabular-nums'] },
     summaryLabel: { fontSize: 14, color: theme.secondaryText, marginTop: 4, textAlign:'center' },
-    
-    graphContainer: { 
-        flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row', 
-        paddingHorizontal: 15, 
-        paddingTop: 30, 
-        paddingBottom: 10, 
-        height: 300, 
-        alignItems: 'stretch'
-    },
-    
+    graphContainer: { flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row', paddingHorizontal: 15, paddingTop: 30, paddingBottom: 10, height: 300, alignItems: 'stretch' },
     yAxis: { width: 45, justifyContent: 'space-between', alignItems: 'flex-end', paddingRight: 8, height: '100%', paddingBottom: 25 },
     yAxisLabel: { fontSize: 11, color: theme.secondaryText, fontVariant: ['tabular-nums'] },
     barsAreaWrapper: { flex: 1, marginLeft: 5 },
@@ -392,23 +357,7 @@ const getStyles = (theme, isRTL) => StyleSheet.create({
     summaryMainCard: { backgroundColor: theme.cardBackground, borderRadius: 15, padding: 20, width: '100%', marginBottom: 20 },
     summaryStatRow: { flexDirection: isRTL ? 'row-reverse' : 'row-reverse', justifyContent: 'space-between', alignItems: 'center', width: '100%' },
     summaryStatLabel: { fontSize: 16, color: theme.secondaryText, textAlign: isRTL ? 'left' : 'right' },
-summaryStatValue: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: theme.mainText,
-    fontVariant: ['tabular-nums'],
-    
-    // --- التعديلات هنا ---
-    
-    // 1. شيل flex: 1 عشان المربع ياخد حجم الرقم بس ومياخدش السطر كله
-    // flex: 1,  <-- امسح دي أو اعملها comment
-    
-    // 2. شيل textAlign عشان نعتمد على توزيع السطر نفسه (justifyContent)
-    // textAlign: isRTL ? 'left': 'right', <-- امسح دي كمان
-    
-    // 3. شيل الـ margin لو عايز الرقم يلزق في طرف الشاشة خالص
-    // marginHorizontal: 10, <-- لو حاسس انه بعيد عن الطرف، قلل الرقم ده أو شيله
-},
+    summaryStatValue: { fontSize: 18, fontWeight: 'bold', color: theme.mainText, fontVariant: ['tabular-nums'] },
     divider: { height: 1, backgroundColor: theme.separator, marginVertical: 15 },
     metricsCard: { backgroundColor: theme.cardBackground, borderRadius: 15, paddingVertical: 20, width: '100%', flexDirection: isRTL ? 'row-reverse' : 'row', justifyContent: 'space-around', alignItems: 'center' },
     metricBlock: { alignItems: 'center', flex: 1 },

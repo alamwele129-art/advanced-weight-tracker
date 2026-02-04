@@ -11,6 +11,7 @@ import Svg, { Circle as SvgCircle, Path } from 'react-native-svg';
 import { Pedometer } from 'expo-sensors';
 import { supabase } from './supabaseClient'; 
 
+// تأكد من تطابق أسماء الملفات مع الموجود في مشروعك
 import WeeklySteps from './weeklysteps';
 import MonthlySteps from './Monthlysteps';
 
@@ -38,7 +39,6 @@ const TOOLTIP_ARROW_HEIGHT = 6;
 const TOOLTIP_ARROW_WIDTH = 12;
 const TOOLTIP_OFFSET = 5;
 
-// ثوابت البطاقة الموحدة
 const BADGE_CONTAINER_SIZE = 60;
 const BADGE_SVG_SIZE = BADGE_CONTAINER_SIZE;
 const BADGE_CIRCLE_BORDER_WIDTH = 5;
@@ -46,7 +46,6 @@ const BADGE_PATH_RADIUS = (BADGE_SVG_SIZE / 2) - (BADGE_CIRCLE_BORDER_WIDTH / 2)
 const BADGE_CENTER_X = BADGE_SVG_SIZE / 2;
 const BADGE_CENTER_Y = BADGE_SVG_SIZE / 2;
 
-// مفاتيح التحدي والتخزين
 const CHALLENGE_DURATIONS = [7, 14, 30, 60, 100, 180, 270, 360];
 const INITIAL_CHALLENGE_DURATION = CHALLENGE_DURATIONS[0];
 const LAST_PARTICIPATION_DATE_KEY = '@StepsChallenge:lastParticipationDate';
@@ -78,7 +77,7 @@ const translations = {
     }
 };
 
-// --- دوال الرسم ---
+// --- دوال الرسم والمساعدة ---
 const describeArc = (x, y, radius, startAngleDeg, endAngleDeg) => { 
     const clampedEndAngle = Math.min(endAngleDeg, 359.999); 
     const startAngleRad = ((startAngleDeg - 90) * Math.PI) / 180.0; 
@@ -89,8 +88,7 @@ const describeArc = (x, y, radius, startAngleDeg, endAngleDeg) => {
     const endY = y + radius * Math.sin(endAngleRad); 
     const largeArcFlag = clampedEndAngle - startAngleDeg <= 180 ? '0' : '1'; 
     const sweepFlag = '1'; 
-    const d = [ 'M', startX, startY, 'A', radius, radius, 0, largeArcFlag, sweepFlag, endX, endY ].join(' '); 
-    return d; 
+    return [ 'M', startX, startY, 'A', radius, radius, 0, largeArcFlag, sweepFlag, endX, endY ].join(' '); 
 };
 
 const calculateIconPositionOnPath = (angleDegrees) => { 
@@ -105,7 +103,6 @@ const calculateIconPositionOnPath = (angleDegrees) => {
     return { position: 'absolute', width: ICON_SIZE, height: ICON_SIZE, top, left, zIndex: 10, justifyContent: 'center', alignItems: 'center' }; 
 };
 
-// --- دوال مساعدة ---
 const formatStepsK = (steps, lang = 'ar') => { if (typeof steps !== 'number' || isNaN(steps)) steps = 0; const locale = lang === 'ar' ? 'ar-EG' : 'en-US'; if (lang === 'ar') { if (steps === 0) return '٠'; if (steps >= 1000) { const formattedK = (steps / 1000).toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }); return `${formattedK.replace(/[.,٫]0$/, '')} ألف`; } return steps.toLocaleString(locale); } else { if (steps === 0) return '0'; if (steps >= 1000) { const kValue = steps / 1000; const formattedK = kValue % 1 === 0 ? kValue.toLocaleString(locale, { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : kValue.toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }); return `${formattedK}k`; } return steps.toLocaleString(locale); }};
 const getDateString = (date) => { if (!date || !(date instanceof Date)) return null; return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())).toISOString().slice(0, 10); };
 const getStartOfWeek = (date, startOfWeekDay = 6) => { const d = new Date(date); d.setUTCHours(0, 0, 0, 0); const currentUTCDate = d.getUTCDate(); const currentUTCDay = d.getUTCDay(); let diff = currentUTCDay - startOfWeekDay; if (diff < 0) { diff += 7; } d.setUTCDate(currentUTCDate - diff); return d; };
@@ -145,7 +142,7 @@ const DailyStepsChart = React.memo(({ dailySteps = [], goalSteps = DEFAULT_GOAL,
     const [selectedBarValue, setSelectedBarValue] = useState(null);
     
     const chartDirection = 'row';
-    const headerAlign = language === 'ar' ? 'flex-start' : 'flex-start';
+    const headerAlign = 'flex-start';
 
     const yAxisLabelsToDisplay = useMemo(() => {
         const actualData = Array.isArray(dailySteps) ? dailySteps : [];
@@ -245,7 +242,6 @@ const DailyStepsChart = React.memo(({ dailySteps = [], goalSteps = DEFAULT_GOAL,
     );
 });
 
-// --- المكوّن الموحد الجديد (ChallengeCard) ---
 const ChallengeCard = ({ onPress, currentChallengeDuration, remainingDays, translation, styles, language }) => {
     const locale = language === 'ar' ? 'ar-EG' : 'en-US';
 
@@ -508,30 +504,25 @@ const StepsScreen = (props) => {
     }, [getStoredStepsHistory]);
 
     
-    // مراقبة تغيير حالة الشهر الحالي
     useEffect(() => {
         const now = new Date();
         const startOfCurrentMonth = getStartOfMonth(now);
         setIsCurrentMonthSelected(selectedMonthStart.getTime() === startOfCurrentMonth.getTime());
     }, [selectedMonthStart]);
 
-    // مراقبة تغيير حالة الأسبوع الحالي
     useEffect(() => {
         setIsCurrentWeekSelected(isSameWeek(selectedWeekStart, new Date(), startOfWeekDay));
     }, [selectedWeekStart, startOfWeekDay]);
 
-    // دالة جلب البيانات الشهرية والأسبوعية
     useEffect(() => {
         const fetchPeriodData = async () => {
             const history = await getStoredStepsHistory();
             const todayStr = getDateString(new Date());
             history[todayStr] = currentSteps; 
 
-            // --- التعامل مع بيانات الشهر ---
             if (selectedPeriod === 'month') {
                 setIsMonthlyLoading(true);
                 try {
-                    // الشهر الحالي المختار
                     const daysInMonth = getDaysInMonth(selectedMonthStart);
                     const monthData = [];
                     for (let i = 1; i <= daysInMonth; i++) {
@@ -542,7 +533,6 @@ const StepsScreen = (props) => {
                     }
                     setCurrentMonthData(monthData);
 
-                    // الشهر السابق (للمقارنة)
                     const prevMonthStart = addMonths(selectedMonthStart, -1);
                     const daysInPrevMonth = getDaysInMonth(prevMonthStart);
                     const prevMonthData = [];
@@ -554,7 +544,6 @@ const StepsScreen = (props) => {
                     }
                     setPreviousMonthDataForComparison(prevMonthData);
 
-                    // تحديث نص التاريخ
                     const endOfMonth = new Date(selectedMonthStart);
                     endOfMonth.setUTCDate(daysInMonth);
                     setFormattedMonthRange(formatDateRange(selectedMonthStart, endOfMonth, language));
@@ -565,11 +554,9 @@ const StepsScreen = (props) => {
                 }
             }
 
-            // --- التعامل مع بيانات الأسبوع ---
             if (selectedPeriod === 'week') {
                 setIsWeeklyLoading(true);
                 try {
-                    // الأسبوع الحالي المختار
                     const weekData = [];
                     for(let i=0; i<7; i++) {
                         const d = addDays(selectedWeekStart, i);
@@ -578,7 +565,6 @@ const StepsScreen = (props) => {
                     }
                     setActualWeekData(weekData);
 
-                    // الأسبوع السابق (للمقارنة)
                     const prevWeekStart = addDays(selectedWeekStart, -7);
                     const prevWeekData = [];
                      for(let i=0; i<7; i++) {
@@ -671,7 +657,34 @@ const StepsScreen = (props) => {
     }, [stepsForSelectedDay, language, goalSteps]);
     
     const formattedWeekRange = useMemo(() => { const endDate = getEndOfWeek(selectedWeekStart, startOfWeekDay); return formatDateRange(selectedWeekStart, endDate, language); }, [selectedWeekStart, startOfWeekDay, language]);
-    const weeklyStats = useMemo(() => { const calculateWeekMetrics = (weekDataArray) => { if (!Array.isArray(weekDataArray) || weekDataArray.length === 0) { return { total: 0, avg: 0, rawMinutes: 0, rawCals: 0, rawDist: 0, durationStr: language === 'ar' ? "٠٠:٠٠" : "00:00", calsStr: language === 'ar' ? "٠٫٠" : "0.0", distStr: language === 'ar' ? "٠٫٠٠" : "0.00" }; } const locale = language === 'ar' ? 'ar-EG' : 'en-US'; const validDaysData = weekDataArray.filter(s => typeof s === 'number' && s >= 0); const total = validDaysData.reduce((sum, steps) => sum + steps, 0); const daysWithData = validDaysData.length; const avg = daysWithData > 0 ? total / daysWithData : 0; const rawMinutes = total / STEPS_PER_MINUTE; const rawCals = total * CALORIES_PER_STEP; const rawDist = total * STEP_LENGTH_METERS / 1000; const hours = Math.floor(rawMinutes / 60); const mins = Math.floor(rawMinutes % 60); const durationStr = `${hours.toLocaleString(locale, { minimumIntegerDigits: 2 })}:${mins.toLocaleString(locale, { minimumIntegerDigits: 2 })}`; const calsStr = rawCals.toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }); const distStr = rawDist.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); return { total, avg: Math.round(avg), rawMinutes, rawCals, rawDist, durationStr, calsStr, distStr }; }; const currentMetrics = calculateWeekMetrics(actualWeekData); const previousMetrics = calculateWeekMetrics(previousWeekForComparisonData); const locale = language === 'ar' ? 'ar-EG' : 'en-US'; const stepsDiff = currentMetrics.total - previousMetrics.total; const stepsChangeStr = `${stepsDiff >= 0 ? '+' : '−'}${Math.abs(stepsDiff).toLocaleString(locale)}`; return { totalSteps: currentMetrics.total, averageSteps: currentMetrics.avg, weeklyDuration: currentMetrics.durationStr, weeklyCalories: currentMetrics.calsStr, weeklyDistance: currentMetrics.distStr, stepsChange: stepsChangeStr, }; }, [actualWeekData, previousWeekForComparisonData, language]);
+    
+    // --- منطق حساب متوسط الأسبوع ---
+    const weeklyStats = useMemo(() => { 
+        const calculateWeekMetrics = (weekDataArray) => { 
+            if (!Array.isArray(weekDataArray) || weekDataArray.length === 0) { 
+                return { total: 0, avg: 0, rawMinutes: 0, rawCals: 0, rawDist: 0, durationStr: language === 'ar' ? "٠٠:٠٠" : "00:00", calsStr: language === 'ar' ? "٠٫٠" : "0.0", distStr: language === 'ar' ? "٠٫٠٠" : "0.00" }; 
+            } 
+            const locale = language === 'ar' ? 'ar-EG' : 'en-US'; 
+            const total = weekDataArray.reduce((sum, steps) => sum + (steps || 0), 0); 
+            // المتوسط الاسبوعي: اجمالي / 7 أيام
+            const avg = total / 7; 
+            const rawMinutes = total / STEPS_PER_MINUTE; 
+            const rawCals = total * CALORIES_PER_STEP; 
+            const rawDist = total * STEP_LENGTH_METERS / 1000; 
+            const hours = Math.floor(rawMinutes / 60); 
+            const mins = Math.floor(rawMinutes % 60); 
+            const durationStr = `${hours.toLocaleString(locale, { minimumIntegerDigits: 2 })}:${mins.toLocaleString(locale, { minimumIntegerDigits: 2 })}`; 
+            const calsStr = rawCals.toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }); 
+            const distStr = rawDist.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); 
+            return { total, avg: Math.round(avg), rawMinutes, rawCals, rawDist, durationStr, calsStr, distStr }; 
+        }; 
+        const currentMetrics = calculateWeekMetrics(actualWeekData); 
+        const previousMetrics = calculateWeekMetrics(previousWeekForComparisonData); 
+        const locale = language === 'ar' ? 'ar-EG' : 'en-US'; 
+        const stepsDiff = currentMetrics.total - previousMetrics.total; 
+        const stepsChangeStr = `${stepsDiff >= 0 ? '+' : '−'}${Math.abs(stepsDiff).toLocaleString(locale)}`; 
+        return { totalSteps: currentMetrics.total, averageSteps: currentMetrics.avg, weeklyDuration: currentMetrics.durationStr, weeklyCalories: currentMetrics.calsStr, weeklyDistance: currentMetrics.distStr, stepsChange: stepsChangeStr, }; 
+    }, [actualWeekData, previousWeekForComparisonData, language]);
 
     useEffect(() => { 
         const animation = Animated.timing(animatedAngle, { 
@@ -723,78 +736,33 @@ const StepsScreen = (props) => {
     const openMenuModal = useCallback(() => { if (menuButtonRef.current) { menuButtonRef.current.measure((fx, fy, w, h, px, py) => { const top = py + h + MENU_VERTICAL_OFFSET; const positionStyle = I18nManager.isRTL ? { top, right: width - (px + w), left: undefined } : { top, left: px, right: undefined }; setMenuPosition({ ...positionStyle, triggerX: px, triggerWidth: w }); setIsMenuModalVisible(true); }); } }, [width]);
     const openTitleMenu = useCallback(() => { if (titleMenuTriggerRef.current) { titleMenuTriggerRef.current.measure((fx, fy, w, h, px, py) => { const top = py + h - 25; setTitleMenuPosition({ top, left: undefined, right: undefined, triggerX: 0, triggerWidth: 0 }); setIsTitleMenuVisible(true); }); } }, []);
     
-    // -----------------------------------------------------------
-    // ✅✅✅ دالة الانتقال "الذكية" الجديدة (Smart Navigation) ✅✅✅
-    // -----------------------------------------------------------
     const navigateToAchievements = useCallback(async () => {
         try {
-            // 1. تجهيز البيانات من التاريخ
             const historyJSON = await AsyncStorage.getItem(DAILY_STEPS_HISTORY_KEY);
             const history = historyJSON ? JSON.parse(historyJSON) : {};
             const todayStr = getDateString(new Date());
-            
-            // التأكد إن خطوات النهاردة متسجلة في الهيستوري للحساب الصحيح
             history[todayStr] = currentSteps;
 
-            // 2. حساب إجمالي الخطوات التراكمي (عشان المستويات L1, L2...)
             let totalLifetimeSteps = 0;
-            Object.values(history).forEach(val => {
-                totalLifetimeSteps += (val || 0);
-            });
-            // حفظ الإجمالي عشان صفحة الإنجازات تقرأه
+            Object.values(history).forEach(val => { totalLifetimeSteps += (val || 0); });
             await AsyncStorage.setItem(TOTAL_ACCUMULATED_STEPS_KEY, String(totalLifetimeSteps));
 
-            // 3. حساب الأيام المتتالية (Streak)
             let streak = 0;
-            // لو النهاردة حققت الهدف، نبدأ بـ 1
-            if (currentSteps >= goalSteps) {
-                streak++;
-            }
-
-            // شيك على الأيام اللي فاتت (نرجع يوم لورا)
+            if (currentSteps >= goalSteps) { streak++; }
             let checkDate = new Date();
             checkDate.setDate(checkDate.getDate() - 1);
-
             while (true) {
                 const dStr = getDateString(checkDate);
                 const stepsThatDay = history[dStr] || 0;
-                
-                // مقارنة بالهدف الحالي (للتبسيط)
-                if (stepsThatDay >= goalSteps) {
-                    streak++;
-                    checkDate.setDate(checkDate.getDate() - 1); // ارجع كمان يوم
-                } else {
-                    break; // السلسلة اتقطعت
-                }
+                if (stepsThatDay >= goalSteps) { streak++; checkDate.setDate(checkDate.getDate() - 1); } else { break; }
             }
-            // حفظ الستريك
             await AsyncStorage.setItem(CONSECUTIVE_GOAL_DAYS_KEY, String(streak));
 
-            // 4. الانتقال وتمرير البيانات
-            const params = {
-                currentDailySteps: currentSteps,
-                language: language,
-                isDarkMode: isDarkMode
-            };
-
-            if (navigation) {
-                navigation.navigate('Achievements', params);
-            } else if (onNavigateToAchievements && typeof onNavigateToAchievements === 'function') {
-                onNavigateToAchievements(currentSteps);
-            } else {
-                Alert.alert(translation.errorTitle, translation.cannotNavigateError);
-            }
-
+            const params = { currentDailySteps: currentSteps, language: language, isDarkMode: isDarkMode };
+            if (navigation) { navigation.navigate('Achievements', params); } else if (onNavigateToAchievements && typeof onNavigateToAchievements === 'function') { onNavigateToAchievements(currentSteps); } else { Alert.alert(translation.errorTitle, translation.cannotNavigateError); }
         } catch (error) {
             console.error("Error syncing achievements:", error);
-            // في حالة الخطأ، انتقل بالبيانات الأساسية فقط كاحتياط
-            if (navigation) {
-                navigation.navigate('Achievements', { 
-                    currentDailySteps: currentSteps, 
-                    language: language, 
-                    isDarkMode: isDarkMode 
-                });
-            }
+            if (navigation) { navigation.navigate('Achievements', { currentDailySteps: currentSteps, language: language, isDarkMode: isDarkMode }); }
         }
     }, [navigation, onNavigateToAchievements, currentSteps, language, isDarkMode, goalSteps, translation]);
 
@@ -815,10 +783,7 @@ const StepsScreen = (props) => {
     const dailyChartDataForDisplay = useMemo(() => { 
         if (!Array.isArray(dailyChartData)) return []; 
         const data = dailyChartData.map(steps => steps || 0);
-        if (language === 'ar') {
-            return data.reverse();
-        }
-        return data; 
+        return language === 'ar' ? data.reverse() : data; 
     }, [dailyChartData, language]);
 
     return (
@@ -846,21 +811,19 @@ const StepsScreen = (props) => {
                              <Text style={[ currentStyles.periodText, selectedPeriod === 'day' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.today}</Text>
                          </TouchableOpacity>
                      </>
-) : (
-     <>
-         <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'month' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('month')}>
-             <Text style={[ currentStyles.periodText, selectedPeriod === 'month' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.month}</Text>
-         </TouchableOpacity>
-         
-         <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'week' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('week')}>
-             <Text style={[ currentStyles.periodText, selectedPeriod === 'week' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.week}</Text>
-         </TouchableOpacity>
-
-         <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'day' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('day')}>
-             <Text style={[ currentStyles.periodText, selectedPeriod === 'day' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.today}</Text>
-         </TouchableOpacity>
-     </>
- )}
+                 ) : (
+                     <>
+                         <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'month' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('month')}>
+                             <Text style={[ currentStyles.periodText, selectedPeriod === 'month' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.month}</Text>
+                         </TouchableOpacity>
+                         <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'week' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('week')}>
+                             <Text style={[ currentStyles.periodText, selectedPeriod === 'week' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.week}</Text>
+                         </TouchableOpacity>
+                         <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'day' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('day')}>
+                             <Text style={[ currentStyles.periodText, selectedPeriod === 'day' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.today}</Text>
+                         </TouchableOpacity>
+                     </>
+                 )}
              </View>
 
              <ScrollView contentContainerStyle={currentStyles.scrollViewContent} showsVerticalScrollIndicator={false} key={`${selectedPeriod}-${language}-${isDarkMode}-${startOfWeekDay}`} >
@@ -868,24 +831,13 @@ const StepsScreen = (props) => {
                      <>
                         <View style={[currentStyles.dayHeader, { flexDirection: language === 'ar' ? 'row' : 'row' }]}>
                             <TouchableOpacity onPress={handlePreviousDay}>
-                                <Ionicons 
-                                    name={language === 'ar' ? "chevron-forward-outline" : "chevron-back-outline"} 
-                                    size={28} 
-                                    color={currentStyles.dayHeaderArrow.color} 
-                                />
+                                <Ionicons name={language === 'ar' ? "chevron-forward-outline" : "chevron-back-outline"} size={28} color={currentStyles.dayHeaderArrow.color} />
                             </TouchableOpacity>
-                            
                             <Text style={currentStyles.dayHeaderText}>{dayLabel}</Text>
-                            
                             <TouchableOpacity onPress={handleNextDay} disabled={isViewingToday}>
-                                <Ionicons 
-                                    name={language === 'ar' ? "chevron-back-outline" : "chevron-forward-outline"} 
-                                    size={28} 
-                                    color={isViewingToday ? currentStyles.dayHeaderArrowDisabled.color : currentStyles.dayHeaderArrow.color} 
-                                />
+                                <Ionicons name={language === 'ar' ? "chevron-back-outline" : "chevron-forward-outline"} size={28} color={isViewingToday ? currentStyles.dayHeaderArrowDisabled.color : currentStyles.dayHeaderArrow.color} />
                             </TouchableOpacity>
                         </View>
-
                         {isLoading && isViewingToday ? (
                             <View style={[currentStyles.mainDisplayArea, { height: CIRCLE_SIZE, justifyContent: 'center', alignItems: 'center'}]}>
                                 <ActivityIndicator size="large" color={currentStyles.circleProgress.stroke} />
@@ -893,23 +845,13 @@ const StepsScreen = (props) => {
                         ) : (
                             <View style={currentStyles.mainDisplayArea}>
                                 <View style={currentStyles.circle}>
-                                    <Svg 
-    width={SVG_VIEWBOX_SIZE} 
-    height={SVG_VIEWBOX_SIZE} 
-    viewBox={`0 0 ${SVG_VIEWBOX_SIZE} ${SVG_VIEWBOX_SIZE}`}
-    style={{ transform: [{ scaleX: 1 }] }}
->
-
-
-
+                                    <Svg width={SVG_VIEWBOX_SIZE} height={SVG_VIEWBOX_SIZE} viewBox={`0 0 ${SVG_VIEWBOX_SIZE} ${SVG_VIEWBOX_SIZE}`} style={{ transform: [{ scaleX: 1 }] }}>
                                         <SvgCircle cx={CENTER_X} cy={CENTER_Y} r={PATH_RADIUS} stroke={currentStyles.circleBackground.stroke} strokeWidth={CIRCLE_BORDER_WIDTH} fill="none"/>
                                         <Path d={progressPathD} stroke={currentStyles.circleProgress.stroke} strokeWidth={CIRCLE_BORDER_WIDTH} fill="none" strokeLinecap="round"/>
                                     </Svg>
                                     <View style={currentStyles.circleContentOverlay}>
                                         <Image key={runnerImageSource} source={runnerImageSource} style={currentStyles.runnerImageStyle} />
-                                        <Text style={currentStyles.stepsCount}>
-                                            {Math.min(displaySteps, goalSteps).toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US')}
-                                        </Text>
+                                        <Text style={currentStyles.stepsCount}>{Math.min(displaySteps, goalSteps).toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US')}</Text>
                                         <Text style={currentStyles.stepsLabel}>{translation.stepsLabelUnit}</Text>
                                         <TouchableOpacity onPress={openGoalModal} style={currentStyles.goalContainerTouchable} activeOpacity={0.7}>
                                             <View style={currentStyles.goalContainer}>
@@ -931,16 +873,7 @@ const StepsScreen = (props) => {
                             <StatItem type="calories" value={formattedCalories} unit={translation.caloriesUnit} isDarkMode={isDarkMode} styles={currentStyles} />
                             <StatItem type="time" value={formattedDuration} unit={translation.durationUnit} isDarkMode={isDarkMode} styles={currentStyles} />
                         </View>
-
-                        <ChallengeCard 
-                            onPress={navigateToAchievements} 
-                            currentChallengeDuration={currentChallengeDuration} 
-                            remainingDays={remainingDays} 
-                            translation={translation} 
-                            styles={currentStyles} 
-                            language={language} 
-                        />
-                        
+                        <ChallengeCard onPress={navigateToAchievements} currentChallengeDuration={currentChallengeDuration} remainingDays={remainingDays} translation={translation} styles={currentStyles} language={language} />
                         <DailyStepsChart dailySteps={dailyChartDataForDisplay} goalSteps={goalSteps} styles={currentStyles} language={language} dayNames={chartDayNamesForDayTab} translation={translation} />
                      </>
                  )}
@@ -1029,14 +962,7 @@ const lightStyles = StyleSheet.create({
     dayHeaderArrow: { color: '#2e7d32' }, 
     dayHeaderArrowDisabled: { color: '#a5d6a7' }, 
     mainDisplayArea: { width: '100%', alignItems: 'center', marginVertical: 5, paddingBottom: 10, paddingHorizontal: 15 }, 
-circle: { 
-    width: CIRCLE_SIZE, 
-    height: CIRCLE_SIZE, 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    position: 'relative',
-    direction: 'ltr' 
-},
+    circle: { width: CIRCLE_SIZE, height: CIRCLE_SIZE, justifyContent: 'center', alignItems: 'center', position: 'relative', direction: 'ltr' },
     circleBackground: { stroke: "#e0f2f1" }, 
     circleProgress: { stroke: "#4caf50" }, 
     circleContentOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', zIndex: 1, padding: CIRCLE_BORDER_WIDTH + 5 }, 

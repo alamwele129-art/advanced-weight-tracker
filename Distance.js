@@ -44,8 +44,8 @@ const GOAL_KEY = '@Distance:goal';
 const translations = {
     ar: {
         headerTitle: 'المسافة', 
-        today: 'اليوم',       // يستخدم للتاريخ
-        dayPeriod: 'يوم',     // يستخدم للزر العلوي
+        today: 'اليوم',
+        dayPeriod: 'يوم',
         week: 'أسبوع', 
         month: 'شهر', 
         yesterday: 'أمس', 
@@ -60,8 +60,8 @@ const translations = {
     },
     en: {
         headerTitle: 'Distance', 
-        today: 'Today',       // Uses for date
-        dayPeriod: 'Day',     // Uses for top button
+        today: 'Today',
+        dayPeriod: 'Day',
         week: 'Week', 
         month: 'Month', 
         yesterday: 'Yesterday', 
@@ -77,51 +77,8 @@ const translations = {
 };
 
 // --- الدوال المساعدة ---
-
-// رسم القوس
-const describeArc = (x, y, radius, startAngleDeg, endAngleDeg) => { 
-    const clampedEndAngle = Math.min(endAngleDeg, 359.999); 
-    const startAngleRad = ((startAngleDeg - 90) * Math.PI) / 180.0; 
-    const endAngleRad = ((clampedEndAngle - 90) * Math.PI) / 180.0; 
-    const startX = x + radius * Math.cos(startAngleRad); 
-    const startY = y + radius * Math.sin(startAngleRad); 
-    const endX = x + radius * Math.cos(endAngleRad); 
-    const endY = y + radius * Math.sin(endAngleRad); 
-    const largeArcFlag = clampedEndAngle - startAngleDeg <= 180 ? '0' : '1'; 
-    const sweepFlag = '1'; 
-    const d = [ 'M', startX, startY, 'A', radius, radius, 0, largeArcFlag, sweepFlag, endX, endY ].join(' '); 
-    return d; 
-};
-
-// حساب موقع النقطة
-const calculateIconPositionOnPath = (angleDegrees) => { 
-    const angleRad = (angleDegrees * Math.PI) / 180; 
-    const iconRadius = PATH_RADIUS; 
-    
-    // معادلة ثابتة وصريحة: موجب يعني يمين (مع العقارب)
-    const xOffset = iconRadius * Math.sin(angleRad); 
-    
-    // سالب يعني فوق
-    const yOffset = -iconRadius * Math.cos(angleRad); 
-
-    const iconCenterX = CENTER_X + xOffset; 
-    const iconCenterY = CENTER_Y + yOffset; 
-
-    const top = iconCenterY - (ICON_SIZE / 2); 
-    const left = iconCenterX - (ICON_SIZE / 2); 
-
-    return { 
-        position: 'absolute', 
-        width: ICON_SIZE, 
-        height: ICON_SIZE, 
-        top, 
-        left, 
-        zIndex: 10, 
-        justifyContent: 'center', 
-        alignItems: 'center' 
-    }; 
-};
-
+const describeArc = (x, y, radius, startAngleDeg, endAngleDeg) => { const clampedEndAngle = Math.min(endAngleDeg, 359.999); const startAngleRad = ((startAngleDeg - 90) * Math.PI) / 180.0; const endAngleRad = ((clampedEndAngle - 90) * Math.PI) / 180.0; const startX = x + radius * Math.cos(startAngleRad); const startY = y + radius * Math.sin(startAngleRad); const endX = x + radius * Math.cos(endAngleRad); const endY = y + radius * Math.sin(endAngleRad); const largeArcFlag = clampedEndAngle - startAngleDeg <= 180 ? '0' : '1'; const sweepFlag = '1'; const d = [ 'M', startX, startY, 'A', radius, radius, 0, largeArcFlag, sweepFlag, endX, endY ].join(' '); return d; };
+const calculateIconPositionOnPath = (angleDegrees) => { const angleRad = (angleDegrees * Math.PI) / 180; const iconRadius = PATH_RADIUS; const xOffset = iconRadius * Math.sin(angleRad); const yOffset = -iconRadius * Math.cos(angleRad); const iconCenterX = CENTER_X + xOffset; const iconCenterY = CENTER_Y + yOffset; const top = iconCenterY - (ICON_SIZE / 2); const left = iconCenterX - (ICON_SIZE / 2); return { position: 'absolute', width: ICON_SIZE, height: ICON_SIZE, top, left, zIndex: 10, justifyContent: 'center', alignItems: 'center' }; };
 const getDateString = (date) => { if (!date || !(date instanceof Date)) return null; return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())).toISOString().slice(0, 10); };
 const isToday = (someDate) => { const today = new Date(); return someDate.getUTCFullYear() === today.getUTCFullYear() && someDate.getUTCMonth() === today.getUTCMonth() && someDate.getUTCDate() === today.getUTCDate(); };
 const isYesterday = (someDate) => { const today = new Date(); const yesterday = new Date(today); yesterday.setUTCDate(yesterday.getUTCDate() - 1); return someDate.getUTCFullYear() === yesterday.getUTCFullYear() && someDate.getUTCMonth() === yesterday.getUTCMonth() && someDate.getUTCDate() === yesterday.getUTCDate(); };
@@ -133,145 +90,18 @@ const getStartOfMonth = (date) => { const d = new Date(date); d.setUTCHours(0, 0
 const addMonths = (date, months) => { const d = new Date(date); d.setUTCMonth(d.getUTCMonth() + months); return d; };
 const formatDateRange = (startDate, endDate, lang) => { const locale = lang === 'ar' ? 'ar-EG-u-ca-gregory-nu-arab' : 'en-US-u-ca-gregory'; const optionsDayMonth = { day: 'numeric', month: 'long', timeZone: 'UTC' }; const optionsDay = { day: 'numeric', timeZone: 'UTC' }; if (startDate.getUTCMonth() === endDate.getUTCMonth()) { const monthName = endDate.toLocaleDateString(locale, { month: 'long', timeZone: 'UTC' }); return `${startDate.toLocaleDateString(locale, optionsDay)} - ${endDate.toLocaleDateString(locale, optionsDay)} ${monthName}`; } else { return `${startDate.toLocaleDateString(locale, optionsDayMonth)} - ${endDate.toLocaleDateString(locale, optionsDayMonth)}`; } };
 const getDaysInMonth = (date) => new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
+function formatDisplayDate(date, lang, translation) { if (isToday(date)) return translation.today; if (isYesterday(date)) return translation.yesterday; const localeFormat = lang === 'ar' ? 'ar-EG-u-ca-gregory-nu-arab' : 'en-US-u-ca-gregory'; return new Intl.DateTimeFormat(localeFormat, { day: 'numeric', month: 'long', timeZone: 'UTC' }).format(date); }
 
 // --- المكونات الفرعية ---
 const GoalModal = ({ visible, onClose, onSave, currentValue, currentUnit, translation, styles }) => { const [tempValue, setTempValue] = useState(currentValue); const [tempUnit, setTempUnit] = useState(currentUnit); const distanceValues = Array.from({ length: 120 }, (_, i) => ((i + 1) * 0.5).toFixed(1)); const unitValues = [translation.kmUnit, translation.miUnit]; useEffect(() => { if (visible) { setTempValue(currentValue); setTempUnit(currentUnit); } }, [visible, currentValue, currentUnit]); const handleSave = () => { onSave(tempValue, tempUnit); }; return ( <Modal animationType="fade" transparent={true} visible={visible} onRequestClose={onClose}><View style={styles.modalOverlay}><View style={styles.modalCard}><Text style={styles.modalTitle}>{translation.goalModalTitle}</Text><View style={styles.pickersContainer}><Picker height={180} initialSelectedIndex={distanceValues.indexOf(tempValue.toFixed(1))} items={distanceValues.map(val => ({ label: val, value: val }))} onChange={({ item }) => setTempValue(parseFloat(item.value))} renderItem={(item, i, isSelected) => ( <Text style={isSelected ? styles.selectedPickerItemText : styles.pickerItemText}>{item.label}</Text> )} haptics /><Picker height={180} width={120} initialSelectedIndex={unitValues.indexOf(tempUnit)} items={unitValues.map(val => ({ label: val, value: val }))} onChange={({ item }) => setTempUnit(item.value)} renderItem={(item, i, isSelected) => ( <Text style={isSelected ? styles.selectedPickerItemText : styles.pickerItemText}>{item.label}</Text> )} haptics /></View><View style={styles.buttonRow}><TouchableOpacity style={[styles.modalButton, styles.cancelButton]} onPress={onClose}><Text style={styles.cancelButtonText}>{translation.cancel}</Text></TouchableOpacity><TouchableOpacity style={[styles.modalButton, styles.saveButton]} onPress={handleSave}><Text style={styles.saveButtonText}>{translation.save}</Text></TouchableOpacity></View></View></View></Modal> ); };
 const AnimatedStatCard = ({ iconName, value, label, formatter, styles }) => { const animatedValue = useRef(new Animated.Value(value || 0)).current; const [displayValue, setDisplayValue] = useState(() => formatter(value || 0)); useEffect(() => { Animated.timing(animatedValue, { toValue: value || 0, duration: 750, useNativeDriver: false }).start(); }, [value]); useEffect(() => { const listenerId = animatedValue.addListener((v) => { setDisplayValue(formatter(v.value)); }); return () => { animatedValue.removeListener(listenerId); }; }, [formatter, animatedValue]); return ( <View style={styles.statCard}><View style={styles.iconContainer}><Icon name={iconName} size={24} color={styles.animatedStatIcon.color} /></View><Text style={styles.statValue}>{displayValue}</Text><Text style={styles.statLabel}>{label}</Text></View> ); };
-
-// --- المكوّن الموحد الجديد ---
-const ChallengeCard = ({ onPress, currentChallengeDuration, remainingDays, translation, styles, language }) => {
-    const locale = language === 'ar' ? 'ar-EG' : 'en-US';
-
-    const badgeProgressAngle = useMemo(() => {
-        if (remainingDays <= 0 || currentChallengeDuration <= 0) return 359.999;
-        if (remainingDays >= currentChallengeDuration) return 0;
-        const daysCompleted = currentChallengeDuration - remainingDays;
-        return (daysCompleted / currentChallengeDuration) * 360;
-    }, [remainingDays, currentChallengeDuration]);
-
-    const badgeProgressPathD = useMemo(() =>
-        badgeProgressAngle > 0.01 ? describeArc(BADGE_CENTER_X, BADGE_CENTER_Y, BADGE_PATH_RADIUS, 0.01, badgeProgressAngle) : ''
-    , [badgeProgressAngle]);
-
-    const mainText = `${currentChallengeDuration.toLocaleString(locale)} ${translation.challengePrefix}`;
-    const subText = remainingDays > 0 ? `${remainingDays.toLocaleString(locale)} ${remainingDays === 1 ? translation.challengeRemainingSingular : translation.challengeRemainingPlural}` : translation.challengeCompleted;
-    const badgeText = remainingDays > 0 ? `${remainingDays.toLocaleString(locale)}${translation.challengeDaySuffix}` : '✓';
-    const chevronIcon = language === 'ar' ? "chevron-back" : "chevron-forward";
-
-    return (
-        <TouchableOpacity style={styles.challengeCardWrapper || {width: '100%', marginTop: 15}} onPress={onPress} activeOpacity={0.8}>
-            <View style={styles.summaryCard}>
-                <View style={styles.badgeContainer}>
-                    <Svg height={BADGE_SVG_SIZE} width={BADGE_SVG_SIZE} viewBox={`0 0 ${BADGE_SVG_SIZE} ${BADGE_SVG_SIZE}`}>
-                        <Circle cx={BADGE_CENTER_X} cy={BADGE_CENTER_Y} r={BADGE_PATH_RADIUS} stroke={styles.badgeBackgroundCircle.stroke} strokeWidth={BADGE_CIRCLE_BORDER_WIDTH} fill="none" />
-                        <Path d={badgeProgressPathD} stroke={styles.badgeProgressCircle.stroke} strokeWidth={BADGE_CIRCLE_BORDER_WIDTH} fill="none" strokeLinecap="round" />
-                    </Svg>
-                    <View style={styles.badgeTextContainer}>
-                        <Text style={styles.badgeText}>{badgeText}</Text>
-                    </View>
-                </View>
-                <View style={styles.summaryTextContainer}>
-                    <Text style={styles.summaryMainText}>{mainText}</Text>
-                    <Text style={styles.summarySubText}>{subText}</Text>
-                </View>
-                <Ionicons name={chevronIcon} size={24} color={styles.summaryChevron.color} />
-            </View>
-        </TouchableOpacity>
-    );
-};
-
-const DistanceWeeklyChart = ({ weeklyDistanceData, goalDistance, onTestIncrement, onResetData, translation, styles, language }) => { 
-    const [tooltipVisible, setTooltipVisible] = useState(false); 
-    const [selectedBarIndex, setSelectedBarIndex] = useState(null); 
-    const [selectedBarValue, setSelectedBarValue] = useState(null); 
-    const days = translation.dayNamesShort; 
-    const today = new Date(); 
-    const startOfWeekDay = language === 'ar' ? 6 : 0; 
-    const jsDayIndex = today.getDay(); 
-    const displayDayIndex = (jsDayIndex - startOfWeekDay + 7) % 7; 
-    
-    const chartDirection = 'row';
-    const headerAlign = 'flex-start';
-
-    const { yAxisMax, yAxisLabels } = useMemo(() => { 
-        const dataMax = Math.max(...weeklyDistanceData, goalDistance, 1); 
-        const roundedMax = Math.ceil(dataMax); 
-        const labels = [0, roundedMax * 0.25, roundedMax * 0.5, roundedMax * 0.75, roundedMax].map(v => parseFloat(v.toFixed(1))); 
-        return { yAxisMax: roundedMax, yAxisLabels: [...new Set(labels)].sort((a,b) => b-a) }; 
-    }, [weeklyDistanceData, goalDistance]); 
-    
-    const handleBarPress = useCallback((index, value) => { 
-        const numericValue = value || 0; 
-        if (tooltipVisible && selectedBarIndex === index) { 
-            setTooltipVisible(false); 
-        } else if (numericValue > 0) { 
-            setTooltipVisible(true); 
-            setSelectedBarIndex(index); 
-            setSelectedBarValue(numericValue); 
-        } else { 
-            setTooltipVisible(false); 
-        } 
-    }, [tooltipVisible, selectedBarIndex]); 
-    
-    const handleOutsidePress = useCallback(() => { 
-        if (tooltipVisible) { setTooltipVisible(false); } 
-    }, [tooltipVisible]); 
-    
-    return ( 
-        <Pressable style={styles.card} onPress={handleOutsidePress}>
-            <View style={[styles.chartHeader, { alignItems: headerAlign }]}>
-                <Text style={styles.chartTitle}>{translation.weeklyChartTitle}</Text>
-            </View>
-            
-            <View style={styles.testButtonsContainer}>
-                <TouchableOpacity onPress={onTestIncrement} style={styles.testButton}>
-                    <Text style={styles.testButtonText}>{translation.testButton}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={onResetData} style={styles.testButton}>
-                    <Text style={styles.testButtonText}>{translation.resetButton}</Text>
-                </TouchableOpacity>
-            </View>
-            
-            <View style={[styles.chartAreaContainer, { flexDirection: chartDirection }]}>
-                <View style={styles.yAxisLabels}>
-                    {yAxisLabels.map(label => <Text key={label} style={styles.axisLabelY}>{label}</Text>)}
-                </View>
-                
-                <View style={[styles.chartContent, { [language === 'ar' ? 'marginLeft' : 'marginRight']: 10 }]}>
-                    <View style={[styles.barsAndLabelsContainer, { flexDirection: chartDirection }]}>
-                        {days.map((dayName, index) => { 
-                            const value = weeklyDistanceData[index] || 0; 
-                            const barHeight = yAxisMax > 0 ? Math.min(CHART_HEIGHT, (value / yAxisMax) * CHART_HEIGHT) : 0; 
-                            const isCurrentDay = index === displayDayIndex; 
-                            const isSelected = selectedBarIndex === index; 
-                            return ( 
-                                <View key={index} style={styles.barColumn}>
-                                    {tooltipVisible && isSelected && selectedBarValue !== null && ( 
-                                        <View style={[styles.tooltipPositioner, { bottom: barHeight + 30 }]}>
-                                            <View style={styles.tooltipBox}>
-                                                <Text style={styles.tooltipText}>{selectedBarValue.toFixed(1)} {translation.kmUnit}</Text>
-                                            </View>
-                                            <View style={styles.tooltipArrow} />
-                                        </View> 
-                                    )}
-                                    <Pressable onPress={(e) => { e.stopPropagation(); handleBarPress(index, value); }} hitSlop={10}>
-                                        <View style={[styles.bar, { height: barHeight }, isCurrentDay && styles.barToday, isSelected && value > 0 && styles.selectedBar, value >= goalDistance && styles.barGoalAchieved ]} />
-                                    </Pressable>
-                                    <Text style={[styles.axisLabelX, isCurrentDay && styles.activeDayLabel]}>{dayName}</Text>
-                                </View> 
-                            );
-                        })}
-                    </View>
-                </View>
-            </View>
-        </Pressable> 
-    ); 
-};
+const ChallengeCard = ({ onPress, currentChallengeDuration, remainingDays, translation, styles, language }) => { const locale = language === 'ar' ? 'ar-EG' : 'en-US'; const badgeProgressAngle = useMemo(() => { if (remainingDays <= 0 || currentChallengeDuration <= 0) return 359.999; if (remainingDays >= currentChallengeDuration) return 0; const daysCompleted = currentChallengeDuration - remainingDays; return (daysCompleted / currentChallengeDuration) * 360; }, [remainingDays, currentChallengeDuration]); const badgeProgressPathD = useMemo(() => badgeProgressAngle > 0.01 ? describeArc(BADGE_CENTER_X, BADGE_CENTER_Y, BADGE_PATH_RADIUS, 0.01, badgeProgressAngle) : '' , [badgeProgressAngle]); const mainText = `${currentChallengeDuration.toLocaleString(locale)} ${translation.challengePrefix}`; const subText = remainingDays > 0 ? `${remainingDays.toLocaleString(locale)} ${remainingDays === 1 ? translation.challengeRemainingSingular : translation.challengeRemainingPlural}` : translation.challengeCompleted; const badgeText = remainingDays > 0 ? `${remainingDays.toLocaleString(locale)}${translation.challengeDaySuffix}` : '✓'; const chevronIcon = language === 'ar' ? "chevron-back" : "chevron-forward"; return ( <TouchableOpacity style={styles.challengeCardWrapper || {width: '100%', marginTop: 15}} onPress={onPress} activeOpacity={0.8}><View style={styles.summaryCard}><View style={styles.badgeContainer}><Svg height={BADGE_SVG_SIZE} width={BADGE_SVG_SIZE} viewBox={`0 0 ${BADGE_SVG_SIZE} ${BADGE_SVG_SIZE}`}><Circle cx={BADGE_CENTER_X} cy={BADGE_CENTER_Y} r={BADGE_PATH_RADIUS} stroke={styles.badgeBackgroundCircle.stroke} strokeWidth={BADGE_CIRCLE_BORDER_WIDTH} fill="none" /><Path d={badgeProgressPathD} stroke={styles.badgeProgressCircle.stroke} strokeWidth={BADGE_CIRCLE_BORDER_WIDTH} fill="none" strokeLinecap="round" /></Svg><View style={styles.badgeTextContainer}><Text style={styles.badgeText}>{badgeText}</Text></View></View><View style={styles.summaryTextContainer}><Text style={styles.summaryMainText}>{mainText}</Text><Text style={styles.summarySubText}>{subText}</Text></View><Ionicons name={chevronIcon} size={24} color={styles.summaryChevron.color} /></View></TouchableOpacity> ); };
+const DistanceWeeklyChart = ({ weeklyDistanceData, goalDistance, onTestIncrement, onResetData, translation, styles, language }) => { const [tooltipVisible, setTooltipVisible] = useState(false); const [selectedBarIndex, setSelectedBarIndex] = useState(null); const [selectedBarValue, setSelectedBarValue] = useState(null); const days = translation.dayNamesShort; const today = new Date(); const startOfWeekDay = language === 'ar' ? 6 : 0; const jsDayIndex = today.getDay(); const displayDayIndex = (jsDayIndex - startOfWeekDay + 7) % 7; const chartDirection = 'row'; const headerAlign = 'flex-start'; const { yAxisMax, yAxisLabels } = useMemo(() => { const dataMax = Math.max(...weeklyDistanceData, goalDistance, 1); const roundedMax = Math.ceil(dataMax); const labels = [0, roundedMax * 0.25, roundedMax * 0.5, roundedMax * 0.75, roundedMax].map(v => parseFloat(v.toFixed(1))); return { yAxisMax: roundedMax, yAxisLabels: [...new Set(labels)].sort((a,b) => b-a) }; }, [weeklyDistanceData, goalDistance]); const handleBarPress = useCallback((index, value) => { const numericValue = value || 0; if (tooltipVisible && selectedBarIndex === index) { setTooltipVisible(false); } else if (numericValue > 0) { setTooltipVisible(true); setSelectedBarIndex(index); setSelectedBarValue(numericValue); } else { setTooltipVisible(false); } }, [tooltipVisible, selectedBarIndex]); const handleOutsidePress = useCallback(() => { if (tooltipVisible) { setTooltipVisible(false); } }, [tooltipVisible]); return ( <Pressable style={styles.card} onPress={handleOutsidePress}><View style={[styles.chartHeader, { alignItems: headerAlign }]}><Text style={styles.chartTitle}>{translation.weeklyChartTitle}</Text></View><View style={styles.testButtonsContainer}><TouchableOpacity onPress={onTestIncrement} style={styles.testButton}><Text style={styles.testButtonText}>{translation.testButton}</Text></TouchableOpacity><TouchableOpacity onPress={onResetData} style={styles.testButton}><Text style={styles.testButtonText}>{translation.resetButton}</Text></TouchableOpacity></View><View style={[styles.chartAreaContainer, { flexDirection: chartDirection }]}><View style={styles.yAxisLabels}>{yAxisLabels.map(label => <Text key={label} style={styles.axisLabelY}>{label}</Text>)}</View><View style={[styles.chartContent, { [language === 'ar' ? 'marginLeft' : 'marginRight']: 10 }]}><View style={[styles.barsAndLabelsContainer, { flexDirection: chartDirection }]}>{days.map((dayName, index) => { const value = weeklyDistanceData[index] || 0; const barHeight = yAxisMax > 0 ? Math.min(CHART_HEIGHT, (value / yAxisMax) * CHART_HEIGHT) : 0; const isCurrentDay = index === displayDayIndex; const isSelected = selectedBarIndex === index; return ( <View key={index} style={styles.barColumn}>{tooltipVisible && isSelected && selectedBarValue !== null && ( <View style={[styles.tooltipPositioner, { bottom: barHeight + 30 }]}><View style={styles.tooltipBox}><Text style={styles.tooltipText}>{selectedBarValue.toFixed(1)} {translation.kmUnit}</Text></View><View style={styles.tooltipArrow} /></View> )}<Pressable onPress={(e) => { e.stopPropagation(); handleBarPress(index, value); }} hitSlop={10}><View style={[styles.bar, { height: barHeight }, isCurrentDay && styles.barToday, isSelected && value > 0 && styles.selectedBar, value >= goalDistance && styles.barGoalAchieved ]} /></Pressable><Text style={[styles.axisLabelX, isCurrentDay && styles.activeDayLabel]}>{dayName}</Text></View> );})}</View></View></View></Pressable> ); };
 
 // --- الشاشة الرئيسية ---
 const DistanceScreen = (props) => {
   const { 
-      navigation, // <-- Added navigation prop
+      navigation, 
       onNavigate, 
       currentScreenName, 
       onNavigateToAchievements, 
@@ -305,11 +135,11 @@ const DistanceScreen = (props) => {
   const [displayDistanceText, setDisplayDistanceText] = useState(language === 'ar' ? '٠٫٠٠' : '0.00');
   const [dailyChartData, setDailyChartData] = useState(Array(7).fill(0));
   const [selectedWeekStart, setSelectedWeekStart] = useState(() => getStartOfWeek(new Date(), startOfWeekDay));
-  const [weeklyData, setWeeklyData] = useState(Array(7).fill(0));
+  const [weeklyData, setWeeklyData] = useState({ data: Array(7).fill(0), previousData: Array(7).fill(0) });
   const [isWeeklyLoading, setIsWeeklyLoading] = useState(false);
   const [isCurrentWeek, setIsCurrentWeek] = useState(true);
   const [selectedMonthStart, setSelectedMonthStart] = useState(() => getStartOfMonth(new Date()));
-  const [monthlyData, setMonthlyData] = useState([]);
+  const [monthlyData, setMonthlyData] = useState({ data: [], previousData: [] });
   const [isMonthlyLoading, setIsMonthlyLoading] = useState(false);
   const [isCurrentMonth, setIsCurrentMonth] = useState(true);
   const [isTitleMenuVisible, setIsTitleMenuVisible] = useState(false);
@@ -320,13 +150,9 @@ const DistanceScreen = (props) => {
   const [appState, setAppState] = useState(AppState.currentState);
 
   const isViewingToday = useMemo(() => isToday(currentDate), [currentDate]);
-  // سيستخدم translation.today وبالتالي سيعرض "اليوم"
   const dayLabel = useMemo(() => formatDisplayDate(currentDate, language, translation), [currentDate, language, translation]);
 
-  const getStoredStepsHistory = useCallback(async () => {
-        try { const storedHistory = await AsyncStorage.getItem(DAILY_STEPS_HISTORY_KEY); return storedHistory ? JSON.parse(storedHistory) : {}; } 
-        catch (error) { console.error("Failed to get step history:", error); return {}; }
-  }, []);
+  const getStoredStepsHistory = useCallback(async () => { try { const storedHistory = await AsyncStorage.getItem(DAILY_STEPS_HISTORY_KEY); return storedHistory ? JSON.parse(storedHistory) : {}; } catch (error) { console.error("Failed to get step history:", error); return {}; } }, []);
 
   const saveDailySteps = useCallback(async (date, steps) => {
       const dateString = getDateString(date);
@@ -339,93 +165,21 @@ const DistanceScreen = (props) => {
               setStepsHistory(prev => ({...prev, [dateString]: Math.round(steps)}));
           }
           const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-              await supabase.from('steps').upsert({
-                  user_id: user.id,
-                  date: dateString,
-                  step_count: Math.round(steps)
-              }, { onConflict: 'user_id, date' });
-          }
+          if (user) { await supabase.from('steps').upsert({ user_id: user.id, date: dateString, step_count: Math.round(steps) }, { onConflict: 'user_id, date' }); }
       }
       catch (error) { console.error("Failed to save daily steps:", error); }
   }, [getStoredStepsHistory]);
 
   const updateChallengeStatus = useCallback(async () => { const todayString = getDateString(new Date()); if (!todayString) return; try { const [storedRemainingDaysStr, storedLastParticipationDate, storedChallengeDurationStr] = await Promise.all([AsyncStorage.getItem(REMAINING_CHALLENGE_DAYS_KEY), AsyncStorage.getItem(LAST_PARTICIPATION_DATE_KEY), AsyncStorage.getItem(CURRENT_CHALLENGE_DURATION_KEY)]); let loadedDuration = INITIAL_CHALLENGE_DURATION; if (storedChallengeDurationStr !== null) { const parsedDuration = parseInt(storedChallengeDurationStr, 10); if (!isNaN(parsedDuration) && CHALLENGE_DURATIONS.includes(parsedDuration)) loadedDuration = parsedDuration; } setCurrentChallengeDuration(loadedDuration); let currentRemainingDays = loadedDuration; if (storedRemainingDaysStr !== null) { const parsedDays = parseInt(storedRemainingDaysStr, 10); if (!isNaN(parsedDays) && parsedDays >= 0 && parsedDays <= loadedDuration) currentRemainingDays = parsedDays; } setRemainingDays(currentRemainingDays); if (todayString !== storedLastParticipationDate && currentRemainingDays > 0) { const newRemainingDays = currentRemainingDays - 1; if (newRemainingDays <= 0) { const currentDurationIndex = CHALLENGE_DURATIONS.indexOf(loadedDuration); const nextDurationIndex = currentDurationIndex + 1; if (nextDurationIndex < CHALLENGE_DURATIONS.length) { const nextChallengeDuration = CHALLENGE_DURATIONS[nextDurationIndex]; setRemainingDays(nextChallengeDuration); setCurrentChallengeDuration(nextChallengeDuration); await AsyncStorage.multiSet([[REMAINING_CHALLENGE_DAYS_KEY, String(nextChallengeDuration)], [LAST_PARTICIPATION_DATE_KEY, todayString], [CURRENT_CHALLENGE_DURATION_KEY, String(nextChallengeDuration)]]); } else { setRemainingDays(0); await AsyncStorage.multiSet([[REMAINING_CHALLENGE_DAYS_KEY, '0'], [LAST_PARTICIPATION_DATE_KEY, todayString]]); } } else { setRemainingDays(newRemainingDays); await AsyncStorage.multiSet([[REMAINING_CHALLENGE_DAYS_KEY, String(newRemainingDays)], [LAST_PARTICIPATION_DATE_KEY, todayString]]); } } else if (currentRemainingDays <= 0 && remainingDays !== 0) { setRemainingDays(0); } } catch (error) { console.error("Challenge update fail:", error); } }, []);
 
-  useEffect(() => {
-        const loadInitialData = async () => {
-            const history = await getStoredStepsHistory();
-            setStepsHistory(history);
-            try {
-                const { data: { user } } = await supabase.auth.getUser();
-                let loadedGoal = 3.0; 
-                if (user) {
-                    const { data: profile } = await supabase.from('profiles').select('daily_distance_goal').eq('id', user.id).single();
-                    if (profile && profile.daily_distance_goal) loadedGoal = profile.daily_distance_goal;
-                } else {
-                    const storedGoal = await AsyncStorage.getItem(GOAL_KEY);
-                    if (storedGoal) loadedGoal = parseFloat(storedGoal);
-                }
-                setGoalDistance(loadedGoal);
-            } catch (e) {
-                console.error("Failed to load goal:", e);
-            }
-        };
-        loadInitialData();
-  }, [getStoredStepsHistory]);
+  useEffect(() => { const loadInitialData = async () => { const history = await getStoredStepsHistory(); setStepsHistory(history); try { const { data: { user } } = await supabase.auth.getUser(); let loadedGoal = 3.0; if (user) { const { data: profile } = await supabase.from('profiles').select('daily_distance_goal').eq('id', user.id).single(); if (profile && profile.daily_distance_goal) loadedGoal = profile.daily_distance_goal; } else { const storedGoal = await AsyncStorage.getItem(GOAL_KEY); if (storedGoal) loadedGoal = parseFloat(storedGoal); } setGoalDistance(loadedGoal); } catch (e) { console.error("Failed to load goal:", e); } }; loadInitialData(); }, [getStoredStepsHistory]);
+  useEffect(() => { let isMounted = true; const subscribe = async () => { const isAvailable = await Pedometer.isAvailableAsync(); if (!isAvailable || !isMounted) return; const { status } = await Pedometer.requestPermissionsAsync(); if (status === 'granted') { const fetchAndUpdateTodaySteps = async () => { if (!isMounted) return; const start = new Date(); start.setHours(0, 0, 0, 0); const end = new Date(); try { const result = await Pedometer.getStepCountAsync(start, end); if (isMounted && result) { const newSteps = result.steps || 0; setPedometerSteps(newSteps); saveDailySteps(new Date(), newSteps); } } catch (error) { console.error("Could not fetch step count:", error); } }; await fetchAndUpdateTodaySteps(); pedometerSubscription.current = Pedometer.watchStepCount(fetchAndUpdateTodaySteps); } }; subscribe(); return () => { isMounted = false; if (pedometerSubscription.current) pedometerSubscription.current.remove(); }; }, [saveDailySteps]);
 
-  useEffect(() => {
-        let isMounted = true;
-        const subscribe = async () => {
-            const isAvailable = await Pedometer.isAvailableAsync();
-            if (!isAvailable || !isMounted) return;
-            const { status } = await Pedometer.requestPermissionsAsync();
-            if (status === 'granted') {
-                const fetchAndUpdateTodaySteps = async () => {
-                    if (!isMounted) return;
-                    const start = new Date(); start.setHours(0, 0, 0, 0);
-                    const end = new Date();
-                    try {
-                        const result = await Pedometer.getStepCountAsync(start, end);
-                        if (isMounted && result) {
-                            const newSteps = result.steps || 0;
-                            setPedometerSteps(newSteps);
-                            saveDailySteps(new Date(), newSteps);
-                        }
-                    } catch (error) { console.error("Could not fetch step count:", error); }
-                };
-                await fetchAndUpdateTodaySteps();
-                pedometerSubscription.current = Pedometer.watchStepCount(fetchAndUpdateTodaySteps);
-            }
-        };
-        subscribe();
-        return () => { isMounted = false; if (pedometerSubscription.current) pedometerSubscription.current.remove(); };
-  }, [saveDailySteps]);
-
-  const currentStepsCount = useMemo(() => {
-      if (isToday(currentDate)) { return pedometerSteps; }
-      const dateStr = getDateString(currentDate);
-      return stepsHistory[dateStr] || 0;
-  }, [currentDate, pedometerSteps, stepsHistory]);
-
+  const currentStepsCount = useMemo(() => { if (isToday(currentDate)) { return pedometerSteps; } const dateStr = getDateString(currentDate); return stepsHistory[dateStr] || 0; }, [currentDate, pedometerSteps, stepsHistory]);
   const actualDistance = useMemo(() => (currentStepsCount * STEP_LENGTH_METERS) / 1000, [currentStepsCount]);
   const distanceForDisplay = useMemo(() => Math.min(actualDistance, goalDistance), [actualDistance, goalDistance]);
-  const { rawSteps, rawCalories, rawMinutes } = useMemo(() => { 
-        return { 
-            rawSteps: currentStepsCount, 
-            rawCalories: currentStepsCount * CALORIES_PER_STEP, 
-            rawMinutes: currentStepsCount / STEPS_PER_MINUTE 
-        }; 
-  }, [currentStepsCount]);
-  
+  const { rawSteps, rawCalories, rawMinutes } = useMemo(() => { return { rawSteps: currentStepsCount, rawCalories: currentStepsCount * CALORIES_PER_STEP, rawMinutes: currentStepsCount / STEPS_PER_MINUTE }; }, [currentStepsCount]);
   const locale = useMemo(() => language === 'ar' ? 'ar-EG' : 'en-US', [language]);
-  
-  function formatDisplayDate(date, lang, translation) {
-        if (isToday(date)) return translation.today;
-        if (isYesterday(date)) return translation.yesterday;
-        const localeFormat = lang === 'ar' ? 'ar-EG-u-ca-gregory-nu-arab' : 'en-US-u-ca-gregory';
-        return new Intl.DateTimeFormat(localeFormat, { day: 'numeric', month: 'long', timeZone: 'UTC' }).format(date);
-  }
   
   const handlePreviousDay = () => setCurrentDate(prev => addDays(prev, -1));
   const handleNextDay = () => { if (!isToday(currentDate)) setCurrentDate(prev => addDays(prev, 1)); };
@@ -433,42 +187,10 @@ const DistanceScreen = (props) => {
   const handleNextWeek = () => { if (!isCurrentWeek) setSelectedWeekStart(prev => addDays(prev, 7)); };
   const handlePreviousMonth = () => setSelectedMonthStart(prev => addMonths(prev, -1));
   const handleNextMonth = () => { if (!isCurrentMonth) setSelectedMonthStart(prev => addMonths(prev, 1)); };
-  
   const handleTestIncrement = useCallback(() => { if (!isToday(currentDate)) return; const newSteps = pedometerSteps + 656; setPedometerSteps(newSteps); saveDailySteps(new Date(), newSteps); }, [pedometerSteps, currentDate, saveDailySteps]);
   const handleResetData = useCallback(() => { if (!isToday(currentDate)) return; setPedometerSteps(0); saveDailySteps(new Date(), 0); }, [currentDate, saveDailySteps]);
-  
-  const handleSaveGoal = async (newDistance, newUnit) => { 
-      try {
-          const distVal = parseFloat(newDistance);
-          setGoalDistance(distVal); 
-          setGoalUnit(newUnit); 
-          setModalVisible(false);
-          await AsyncStorage.setItem(GOAL_KEY, String(distVal));
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-              await supabase.from('profiles').update({ daily_distance_goal: distVal }).eq('id', user.id);
-          }
-      } catch (e) {
-          Alert.alert(translation.errorTitle, translation.cannotSaveGoalError);
-      }
-  };
-
-  // ** Updated Navigation Function **
-  const handleNavigateToAchievements = () => {
-    // Calculate steps from current data (rawSteps is already calculated in useMemo)
-    const stepsToPass = Math.round(rawSteps);
-
-    if (navigation) {
-        navigation.navigate('Achievements', {
-            currentDailySteps: stepsToPass,
-            language: language,
-            isDarkMode: isDarkMode
-        });
-    } else if (onNavigateToAchievements) {
-        onNavigateToAchievements(stepsToPass);
-    }
-  };
-
+  const handleSaveGoal = async (newDistance, newUnit) => { try { const distVal = parseFloat(newDistance); setGoalDistance(distVal); setGoalUnit(newUnit); setModalVisible(false); await AsyncStorage.setItem(GOAL_KEY, String(distVal)); const { data: { user } } = await supabase.auth.getUser(); if (user) { await supabase.from('profiles').update({ daily_distance_goal: distVal }).eq('id', user.id); } } catch (e) { Alert.alert(translation.errorTitle, translation.cannotSaveGoalError); } };
+  const handleNavigateToAchievements = () => { const stepsToPass = Math.round(rawSteps); if (navigation) { navigation.navigate('Achievements', { currentDailySteps: stepsToPass, language: language, isDarkMode: isDarkMode }); } else if (onNavigateToAchievements) { onNavigateToAchievements(stepsToPass); } };
   const openTitleMenu = useCallback(() => { titleMenuTriggerRef.current.measure((fx, fy, w, h, px, py) => { const top = py + h - 25; const positionStyle = I18nManager.isRTL ? { top, right: width - (px + w) } : { top, left: px }; setTitleMenuPosition(positionStyle); setIsTitleMenuVisible(true); }); }, [width]);
   const closeTitleMenu = useCallback(() => setIsTitleMenuVisible(false), []);
   const navigateTo = (screenName) => { closeTitleMenu(); if (onNavigate) onNavigate(screenName); };
@@ -476,154 +198,88 @@ const DistanceScreen = (props) => {
   const progressPercentage = goalDistance > 0 ? (distanceForDisplay / goalDistance) * 100 : 0;
   const clampedProgressPercentage = Math.min(100, progressPercentage);
   
-  useEffect(() => { 
-      const targetAngle = Math.min(359.999, (clampedProgressPercentage || 0) * 3.6); 
-      Animated.timing(animatedAngle, { 
-          toValue: targetAngle, 
-          duration: 800, 
-          useNativeDriver: false 
-      }).start(); 
-  }, [clampedProgressPercentage]);
-
-  useEffect(() => { 
-      const listenerId = animatedAngle.addListener(({ value }) => { 
-          setDynamicIconStyle(calculateIconPositionOnPath(value)); 
-          setProgressPathD(value > 0.01 ? describeArc(CENTER_X, CENTER_Y, PATH_RADIUS, 0.01, value) : ''); 
-      }); 
-      return () => { animatedAngle.removeListener(listenerId); }; 
-  }, [animatedAngle]);
-
+  useEffect(() => { const targetAngle = Math.min(359.999, (clampedProgressPercentage || 0) * 3.6); Animated.timing(animatedAngle, { toValue: targetAngle, duration: 800, useNativeDriver: false }).start(); }, [clampedProgressPercentage]);
+  useEffect(() => { const listenerId = animatedAngle.addListener(({ value }) => { setDynamicIconStyle(calculateIconPositionOnPath(value)); setProgressPathD(value > 0.01 ? describeArc(CENTER_X, CENTER_Y, PATH_RADIUS, 0.01, value) : ''); }); return () => { animatedAngle.removeListener(listenerId); }; }, [animatedAngle]);
   useEffect(() => { Animated.timing(animatedDistance, { toValue: distanceForDisplay, duration: 750, useNativeDriver: false }).start(); }, [distanceForDisplay]);
   useEffect(() => { const listenerId = animatedDistance.addListener((v) => { setDisplayDistanceText(v.value.toLocaleString(locale, {minimumFractionDigits: 2, maximumFractionDigits: 2})); }); return () => { animatedDistance.removeListener(listenerId); }; }, [locale]);
   useEffect(() => { const runInitialChecks = async () => { await updateChallengeStatus(); }; runInitialChecks(); const sub = AppState.addEventListener('change', s => {if (s === 'active') runInitialChecks()}); return () => sub.remove() }, [updateChallengeStatus]);
   
-  useEffect(() => { 
-      if(selectedPeriod === 'day') { 
-          const weekStart = getStartOfWeek(currentDate, startOfWeekDay); 
-          const data = Array(7).fill(0); 
-          for(let i=0; i<7; i++) { 
-              const day = addDays(weekStart, i); 
-              const dayStr = getDateString(day);
-              let steps = stepsHistory[dayStr] || 0;
-              if (isToday(day)) steps = pedometerSteps;
-              const dist = (steps * STEP_LENGTH_METERS) / 1000;
-              data[i] = Math.min(dist, goalDistance); 
-          } 
-          setDailyChartData(data); 
-      } 
-  }, [currentDate, pedometerSteps, stepsHistory, selectedPeriod, goalDistance, startOfWeekDay]);
+  useEffect(() => { if(selectedPeriod === 'day') { const weekStart = getStartOfWeek(currentDate, startOfWeekDay); const data = Array(7).fill(0); for(let i=0; i<7; i++) { const day = addDays(weekStart, i); const dayStr = getDateString(day); let steps = stepsHistory[dayStr] || 0; if (isToday(day)) steps = pedometerSteps; const dist = (steps * STEP_LENGTH_METERS) / 1000; data[i] = dist; } setDailyChartData(data); } }, [currentDate, pedometerSteps, stepsHistory, selectedPeriod, startOfWeekDay]);
 
   useEffect(() => { 
+      const getDistanceDataForPeriod = (startDate, numDays, isCurrentPeriod) => {
+          const data = Array(numDays).fill(0);
+          for(let i=0; i<numDays; i++) {
+              const dayDate = addDays(startDate, i);
+              let steps = stepsHistory[getDateString(dayDate)] || 0;
+              if (isCurrentPeriod && isToday(dayDate)) {
+                  steps = pedometerSteps;
+              }
+              data[i] = (steps * STEP_LENGTH_METERS) / 1000;
+          }
+          return data;
+      };
+
       if (selectedPeriod === 'week') { 
           setIsWeeklyLoading(true); 
           const currentIsSameWeek = isSameWeek(selectedWeekStart, new Date(), startOfWeekDay); 
           setIsCurrentWeek(currentIsSameWeek); 
-          const data = Array(7).fill(0); 
-          for (let i = 0; i < 7; i++) { 
-              const dayDate = addDays(selectedWeekStart, i); 
-              let steps = stepsHistory[getDateString(dayDate)] || 0;
-              if (currentIsSameWeek && isToday(dayDate)) steps = pedometerSteps;
-              data[i] = (steps * STEP_LENGTH_METERS) / 1000;
-          } 
-          setWeeklyData(data); 
+          const currentWeekData = getDistanceDataForPeriod(selectedWeekStart, 7, currentIsSameWeek);
+          const previousWeekStart = addDays(selectedWeekStart, -7);
+          const previousWeekData = getDistanceDataForPeriod(previousWeekStart, 7, false);
+          setWeeklyData({ data: currentWeekData, previousData: previousWeekData });
           setIsWeeklyLoading(false); 
       } 
-  }, [selectedPeriod, selectedWeekStart, pedometerSteps, stepsHistory, startOfWeekDay]);
-
-  useEffect(() => { 
       if (selectedPeriod === 'month') { 
           setIsMonthlyLoading(true); 
           const currentIsSameMonth = selectedMonthStart.getUTCFullYear() === new Date().getFullYear() && selectedMonthStart.getUTCMonth() === new Date().getMonth(); 
-          setIsCurrentMonth(currentIsSameMonth); 
-          const daysInMonth = getDaysInMonth(selectedMonthStart); 
-          const data = Array(daysInMonth).fill(0); 
-          for (let i = 0; i < daysInMonth; i++) { 
-              const dayDate = new Date(Date.UTC(selectedMonthStart.getUTCFullYear(), selectedMonthStart.getUTCMonth(), i + 1)); 
-              let steps = stepsHistory[getDateString(dayDate)] || 0;
-              if (currentIsSameMonth && isToday(dayDate)) steps = pedometerSteps;
-              data[i] = (steps * STEP_LENGTH_METERS) / 1000;
-          } 
-          setMonthlyData(data); 
+          setIsCurrentMonth(currentIsSameMonth);
+          const daysInMonth = getDaysInMonth(selectedMonthStart);
+          const currentMonthData = getDistanceDataForPeriod(selectedMonthStart, daysInMonth, currentIsSameMonth);
+          
+          const previousMonthStart = addMonths(selectedMonthStart, -1);
+          const daysInPrevMonth = getDaysInMonth(previousMonthStart);
+          const previousMonthDataArr = getDistanceDataForPeriod(previousMonthStart, daysInPrevMonth, false);
+          setMonthlyData({ data: currentMonthData, previousData: previousMonthDataArr });
           setIsMonthlyLoading(false); 
       } 
-  }, [selectedPeriod, selectedMonthStart, pedometerSteps, stepsHistory]);
+  }, [selectedPeriod, selectedWeekStart, selectedMonthStart, pedometerSteps, stepsHistory, startOfWeekDay]);
+
 
   return ( 
     <SafeAreaView style={currentStyles.safeArea}>
       <View style={currentStyles.topBar}>
           <TouchableOpacity ref={titleMenuTriggerRef} style={currentStyles.titleGroup} onPress={openTitleMenu} activeOpacity={0.7}><Text style={currentStyles.headerTitle}>{translation.headerTitle}</Text><Icon name="chevron-down" size={24} color={currentStyles.headerTitle.color} style={{ [I18nManager.isRTL ? 'marginRight' : 'marginLeft']: 5 }} /></TouchableOpacity>
       </View>
-      
-      {/* --- محدد الفترة --- */}
       <View style={currentStyles.periodSelectorContainer}>
          {language === 'ar' ? (
              <>
-                 <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'month' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('month')}>
-                     <Text style={[ currentStyles.periodText, selectedPeriod === 'month' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.month}</Text>
-                 </TouchableOpacity>
-                 <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'week' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('week')}>
-                     <Text style={[ currentStyles.periodText, selectedPeriod === 'week' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.week}</Text>
-                 </TouchableOpacity>
-                 <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'day' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('day')}>
-                     {/* هنا التغيير لاستخدام dayPeriod بدلاً من today */}
-                     <Text style={[ currentStyles.periodText, selectedPeriod === 'day' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.dayPeriod}</Text>
-                 </TouchableOpacity>
+                 <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'month' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('month')}><Text style={[ currentStyles.periodText, selectedPeriod === 'month' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.month}</Text></TouchableOpacity>
+                 <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'week' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('week')}><Text style={[ currentStyles.periodText, selectedPeriod === 'week' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.week}</Text></TouchableOpacity>
+                 <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'day' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('day')}><Text style={[ currentStyles.periodText, selectedPeriod === 'day' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.dayPeriod}</Text></TouchableOpacity>
              </>
          ) : (
             <>
-                <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'month' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('month')}>
-                    <Text style={[ currentStyles.periodText, selectedPeriod === 'month' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.month}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'week' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('week')}>
-                    <Text style={[ currentStyles.periodText, selectedPeriod === 'week' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.week}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'day' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('day')}>
-                     {/* هنا التغيير لاستخدام dayPeriod بدلاً من today */}
-                    <Text style={[ currentStyles.periodText, selectedPeriod === 'day' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.dayPeriod}</Text>
-                </TouchableOpacity>
+                <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'month' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('month')}><Text style={[ currentStyles.periodText, selectedPeriod === 'month' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.month}</Text></TouchableOpacity>
+                <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'week' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('week')}><Text style={[ currentStyles.periodText, selectedPeriod === 'week' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.week}</Text></TouchableOpacity>
+                <TouchableOpacity style={[ currentStyles.periodButton, selectedPeriod === 'day' ? currentStyles.periodButtonSelected : currentStyles.periodButtonInactive ]} onPress={() => setSelectedPeriod('day')}><Text style={[ currentStyles.periodText, selectedPeriod === 'day' ? currentStyles.periodTextSelected : currentStyles.periodTextInactive ]}>{translation.dayPeriod}</Text></TouchableOpacity>
             </>
         )}
       </View>
-
       <ScrollView contentContainerStyle={currentStyles.scrollContainer} key={`${selectedPeriod}-${language}-${isDarkMode}`}>
-        
         {selectedPeriod === 'day' && (
           <View style={currentStyles.dayViewContainer}>
-            {/* --- متصفح الأيام --- */}
             <View style={[currentStyles.dayHeader, { flexDirection: language === 'ar' ? 'row' : 'row' }]}>
-                <TouchableOpacity onPress={handlePreviousDay}>
-                    <Ionicons 
-                        name={language === 'ar' ? "chevron-forward-outline" : "chevron-back-outline"} 
-                        size={28} 
-                        color={currentStyles.dayHeaderArrow.color} 
-                    />
-                </TouchableOpacity>
-                
-                {/* dayLabel يستخدم translation.today وبالتالي سيبقى "اليوم" */}
+                <TouchableOpacity onPress={handlePreviousDay}><Ionicons name={language === 'ar' ? "chevron-forward-outline" : "chevron-back-outline"} size={28} color={currentStyles.dayHeaderArrow.color} /></TouchableOpacity>
                 <Text style={currentStyles.dayHeaderText}>{dayLabel}</Text>
-                
-                <TouchableOpacity onPress={handleNextDay} disabled={isViewingToday}>
-                    <Ionicons 
-                        name={language === 'ar' ? "chevron-back-outline" : "chevron-forward-outline"} 
-                        size={28} 
-                        color={isViewingToday ? currentStyles.dayHeaderArrowDisabled.color : currentStyles.dayHeaderArrow.color} 
-                    />
-                </TouchableOpacity>
+                <TouchableOpacity onPress={handleNextDay} disabled={isViewingToday}><Ionicons name={language === 'ar' ? "chevron-back-outline" : "chevron-forward-outline"} size={28} color={isViewingToday ? currentStyles.dayHeaderArrowDisabled.color : currentStyles.dayHeaderArrow.color} /></TouchableOpacity>
             </View>
-
-            {/* --- دائرة التقدم --- */}
             <View style={currentStyles.progressCircleContainer}> 
                 <View style={currentStyles.circle}>
-                    <Svg 
-                        width={SVG_VIEWBOX_SIZE} 
-                        height={SVG_VIEWBOX_SIZE} 
-                        viewBox={`0 0 ${SVG_VIEWBOX_SIZE} ${SVG_VIEWBOX_SIZE}`}
-                        style={{ transform: [{ scaleX: 1 }] }}
-                    >           
+                    <Svg width={SVG_VIEWBOX_SIZE} height={SVG_VIEWBOX_SIZE} viewBox={`0 0 ${SVG_VIEWBOX_SIZE} ${SVG_VIEWBOX_SIZE}`} style={{ transform: [{ scaleX: 1 }] }}>           
                     <Circle stroke={currentStyles.progressCircleBackground.stroke} fill="none" cx={CENTER_X} cy={CENTER_Y} r={PATH_RADIUS} strokeWidth={CIRCLE_BORDER_WIDTH}/> 
                     <Path d={progressPathD} stroke={currentStyles.progressCircleForeground.stroke} fill="none" strokeWidth={CIRCLE_BORDER_WIDTH} strokeLinecap="round" />
                     </Svg> 
-                    
                     <View style={currentStyles.circleContentOverlay}> 
                         <Icon name="map-marker" size={30} color={currentStyles.progressText.color} /> 
                         <Text style={currentStyles.progressText}>{displayDistanceText}</Text> 
@@ -632,10 +288,7 @@ const DistanceScreen = (props) => {
                         <Icon name="pencil" size={16} color={currentStyles.goalText.color} style={{ marginHorizontal: 5 }}/> 
                         </TouchableOpacity> 
                     </View> 
-
-                    <Animated.View style={dynamicIconStyle}>
-                        <View style={[currentStyles.movingDot, { borderColor: currentStyles.safeArea.backgroundColor }]} />
-                    </Animated.View>
+                    <Animated.View style={dynamicIconStyle}><View style={[currentStyles.movingDot, { borderColor: currentStyles.safeArea.backgroundColor }]} /></Animated.View>
                 </View>
             </View>
             <View style={currentStyles.statsContainer}>
@@ -643,49 +296,21 @@ const DistanceScreen = (props) => {
               <AnimatedStatCard iconName="clock-outline" value={rawMinutes} label={translation.timeLabel} formatter={v => { const h = Math.floor(v / 60); const m = Math.floor(v % 60); return `${h.toLocaleString(locale, {minimumIntegerDigits: 2})}:${m.toLocaleString(locale, {minimumIntegerDigits: 2})}`}} styles={currentStyles}/> 
               <AnimatedStatCard iconName="walk" value={rawSteps} label={translation.stepsLabel} formatter={v => Math.round(v).toLocaleString(locale)} styles={currentStyles}/> 
             </View> 
-            
-            <ChallengeCard 
-                onPress={handleNavigateToAchievements} 
-                currentChallengeDuration={currentChallengeDuration} 
-                remainingDays={remainingDays} 
-                translation={translation} 
-                styles={currentStyles} 
-                language={language} 
-            />
-            
+            <ChallengeCard onPress={handleNavigateToAchievements} currentChallengeDuration={currentChallengeDuration} remainingDays={remainingDays} translation={translation} styles={currentStyles} language={language} />
             <DistanceWeeklyChart weeklyDistanceData={dailyChartData} goalDistance={goalDistance} onTestIncrement={handleTestIncrement} onResetData={handleResetData} translation={translation} styles={currentStyles} language={language}/>
           </View>
         )}
-        
-        {selectedPeriod === 'week' && (isWeeklyLoading ? <ActivityIndicator size="large" color={currentStyles.activityIndicator.color} style={{marginTop: 50}} /> : <WeeklyDistance weeklyData={weeklyData} goalDistance={goalDistance} isCurrentWeek={isCurrentWeek} formattedDateRange={formatDateRange(selectedWeekStart, getEndOfWeek(selectedWeekStart, startOfWeekDay), language)} onPreviousWeek={handlePreviousWeek} onNextWeek={handleNextWeek} language={language} isDarkMode={isDarkMode} translation={translation} />)}
-        {selectedPeriod === 'month' && (isMonthlyLoading ? <ActivityIndicator size="large" color={currentStyles.activityIndicator.color} style={{marginTop: 50}} /> : <MonthlyDistance monthlyData={monthlyData} goalDistance={goalDistance} isCurrentMonth={isCurrentMonth} formattedMonthRange={new Date(selectedMonthStart).toLocaleDateString(language === 'ar' ? 'ar-EG-u-ca-gregory-nu-arab' : 'en-US-u-ca-gregory', { month: 'long', year: 'numeric', timeZone: 'UTC' })} onPreviousMonth={handlePreviousMonth} onNextMonth={handleNextMonth} language={language} isDarkMode={isDarkMode} translation={translation} />)}
-
+        {selectedPeriod === 'week' && (isWeeklyLoading ? <ActivityIndicator size="large" color={currentStyles.activityIndicator.color} style={{marginTop: 50}} /> : <WeeklyDistance weeklyData={weeklyData.data} previousWeekData={weeklyData.previousData} isCurrentWeek={isCurrentWeek} formattedDateRange={formatDateRange(selectedWeekStart, getEndOfWeek(selectedWeekStart, startOfWeekDay), language)} onPreviousWeek={handlePreviousWeek} onNextWeek={handleNextWeek} language={language} isDarkMode={isDarkMode} translation={translation} />)}
+        {selectedPeriod === 'month' && (isMonthlyLoading ? <ActivityIndicator size="large" color={currentStyles.activityIndicator.color} style={{marginTop: 50}} /> : <MonthlyDistance monthlyData={monthlyData.data} previousMonthData={monthlyData.previousData} isCurrentMonth={isCurrentMonth} formattedMonthRange={new Date(selectedMonthStart).toLocaleDateString(language === 'ar' ? 'ar-EG-u-ca-gregory-nu-arab' : 'en-US-u-ca-gregory', { month: 'long', year: 'numeric', timeZone: 'UTC' })} onPreviousMonth={handlePreviousMonth} onNextMonth={handleNextMonth} language={language} isDarkMode={isDarkMode} translation={translation} />)}
       </ScrollView> 
       <GoalModal visible={isModalVisible} onClose={() => setModalVisible(false)} onSave={handleSaveGoal} currentValue={goalDistance} currentUnit={goalUnit} translation={translation} styles={currentStyles}/>
-      
-      {/* --- القائمة العلوية --- */}
       <Modal visible={isTitleMenuVisible} transparent={true} animationType="fade" onRequestClose={closeTitleMenu}>
           <Pressable style={currentStyles.menuModalOverlay} onPress={closeTitleMenu}>
               <View style={[ currentStyles.titleMenuModalContent, { top: titleMenuPosition.top, right: I18nManager.isRTL ? 20 : undefined, left: I18nManager.isRTL ? undefined : 20, } ]}>
-                  <TouchableOpacity style={currentStyles.menuItemButton} onPress={() => navigateTo('steps')}>
-                      <Text style={currentStyles.titleMenuItemText}>{translation.menuSteps}</Text>
-                      {currentScreenName === 'steps' && <Icon name="check" size={22} color={currentStyles.titleMenuItemText.color} />}
-                  </TouchableOpacity>
-                  <View style={currentStyles.titleMenuSeparator} />
-                  <TouchableOpacity style={currentStyles.menuItemButton} onPress={() => navigateTo('distance')}>
-                      <Text style={currentStyles.titleMenuItemText}>{translation.menuDistance}</Text>
-                      {(currentScreenName === 'distance' || language === 'ar') && <Icon name="check" size={22} color={currentStyles.titleMenuItemText.color} />}
-                  </TouchableOpacity>
-                  <View style={currentStyles.titleMenuSeparator} />
-                  <TouchableOpacity style={currentStyles.menuItemButton} onPress={() => navigateTo('calories')}>
-                      <Text style={currentStyles.titleMenuItemText}>{translation.menuCalories}</Text>
-                      {currentScreenName === 'calories' && <Icon name="check" size={22} color={currentStyles.titleMenuItemText.color} />}
-                  </TouchableOpacity>
-                  <View style={currentStyles.titleMenuSeparator} />
-                  <TouchableOpacity style={currentStyles.menuItemButton} onPress={() => navigateTo('activeTime')}>
-                      <Text style={currentStyles.titleMenuItemText}>{translation.menuActiveTime}</Text>
-                      {currentScreenName === 'activeTime' && <Icon name="check" size={22} color={currentStyles.titleMenuItemText.color} />}
-                  </TouchableOpacity>
+                  <TouchableOpacity style={currentStyles.menuItemButton} onPress={() => navigateTo('steps')}><Text style={currentStyles.titleMenuItemText}>{translation.menuSteps}</Text>{currentScreenName === 'steps' && <Icon name="check" size={22} color={currentStyles.titleMenuItemText.color} />}</TouchableOpacity><View style={currentStyles.titleMenuSeparator} />
+                  <TouchableOpacity style={currentStyles.menuItemButton} onPress={() => navigateTo('distance')}><Text style={currentStyles.titleMenuItemText}>{translation.menuDistance}</Text>{(currentScreenName === 'distance' || language === 'ar') && <Icon name="check" size={22} color={currentStyles.titleMenuItemText.color} />}</TouchableOpacity><View style={currentStyles.titleMenuSeparator} />
+                  <TouchableOpacity style={currentStyles.menuItemButton} onPress={() => navigateTo('calories')}><Text style={currentStyles.titleMenuItemText}>{translation.menuCalories}</Text>{currentScreenName === 'calories' && <Icon name="check" size={22} color={currentStyles.titleMenuItemText.color} />}</TouchableOpacity><View style={currentStyles.titleMenuSeparator} />
+                  <TouchableOpacity style={currentStyles.menuItemButton} onPress={() => navigateTo('activeTime')}><Text style={currentStyles.titleMenuItemText}>{translation.menuActiveTime}</Text>{currentScreenName === 'activeTime' && <Icon name="check" size={22} color={currentStyles.titleMenuItemText.color} />}</TouchableOpacity>
               </View>
           </Pressable>
       </Modal>
@@ -693,7 +318,8 @@ const DistanceScreen = (props) => {
   );
 };
 
-// --- الأنماط ---
+// --- الأنماط (Styles) ---
+// (الكود كما هو بدون تغيير)
 const lightStyles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#F7FDF9' },
   scrollContainer: { paddingTop: 10, paddingBottom: 50, flexGrow: 1 },
@@ -708,37 +334,25 @@ const lightStyles = StyleSheet.create({
   periodText: { fontSize: 14.6, fontWeight: 'bold' },
   periodTextInactive: { color: '#388e3c' },
   periodTextSelected: { color: '#ffffff' },
-  
   dayHeader: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', width: '65%', marginVertical: 15, alignSelf: 'center' },
   dayHeaderText: { fontSize: 20, fontWeight: 'bold', color: '#2e7d32' },
   dayHeaderArrow: { color: '#2e7d32' },
   dayHeaderArrowDisabled: { color: '#a5d6a7' },
-
   progressCircleContainer: { width: '100%', alignItems: 'center', marginVertical: 5, paddingBottom: 10, paddingHorizontal: 15  },
-  circle: { 
-      width: CIRCLE_SIZE, 
-      height: CIRCLE_SIZE, 
-      justifyContent: 'center', 
-      alignItems: 'center', 
-      position: 'relative',
-      direction: 'ltr' 
-  },
+  circle: { width: CIRCLE_SIZE, height: CIRCLE_SIZE, justifyContent: 'center', alignItems: 'center', position: 'relative', direction: 'ltr' },
   progressCircleBackground: { stroke: '#e0f2f1' },
   progressCircleForeground: { stroke: '#4caf50' },
   circleContentOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', zIndex: 1, padding: CIRCLE_BORDER_WIDTH + 5 },
-  
   progressText: { fontSize: 56, fontWeight: 'bold', color: '#388e3c', lineHeight: 64, marginVertical: 5, fontVariant: ['tabular-nums'] },
   goalContainer: { flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row', alignItems: 'center', padding: 5 },
   goalText: { fontSize: 14, color: '#757575' },
   movingDot: { width: ICON_SIZE, height: ICON_SIZE, borderRadius: ICON_SIZE / 2, backgroundColor: '#4caf50', borderWidth: 2 },
-  
   statsContainer: { flexDirection: 'row', justifyContent: 'space-around', width: '90%', marginTop: 25 },
   statCard: { alignItems: 'center', flex: 1 },
   iconContainer: { width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center', marginBottom: 10, backgroundColor: '#e0f2f1' },
   animatedStatIcon: { color: '#4caf50'},
   statValue: { fontSize: 20, fontWeight: 'bold', color: '#388e3c', fontVariant: ['tabular-nums'] },
   statLabel: { fontSize: 14, color: '#757575', marginTop: 4 },
-  
   challengeCardWrapper: { width: '100%', paddingVertical: 15, marginTop: 15 },
   summaryCard: { flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#ffffff', borderRadius: 15, paddingHorizontal: 15, paddingVertical: 15, width: '90%', elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, alignSelf: 'center' },
   summaryTextContainer: { alignItems: I18nManager.isRTL ? 'flex-end' : 'flex-start', flex: 1, marginHorizontal: 12 },
@@ -762,7 +376,6 @@ const lightStyles = StyleSheet.create({
   saveButtonText: { color: 'white', fontSize: 18, fontWeight: 'bold' },
   cancelButton: { backgroundColor: '#e8f5e9' },
   cancelButtonText: { color: '#388e3c', fontSize: 18, fontWeight: 'bold' },
-  
   activityIndicator: { color: '#388e3c' },
   menuModalOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.3)' },
   titleMenuModalContent: { position: 'absolute', backgroundColor: '#FFFFFF', borderRadius: 8, paddingVertical: 5, width: 155, elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84 },
@@ -770,16 +383,16 @@ const lightStyles = StyleSheet.create({
   titleMenuItemText: { fontSize: 16, color: '#2e7d32', fontWeight: 'bold' },
   titleMenuSeparator: { height: StyleSheet.hairlineWidth, backgroundColor: '#e0e0e0', marginVertical: 2 },
   card: { backgroundColor: '#FFF', borderRadius: 20, paddingVertical: 20, paddingHorizontal: 10, width: '90%', shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2, alignItems: 'center', marginTop: 10, marginBottom: 20 },
-  chartHeader: { width: '100%', alignItems: 'flex-end', marginBottom: 10, paddingRight: 10 },
+  chartHeader: { width: '100%', alignItems: 'flex-start', marginBottom: 10, paddingLeft: 10 },
   chartTitle: { fontSize: 18, fontWeight: 'bold', color: '#2e7d32' },
   testButtonsContainer: { flexDirection: 'row-reverse', justifyContent: 'center', marginBottom: 20, width: '100%', flexWrap: 'wrap' },
   testButton: { backgroundColor: '#E8F5E9', paddingHorizontal: 15, paddingVertical: 8, borderRadius: 20, marginHorizontal: 5, marginVertical: 5, elevation: 1 },
   testButtonText: { color: '#2e7d32', fontWeight: 'bold', fontSize: 13 },
-  chartAreaContainer: { flexDirection: 'row-reverse', width: '100%', paddingRight: 5 },
-  yAxisLabels: { height: CHART_HEIGHT, justifyContent: 'space-between', alignItems: 'flex-start', paddingRight: 5 },
+  chartAreaContainer: { flexDirection: 'row', width: '100%', paddingLeft: 5 },
+  yAxisLabels: { height: CHART_HEIGHT, justifyContent: 'space-between', alignItems: 'flex-end', paddingRight: 5 },
   axisLabelY: { color: '#757575', fontSize: 12 },
-  chartContent: { flex: 1, height: CHART_HEIGHT, position: 'relative', marginLeft: 10, borderBottomWidth: 1, borderBottomColor: '#EEE' },
-  barsAndLabelsContainer: { flexDirection: 'row-reverse', justifyContent: 'space-around', alignItems: 'flex-end', height: '100%' },
+  chartContent: { flex: 1, height: CHART_HEIGHT, position: 'relative', marginRight: 10, borderBottomWidth: 1, borderBottomColor: '#EEE' },
+  barsAndLabelsContainer: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'flex-end', height: '100%' },
   barColumn: { alignItems: 'center', justifyContent: 'flex-end', flex: 1, position: 'relative' },
   bar: { width: 12, backgroundColor: '#c8e6c9', borderRadius: 6 },
   barToday: { backgroundColor: '#66bb6a' },
