@@ -291,7 +291,24 @@ const AchievementsScreen = ({ navigation, route, language: propLanguage, darkMod
     color={currentStyles.headerIcon.color} 
 />
 </TouchableOpacity></View>
-          {isLoadingTotalSteps ? ( <View style={currentStyles.loadingContainer}><ActivityIndicator size="large" color={currentStyles.loadingIndicator.color} /><Text style={currentStyles.loadingText}>{translation.loadingProgress}</Text></View> ) : ( <View style={currentStyles.topSection}><View style={currentStyles.levelBadgeContainer}><Progress.Circle style={currentStyles.levelProgressCircle} size={110} progress={1 - levelRingProgressVisual} color={currentStyles.levelProgressCircleColor.color} unfilledColor={currentStyles.levelProgressCircleUnfilled.color} thickness={8} borderWidth={0} showsText={false} direction="counter-clockwise" strokeCap="round" /><View style={currentStyles.levelBadgeInner}><Text style={currentStyles.levelBadgeText}>{currentLevelInfo.name}</Text></View></View><Text style={currentStyles.levelTitle}>{currentLevelInfo.title}</Text>{nextLevelInfo ? ( <Text style={currentStyles.levelProgressText}>{translation.stepsRemainingToLevel}{' '}<Text style={currentStyles.boldPrimaryGreenText}>{stepsRemaining.toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US')}</Text>{' '}{translation.stepsUnit} {language === 'en' ? translation.stepsToReach : ''} {nextLevelInfo.name}{language === 'ar' ? ` (${translation.stepsToReach})` : ''}</Text> ) : ( <Text style={currentStyles.levelProgressText}>{translation.levelReachedHighest}</Text> )}<View style={currentStyles.progressBarArea}><View style={currentStyles.progressBarContainer}><View style={[currentStyles.progressBarFill, { width: `${progressPercent}%` }]} /><View style={[currentStyles.progressBarMarker, { left: `${progressPercent}%` }]} /></View><View style={currentStyles.progressLabels}><Text style={currentStyles.progressLabelText}> {(currentLevelInfo.level === 1 && totalAccumulatedSteps < (LEVELS[1]?.requiredSteps || Infinity)) ? totalAccumulatedSteps.toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US') : `${(progressBarStartSteps / 1000).toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US')}k`} </Text><Text style={currentStyles.progressLabelText}>{nextLevelTargetLabel}</Text></View></View></View> )}
+          {isLoadingTotalSteps ? ( <View style={currentStyles.loadingContainer}><ActivityIndicator size="large" color={currentStyles.loadingIndicator.color} /><Text style={currentStyles.loadingText}>{translation.loadingProgress}</Text></View> ) : ( <View style={currentStyles.topSection}><View style={currentStyles.levelBadgeContainer}><Progress.Circle 
+  style={currentStyles.levelProgressCircle} 
+  size={110} 
+  progress={1 - levelRingProgressVisual} 
+  color={currentStyles.levelProgressCircleColor.color} 
+  unfilledColor={currentStyles.levelProgressCircleUnfilled.color} 
+  thickness={8} 
+  borderWidth={0} 
+  showsText={false} 
+  
+  // -----------------------------------------------------
+  // عدل هذا السطر
+  direction={language === 'ar' ? 'clockwise' : 'counter-clockwise'}
+  // -----------------------------------------------------
+  
+  strokeCap="round" 
+/>
+<View style={currentStyles.levelBadgeInner}><Text style={currentStyles.levelBadgeText}>{currentLevelInfo.name}</Text></View></View><Text style={currentStyles.levelTitle}>{currentLevelInfo.title}</Text>{nextLevelInfo ? ( <Text style={currentStyles.levelProgressText}>{translation.stepsRemainingToLevel}{' '}<Text style={currentStyles.boldPrimaryGreenText}>{stepsRemaining.toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US')}</Text>{' '}{translation.stepsUnit} {language === 'en' ? translation.stepsToReach : ''} {nextLevelInfo.name}{language === 'ar' ? ` (${translation.stepsToReach})` : ''}</Text> ) : ( <Text style={currentStyles.levelProgressText}>{translation.levelReachedHighest}</Text> )}<View style={currentStyles.progressBarArea}><View style={currentStyles.progressBarContainer}><View style={[currentStyles.progressBarFill, { width: `${progressPercent}%` }]} /><View style={[currentStyles.progressBarMarker, { left: `${progressPercent}%` }]} /></View><View style={currentStyles.progressLabels}><Text style={currentStyles.progressLabelText}> {(currentLevelInfo.level === 1 && totalAccumulatedSteps < (LEVELS[1]?.requiredSteps || Infinity)) ? totalAccumulatedSteps.toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US') : `${(progressBarStartSteps / 1000).toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US')}k`} </Text><Text style={currentStyles.progressLabelText}>{nextLevelTargetLabel}</Text></View></View></View> )}
            <CollapsibleSection titleKey="dailyStepsSectionTitle" isExpanded={isDailyStepsExpanded} onToggle={() => toggleExpansion(setIsDailyStepsExpanded, isDailyStepsExpanded)} data={dailyStepsBadgesData} BadgeComponent={DailyStepsBadge} count={passedDailySteps} />
            <CollapsibleSection titleKey="consecutiveDaysSectionTitle" isExpanded={isConsecutiveDaysExpanded} onToggle={() => toggleExpansion(setIsConsecutiveDaysExpanded, isConsecutiveDaysExpanded)} data={consecutiveBadgesData} BadgeComponent={HexBadge} count={consecutiveDays} isLoading={isLoadingConsecutiveDays} />
            <CollapsibleSection titleKey="totalDaysSectionTitle" isExpanded={isTotalDaysExpanded} onToggle={() => toggleExpansion(setIsTotalDaysExpanded, isTotalDaysExpanded)} data={totalBadgesData} BadgeComponent={OvalBadge} count={maxCompletedChallenge} isLoading={isLoadingMaxChallenge} />
@@ -346,7 +363,7 @@ const lightStyles = StyleSheet.create({
   progressBarFill: { height: '100%', backgroundColor: '#4CAF50', borderRadius: 4, position: 'absolute', left: 0, top: 0 }, 
   progressBarMarker: { 
     position: 'absolute', top: -4, width: 16, height: 16, borderRadius: 8, backgroundColor: '#388e3c', borderWidth: 2, borderColor: '#FFFFFF', 
-    transform: [{ translateX: -8 }], shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 1, elevation: 3, zIndex: 5 
+    transform: [{ translateX: 8 }], shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 1, elevation: 3, zIndex: 5 
   }, 
   
   progressLabels: { flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginTop: 5 }, 

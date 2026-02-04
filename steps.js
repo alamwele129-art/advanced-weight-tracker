@@ -46,7 +46,7 @@ const BADGE_PATH_RADIUS = (BADGE_SVG_SIZE / 2) - (BADGE_CIRCLE_BORDER_WIDTH / 2)
 const BADGE_CENTER_X = BADGE_SVG_SIZE / 2;
 const BADGE_CENTER_Y = BADGE_SVG_SIZE / 2;
 
-// مفاتيح التحدي
+// مفاتيح التحدي والتخزين
 const CHALLENGE_DURATIONS = [7, 14, 30, 60, 100, 180, 270, 360];
 const INITIAL_CHALLENGE_DURATION = CHALLENGE_DURATIONS[0];
 const LAST_PARTICIPATION_DATE_KEY = '@StepsChallenge:lastParticipationDate';
@@ -54,6 +54,9 @@ const REMAINING_CHALLENGE_DAYS_KEY = '@StepsChallenge:remainingDays';
 const CURRENT_CHALLENGE_DURATION_KEY = '@StepsChallenge:currentDuration';
 
 const DAILY_STEPS_HISTORY_KEY = '@Steps:DailyHistory';
+const TOTAL_ACCUMULATED_STEPS_KEY = '@Steps:TotalAccumulatedSteps';
+const CONSECUTIVE_GOAL_DAYS_KEY = '@Achievements:consecutiveGoalDays';
+
 const GOAL_OPTIONS = [ 500, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 12000, 15000, 18000, 20000, 25000, 30000, 40000, 50000 ];
 const DEFAULT_GOAL = 5000;
 const MENU_VERTICAL_OFFSET = 5;
@@ -504,25 +507,31 @@ const StepsScreen = (props) => {
         loadInitialData(); 
     }, [getStoredStepsHistory]);
 
+    
+    // مراقبة تغيير حالة الشهر الحالي
     useEffect(() => {
         const now = new Date();
         const startOfCurrentMonth = getStartOfMonth(now);
         setIsCurrentMonthSelected(selectedMonthStart.getTime() === startOfCurrentMonth.getTime());
     }, [selectedMonthStart]);
 
+    // مراقبة تغيير حالة الأسبوع الحالي
     useEffect(() => {
         setIsCurrentWeekSelected(isSameWeek(selectedWeekStart, new Date(), startOfWeekDay));
     }, [selectedWeekStart, startOfWeekDay]);
 
+    // دالة جلب البيانات الشهرية والأسبوعية
     useEffect(() => {
         const fetchPeriodData = async () => {
             const history = await getStoredStepsHistory();
             const todayStr = getDateString(new Date());
             history[todayStr] = currentSteps; 
 
+            // --- التعامل مع بيانات الشهر ---
             if (selectedPeriod === 'month') {
                 setIsMonthlyLoading(true);
                 try {
+                    // الشهر الحالي المختار
                     const daysInMonth = getDaysInMonth(selectedMonthStart);
                     const monthData = [];
                     for (let i = 1; i <= daysInMonth; i++) {
@@ -533,6 +542,7 @@ const StepsScreen = (props) => {
                     }
                     setCurrentMonthData(monthData);
 
+                    // الشهر السابق (للمقارنة)
                     const prevMonthStart = addMonths(selectedMonthStart, -1);
                     const daysInPrevMonth = getDaysInMonth(prevMonthStart);
                     const prevMonthData = [];
@@ -544,6 +554,7 @@ const StepsScreen = (props) => {
                     }
                     setPreviousMonthDataForComparison(prevMonthData);
 
+                    // تحديث نص التاريخ
                     const endOfMonth = new Date(selectedMonthStart);
                     endOfMonth.setUTCDate(daysInMonth);
                     setFormattedMonthRange(formatDateRange(selectedMonthStart, endOfMonth, language));
@@ -554,9 +565,11 @@ const StepsScreen = (props) => {
                 }
             }
 
+            // --- التعامل مع بيانات الأسبوع ---
             if (selectedPeriod === 'week') {
                 setIsWeeklyLoading(true);
                 try {
+                    // الأسبوع الحالي المختار
                     const weekData = [];
                     for(let i=0; i<7; i++) {
                         const d = addDays(selectedWeekStart, i);
@@ -565,6 +578,7 @@ const StepsScreen = (props) => {
                     }
                     setActualWeekData(weekData);
 
+                    // الأسبوع السابق (للمقارنة)
                     const prevWeekStart = addDays(selectedWeekStart, -7);
                     const prevWeekData = [];
                      for(let i=0; i<7; i++) {
@@ -709,21 +723,80 @@ const StepsScreen = (props) => {
     const openMenuModal = useCallback(() => { if (menuButtonRef.current) { menuButtonRef.current.measure((fx, fy, w, h, px, py) => { const top = py + h + MENU_VERTICAL_OFFSET; const positionStyle = I18nManager.isRTL ? { top, right: width - (px + w), left: undefined } : { top, left: px, right: undefined }; setMenuPosition({ ...positionStyle, triggerX: px, triggerWidth: w }); setIsMenuModalVisible(true); }); } }, [width]);
     const openTitleMenu = useCallback(() => { if (titleMenuTriggerRef.current) { titleMenuTriggerRef.current.measure((fx, fy, w, h, px, py) => { const top = py + h - 25; setTitleMenuPosition({ top, left: undefined, right: undefined, triggerX: 0, triggerWidth: 0 }); setIsTitleMenuVisible(true); }); } }, []);
     
-    // **Navigation Function Updated**
-    const navigateToAchievements = useCallback(() => {
-        const params = {
-            currentDailySteps: currentSteps,
-            language: language,
-            isDarkMode: isDarkMode
-        };
-        if (navigation) {
-            navigation.navigate('Achievements', params);
-        } else if (onNavigateToAchievements && typeof onNavigateToAchievements === 'function') {
-            onNavigateToAchievements(currentSteps);
-        } else {
-            Alert.alert(translation.errorTitle, translation.cannotNavigateError);
+    // -----------------------------------------------------------
+    // ✅✅✅ دالة الانتقال "الذكية" الجديدة (Smart Navigation) ✅✅✅
+    // -----------------------------------------------------------
+    const navigateToAchievements = useCallback(async () => {
+        try {
+            // 1. تجهيز البيانات من التاريخ
+            const historyJSON = await AsyncStorage.getItem(DAILY_STEPS_HISTORY_KEY);
+            const history = historyJSON ? JSON.parse(historyJSON) : {};
+            const todayStr = getDateString(new Date());
+            
+            // التأكد إن خطوات النهاردة متسجلة في الهيستوري للحساب الصحيح
+            history[todayStr] = currentSteps;
+
+            // 2. حساب إجمالي الخطوات التراكمي (عشان المستويات L1, L2...)
+            let totalLifetimeSteps = 0;
+            Object.values(history).forEach(val => {
+                totalLifetimeSteps += (val || 0);
+            });
+            // حفظ الإجمالي عشان صفحة الإنجازات تقرأه
+            await AsyncStorage.setItem(TOTAL_ACCUMULATED_STEPS_KEY, String(totalLifetimeSteps));
+
+            // 3. حساب الأيام المتتالية (Streak)
+            let streak = 0;
+            // لو النهاردة حققت الهدف، نبدأ بـ 1
+            if (currentSteps >= goalSteps) {
+                streak++;
+            }
+
+            // شيك على الأيام اللي فاتت (نرجع يوم لورا)
+            let checkDate = new Date();
+            checkDate.setDate(checkDate.getDate() - 1);
+
+            while (true) {
+                const dStr = getDateString(checkDate);
+                const stepsThatDay = history[dStr] || 0;
+                
+                // مقارنة بالهدف الحالي (للتبسيط)
+                if (stepsThatDay >= goalSteps) {
+                    streak++;
+                    checkDate.setDate(checkDate.getDate() - 1); // ارجع كمان يوم
+                } else {
+                    break; // السلسلة اتقطعت
+                }
+            }
+            // حفظ الستريك
+            await AsyncStorage.setItem(CONSECUTIVE_GOAL_DAYS_KEY, String(streak));
+
+            // 4. الانتقال وتمرير البيانات
+            const params = {
+                currentDailySteps: currentSteps,
+                language: language,
+                isDarkMode: isDarkMode
+            };
+
+            if (navigation) {
+                navigation.navigate('Achievements', params);
+            } else if (onNavigateToAchievements && typeof onNavigateToAchievements === 'function') {
+                onNavigateToAchievements(currentSteps);
+            } else {
+                Alert.alert(translation.errorTitle, translation.cannotNavigateError);
+            }
+
+        } catch (error) {
+            console.error("Error syncing achievements:", error);
+            // في حالة الخطأ، انتقل بالبيانات الأساسية فقط كاحتياط
+            if (navigation) {
+                navigation.navigate('Achievements', { 
+                    currentDailySteps: currentSteps, 
+                    language: language, 
+                    isDarkMode: isDarkMode 
+                });
+            }
         }
-    }, [navigation, onNavigateToAchievements, currentSteps, language, isDarkMode, translation]);
+    }, [navigation, onNavigateToAchievements, currentSteps, language, isDarkMode, goalSteps, translation]);
 
     const navigateTo = (screenName) => { closeTitleMenu(); if (onNavigate && typeof onNavigate === 'function') { onNavigate(screenName); } else { Alert.alert(translation.errorTitle, translation.cannotNavigateError); } };
     const closeMenuModal = useCallback(() => setIsMenuModalVisible(false), []);
