@@ -392,7 +392,23 @@ const getStyles = (theme, isRTL) => StyleSheet.create({
     summaryMainCard: { backgroundColor: theme.cardBackground, borderRadius: 15, padding: 20, width: '100%', marginBottom: 20 },
     summaryStatRow: { flexDirection: isRTL ? 'row-reverse' : 'row-reverse', justifyContent: 'space-between', alignItems: 'center', width: '100%' },
     summaryStatLabel: { fontSize: 16, color: theme.secondaryText, textAlign: isRTL ? 'left' : 'right' },
-    summaryStatValue: { fontSize: 18, fontWeight: 'bold', color: theme.mainText, fontVariant: ['tabular-nums'], textAlign: isRTL ? 'left': 'right', flex: 1, marginHorizontal: 10 },
+summaryStatValue: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: theme.mainText,
+    fontVariant: ['tabular-nums'],
+    
+    // --- التعديلات هنا ---
+    
+    // 1. شيل flex: 1 عشان المربع ياخد حجم الرقم بس ومياخدش السطر كله
+    // flex: 1,  <-- امسح دي أو اعملها comment
+    
+    // 2. شيل textAlign عشان نعتمد على توزيع السطر نفسه (justifyContent)
+    // textAlign: isRTL ? 'left': 'right', <-- امسح دي كمان
+    
+    // 3. شيل الـ margin لو عايز الرقم يلزق في طرف الشاشة خالص
+    // marginHorizontal: 10, <-- لو حاسس انه بعيد عن الطرف، قلل الرقم ده أو شيله
+},
     divider: { height: 1, backgroundColor: theme.separator, marginVertical: 15 },
     metricsCard: { backgroundColor: theme.cardBackground, borderRadius: 15, paddingVertical: 20, width: '100%', flexDirection: isRTL ? 'row-reverse' : 'row', justifyContent: 'space-around', alignItems: 'center' },
     metricBlock: { alignItems: 'center', flex: 1 },

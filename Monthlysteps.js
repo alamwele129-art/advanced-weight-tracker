@@ -605,12 +605,25 @@ const styles = (theme) => StyleSheet.create({
         fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
         flex: 1, fontVariant: ['tabular-nums'],
     },
-    tooltipPositioner: {
-        position: 'absolute', left: '50%', transform: [{ translateX: -(TOOLTIP_WIDTH / 2) }],
-        alignItems: 'center', zIndex: 10,
-        elevation: Platform.OS === 'android' ? 3 : undefined,
-        minWidth: TOOLTIP_WIDTH, width: TOOLTIP_WIDTH, pointerEvents: 'none',
-    },
+tooltipPositioner: {
+    position: 'absolute',
+    left: '50%', // خلي دي زي ما هي
+
+    // --- التعديل هنا ---
+    // 1. استخدم marginLeft بدل transform
+    marginLeft: -(TOOLTIP_WIDTH / 2),
+    
+    // 2. اعمل تعليق (comment) أو امسح سطر الـ transform
+    // transform: [{ translateX: -(TOOLTIP_WIDTH / 2) }], 
+    // -------------------
+
+    alignItems: 'center', 
+    zIndex: 10,
+    elevation: Platform.OS === 'android' ? 3 : undefined,
+    minWidth: TOOLTIP_WIDTH, 
+    width: TOOLTIP_WIDTH, 
+    pointerEvents: 'none',
+},
     tooltipContainer: {
         backgroundColor: theme.tooltipBg, borderRadius: 5,
         paddingVertical: 5, paddingHorizontal: 8,
@@ -667,17 +680,21 @@ const styles = (theme) => StyleSheet.create({
         fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
         fontVariant: ['tabular-nums'],
     },
-    detailValueSmall: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: theme.accentColor,
-        textAlign: I18nManager.isRTL ? 'left' : 'right',
-        fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif', 
-        fontVariant: ['tabular-nums'],
-        flex: 1, 
-        marginRight: I18nManager.isRTL ? 0 : 8,
-        marginLeft: I18nManager.isRTL ? 8 : 0,
-    },
+detailValueSmall: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: theme.accentColor,
+    
+    // --- امسح الأسطر دي ---
+    // textAlign: I18nManager.isRTL ? 'left' : 'right',
+    // flex: 1, 
+    // marginRight: I18nManager.isRTL ? 0 : 8,
+    // marginLeft: I18nManager.isRTL ? 8 : 0,
+    // ----------------------
+    
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif', 
+    fontVariant: ['tabular-nums'],
+},
     iconStatsCard: {
         flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row',
         justifyContent: 'space-around', paddingHorizontal: 10, paddingVertical: 20,
