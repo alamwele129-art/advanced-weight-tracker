@@ -386,7 +386,21 @@ const getStyles = (theme, language) => StyleSheet.create({
     xAxis: { position: 'absolute', bottom: -25, left: 0, right: 0, height: 20, flexDirection: language === 'ar' ? 'row' : 'row', justifyContent: 'space-around', alignItems: 'center' },
     xAxisLabel: { fontSize: 12, color: theme.secondaryText, textAlign: 'center', flex: 1 },
     todayXAxisLabel: { color: theme.todayText, fontWeight: 'bold' },
-    tooltipPositioner: { position: 'absolute', alignItems: 'center', zIndex: 10, marginBottom: 5, left: '50%', transform: [{ translateX: -30 }] },
+tooltipPositioner: {
+    position: 'absolute',
+    alignItems: 'center',
+    zIndex: 10,
+    marginBottom: 5,
+    left: '50%', // خلي دي زي ما هي
+    
+    // --- التعديل هنا ---
+    // 1. استخدم marginLeft بدل transform
+    marginLeft: -30,
+    
+    // 2. امسح أو اعمل تعليق لسطر الـ transform القديم
+    // transform: [{ translateX: -30 }] 
+    // -------------------
+},
     tooltipContainer: { backgroundColor: theme.tooltipBg, borderRadius: 8, paddingVertical: 5, paddingHorizontal: 10, minWidth: 60, alignItems: 'center' },
     tooltipText: { color: theme.tooltipText, fontSize: 12, fontWeight: 'bold' },
     tooltipPointer: { width: 0, height: 0, borderLeftWidth: 6, borderRightWidth: 6, borderTopWidth: 6, borderStyle: 'solid', backgroundColor: 'transparent', borderLeftColor: 'transparent', borderRightColor: 'transparent', borderTopColor: theme.tooltipBg, marginTop: -1 },

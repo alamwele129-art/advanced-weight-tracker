@@ -541,7 +541,21 @@ const getStyles = (theme, language) => StyleSheet.create({
     },
     xAxisLabel: { fontSize: 11, color: theme.secondaryText, textAlign: 'center', flex:1, fontWeight: '500' },
     
-    tooltipPositioner: { position: 'absolute', alignItems: 'center', zIndex: 10, marginBottom: 5, left: '50%', transform: [{ translateX: -45 }] },
+tooltipPositioner: { 
+    position: 'absolute', 
+    alignItems: 'center', 
+    zIndex: 10, 
+    marginBottom: 5, 
+    left: '50%', 
+    
+    // --- التعديل هنا ---
+    // 1. استخدم marginLeft بدل transform
+    marginLeft: -45,
+
+    // 2. امسح أو اعمل تعليق لسطر الـ transform القديم
+    // transform: [{ translateX: -45 }] 
+    // -------------------
+},
     tooltipContainer: { backgroundColor: theme.tooltipBg, borderRadius: 8, paddingVertical: 6, paddingHorizontal: 12, minWidth: 90, alignItems: 'center' },
     tooltipValueText: { color: theme.tooltipText, fontSize: 13, fontWeight: 'bold'},
     tooltipPointer: { width: 0, height: 0, borderLeftWidth: 6, borderRightWidth: 6, borderTopWidth: 6, borderStyle: 'solid', backgroundColor: 'transparent', borderLeftColor: 'transparent', borderRightColor: 'transparent', borderTopColor: theme.tooltipBg, marginTop: -1 },
