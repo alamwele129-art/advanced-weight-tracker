@@ -2,7 +2,7 @@
 import {
     SafeAreaView, View, Text, StyleSheet, TouchableOpacity, Dimensions, ScrollView,
     Pressable, I18nManager, Alert, ActivityIndicator, Image, useColorScheme,
-    Modal, Animated
+    Modal, Animated, AppState
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -37,14 +37,22 @@ const BAR_SPACING = 18;
 const TOOLTIP_ARROW_HEIGHT = 6;
 const TOOLTIP_ARROW_WIDTH = 12;
 const TOOLTIP_OFFSET = 5;
+
+// ثوابت البطاقة الموحدة (نفس باقي الصفحات)
 const BADGE_CONTAINER_SIZE = 60;
 const BADGE_SVG_SIZE = BADGE_CONTAINER_SIZE;
 const BADGE_CIRCLE_BORDER_WIDTH = 5;
 const BADGE_PATH_RADIUS = (BADGE_SVG_SIZE / 2) - (BADGE_CIRCLE_BORDER_WIDTH / 2);
 const BADGE_CENTER_X = BADGE_SVG_SIZE / 2;
 const BADGE_CENTER_Y = BADGE_SVG_SIZE / 2;
+
+// مفاتيح التحدي (تمت إضافتها لتعمل مثل باقي الصفحات)
 const CHALLENGE_DURATIONS = [7, 14, 30, 60, 100, 180, 270, 360];
 const INITIAL_CHALLENGE_DURATION = CHALLENGE_DURATIONS[0];
+const LAST_PARTICIPATION_DATE_KEY = '@StepsChallenge:lastParticipationDate';
+const REMAINING_CHALLENGE_DAYS_KEY = '@StepsChallenge:remainingDays';
+const CURRENT_CHALLENGE_DURATION_KEY = '@StepsChallenge:currentDuration';
+
 const DAILY_STEPS_HISTORY_KEY = '@Steps:DailyHistory';
 const GOAL_OPTIONS = [ 500, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 12000, 15000, 18000, 20000, 25000, 30000, 40000, 50000 ];
 const DEFAULT_GOAL = 5000;
@@ -67,8 +75,7 @@ const translations = {
     }
 };
 
-// --- دوال الرسم والحساب الهندسي ---
-
+// --- دوال الرسم ---
 const describeArc = (x, y, radius, startAngleDeg, endAngleDeg) => { 
     const clampedEndAngle = Math.min(endAngleDeg, 359.999); 
     const startAngleRad = ((startAngleDeg - 90) * Math.PI) / 180.0; 
@@ -86,32 +93,16 @@ const describeArc = (x, y, radius, startAngleDeg, endAngleDeg) => {
 const calculateIconPositionOnPath = (angleDegrees) => { 
     const angleRad = (angleDegrees * Math.PI) / 180; 
     const iconRadius = PATH_RADIUS; 
-    
-    // معادلة ثابتة بدون شروط وبدون ضرب في سالب
-    // ده معناه: كل ما الزاوية تزيد، امشي ناحية اليمين
     const xOffset = iconRadius * Math.sin(angleRad); 
-    
     const yOffset = -iconRadius * Math.cos(angleRad); 
-
     const iconCenterX = CENTER_X + xOffset; 
     const iconCenterY = CENTER_Y + yOffset; 
-
     const top = iconCenterY - (ICON_SIZE / 2); 
     const left = iconCenterX - (ICON_SIZE / 2); 
-
-    return { 
-        position: 'absolute', 
-        width: ICON_SIZE, 
-        height: ICON_SIZE, 
-        top, 
-        left, 
-        zIndex: 10, 
-        justifyContent: 'center', 
-        alignItems: 'center' 
-    }; 
+    return { position: 'absolute', width: ICON_SIZE, height: ICON_SIZE, top, left, zIndex: 10, justifyContent: 'center', alignItems: 'center' }; 
 };
 
-
+// --- دوال مساعدة ---
 const formatStepsK = (steps, lang = 'ar') => { if (typeof steps !== 'number' || isNaN(steps)) steps = 0; const locale = lang === 'ar' ? 'ar-EG' : 'en-US'; if (lang === 'ar') { if (steps === 0) return '٠'; if (steps >= 1000) { const formattedK = (steps / 1000).toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }); return `${formattedK.replace(/[.,٫]0$/, '')} ألف`; } return steps.toLocaleString(locale); } else { if (steps === 0) return '0'; if (steps >= 1000) { const kValue = steps / 1000; const formattedK = kValue % 1 === 0 ? kValue.toLocaleString(locale, { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : kValue.toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }); return `${formattedK}k`; } return steps.toLocaleString(locale); }};
 const getDateString = (date) => { if (!date || !(date instanceof Date)) return null; return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())).toISOString().slice(0, 10); };
 const getStartOfWeek = (date, startOfWeekDay = 6) => { const d = new Date(date); d.setUTCHours(0, 0, 0, 0); const currentUTCDate = d.getUTCDate(); const currentUTCDay = d.getUTCDay(); let diff = currentUTCDay - startOfWeekDay; if (diff < 0) { diff += 7; } d.setUTCDate(currentUTCDate - diff); return d; };
@@ -251,53 +242,28 @@ const DailyStepsChart = React.memo(({ dailySteps = [], goalSteps = DEFAULT_GOAL,
     );
 });
 
-// --- المكوّن الجديد المنفصل ---
+// --- المكوّن الموحد الجديد (ChallengeCard) ---
 const ChallengeCard = ({ onPress, currentChallengeDuration, remainingDays, translation, styles, language }) => {
     const locale = language === 'ar' ? 'ar-EG' : 'en-US';
-    
-    // حساب زاوية الدائرة
-    const badgeProgressAngle = React.useMemo(() => { 
-        if (remainingDays <= 0 || currentChallengeDuration <= 0) return 359.999; 
-        if (remainingDays >= currentChallengeDuration) return 0; 
-        const daysCompleted = currentChallengeDuration - remainingDays; 
-        const angle = (daysCompleted / currentChallengeDuration) * 360; 
-        return Math.min(359.999, Math.max(0.01, angle || 0)); 
+
+    const badgeProgressAngle = useMemo(() => {
+        if (remainingDays <= 0 || currentChallengeDuration <= 0) return 359.999;
+        if (remainingDays >= currentChallengeDuration) return 0;
+        const daysCompleted = currentChallengeDuration - remainingDays;
+        return (daysCompleted / currentChallengeDuration) * 360;
     }, [remainingDays, currentChallengeDuration]);
 
-    const badgeProgressPathD = React.useMemo(() => (badgeProgressAngle > 0.1 ? describeArc(BADGE_CENTER_X, BADGE_CENTER_Y, BADGE_PATH_RADIUS, 0.01, badgeProgressAngle) : ''), [badgeProgressAngle]);
+    const badgeProgressPathD = useMemo(() =>
+        badgeProgressAngle > 0.01 ? describeArc(BADGE_CENTER_X, BADGE_CENTER_Y, BADGE_PATH_RADIUS, 0.01, badgeProgressAngle) : ''
+    , [badgeProgressAngle]);
 
     const mainText = `${currentChallengeDuration.toLocaleString(locale)} ${translation.challengePrefix}`;
     const subText = remainingDays > 0 ? `${remainingDays.toLocaleString(locale)} ${remainingDays === 1 ? translation.challengeRemainingSingular : translation.challengeRemainingPlural}` : translation.challengeCompleted;
+    const badgeText = remainingDays > 0 ? `${remainingDays.toLocaleString(locale)}${translation.challengeDaySuffix}` : '✓';
+    const chevronIcon = language === 'ar' ? "chevron-back" : "chevron-forward";
 
-    // --- (1) الجزء الخاص باللغة العربية ---
-    if (language === 'ar') {
-        return (
-            <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
-                <View style={styles.summaryCard}>
-                    <View style={styles.badgeContainer}>
-                        <Svg height={BADGE_SVG_SIZE} width={BADGE_SVG_SIZE} viewBox={`0 0 ${BADGE_SVG_SIZE} ${BADGE_SVG_SIZE}`}>
-                            <SvgCircle cx={BADGE_CENTER_X} cy={BADGE_CENTER_Y} r={BADGE_PATH_RADIUS} stroke={styles.badgeBackgroundCircle.stroke} strokeWidth={BADGE_CIRCLE_BORDER_WIDTH} fill="none" />
-                            <Path d={badgeProgressPathD} stroke={styles.badgeProgressCircle.stroke} strokeWidth={BADGE_CIRCLE_BORDER_WIDTH} fill="none" strokeLinecap="round" />
-                        </Svg>
-                        <View style={styles.badgeTextContainer}>
-                            <Text style={styles.badgeText}>{remainingDays > 0 ? `${remainingDays.toLocaleString(locale)}${translation.challengeDaySuffix}` : '✓'}</Text>
-                        </View>
-                    </View>
-                    <View style={styles.summaryTextContainer}>
-                        <Text style={styles.summaryMainText}>{mainText}</Text>
-                        <Text style={styles.summarySubText}>{subText}</Text>
-                    </View>
-                    
-                    {/* تعديل السهم للعربي هنا: chevron-back = سهم لليسار */}
-                    <Ionicons name="chevron-back" size={24} color={styles.summaryChevron.color} />
-                </View>
-            </TouchableOpacity>
-        );
-    }
-
-    // --- (2) الجزء الخاص باللغة الإنجليزية ---
     return (
-        <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
+        <TouchableOpacity style={styles.challengeCardWrapper || {width: '100%', marginTop: 15}} onPress={onPress} activeOpacity={0.8}>
             <View style={styles.summaryCard}>
                 <View style={styles.badgeContainer}>
                     <Svg height={BADGE_SVG_SIZE} width={BADGE_SVG_SIZE} viewBox={`0 0 ${BADGE_SVG_SIZE} ${BADGE_SVG_SIZE}`}>
@@ -305,16 +271,14 @@ const ChallengeCard = ({ onPress, currentChallengeDuration, remainingDays, trans
                         <Path d={badgeProgressPathD} stroke={styles.badgeProgressCircle.stroke} strokeWidth={BADGE_CIRCLE_BORDER_WIDTH} fill="none" strokeLinecap="round" />
                     </Svg>
                     <View style={styles.badgeTextContainer}>
-                        <Text style={styles.badgeText}>{remainingDays > 0 ? `${remainingDays.toLocaleString(locale)}${translation.challengeDaySuffix}` : '✓'}</Text>
+                        <Text style={styles.badgeText}>{badgeText}</Text>
                     </View>
                 </View>
                 <View style={styles.summaryTextContainer}>
                     <Text style={styles.summaryMainText}>{mainText}</Text>
                     <Text style={styles.summarySubText}>{subText}</Text>
                 </View>
-
-                {/* تعديل السهم للإنجليزي هنا: chevron-forward = سهم لليمين */}
-                <Ionicons name="chevron-forward" size={24} color={styles.summaryChevron.color} />
+                <Ionicons name={chevronIcon} size={24} color={styles.summaryChevron.color} />
             </View>
         </TouchableOpacity>
     );
@@ -344,8 +308,12 @@ const StepsScreen = (props) => {
     const [isGoalModalVisible, setIsGoalModalVisible] = useState(false);
     const [tempGoal, setTempGoal] = useState(DEFAULT_GOAL);
     const [isPedometerAvailable, setIsPedometerAvailable] = useState('checking');
+    
+    // متغيرات التحدي
     const [currentChallengeDuration, setCurrentChallengeDuration] = useState(INITIAL_CHALLENGE_DURATION);
     const [remainingDays, setRemainingDays] = useState(INITIAL_CHALLENGE_DURATION);
+    const [appState, setAppState] = useState(AppState.currentState);
+
     const [isMenuModalVisible, setIsMenuModalVisible] = useState(false);
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: undefined, right: undefined, triggerX: 0, triggerWidth: 0 });
     const [isTitleMenuVisible, setIsTitleMenuVisible] = useState(false);
@@ -409,6 +377,77 @@ const StepsScreen = (props) => {
             }
         } catch (error) { console.error("Save daily steps fail:", error); } 
     }, []);
+
+    // *** الدالة الجديدة لتحديث حالة التحدي (لجعل العداد يعمل مثل باقي الصفحات) ***
+    const updateChallengeStatus = useCallback(async () => {
+        const todayString = getDateString(new Date()); 
+        if (!todayString) return; 
+        try { 
+            const [storedRemainingDaysStr, storedLastParticipationDate, storedChallengeDurationStr] = await Promise.all([
+                AsyncStorage.getItem(REMAINING_CHALLENGE_DAYS_KEY), 
+                AsyncStorage.getItem(LAST_PARTICIPATION_DATE_KEY), 
+                AsyncStorage.getItem(CURRENT_CHALLENGE_DURATION_KEY)
+            ]); 
+            let loadedDuration = INITIAL_CHALLENGE_DURATION; 
+            if (storedChallengeDurationStr !== null) { 
+                const parsedDuration = parseInt(storedChallengeDurationStr, 10); 
+                if (!isNaN(parsedDuration) && CHALLENGE_DURATIONS.includes(parsedDuration)) loadedDuration = parsedDuration; 
+            } 
+            setCurrentChallengeDuration(loadedDuration); 
+            
+            let currentRemainingDays = loadedDuration; 
+            if (storedRemainingDaysStr !== null) { 
+                const parsedDays = parseInt(storedRemainingDaysStr, 10); 
+                if (!isNaN(parsedDays) && parsedDays >= 0 && parsedDays <= loadedDuration) currentRemainingDays = parsedDays; 
+            } 
+            setRemainingDays(currentRemainingDays); 
+            
+            if (todayString !== storedLastParticipationDate && currentRemainingDays > 0) { 
+                const newRemainingDays = currentRemainingDays - 1; 
+                if (newRemainingDays <= 0) { 
+                    const currentDurationIndex = CHALLENGE_DURATIONS.indexOf(loadedDuration); 
+                    const nextDurationIndex = currentDurationIndex + 1; 
+                    if (nextDurationIndex < CHALLENGE_DURATIONS.length) { 
+                        const nextChallengeDuration = CHALLENGE_DURATIONS[nextDurationIndex]; 
+                        setRemainingDays(nextChallengeDuration); 
+                        setCurrentChallengeDuration(nextChallengeDuration); 
+                        await AsyncStorage.multiSet([
+                            [REMAINING_CHALLENGE_DAYS_KEY, String(nextChallengeDuration)], 
+                            [LAST_PARTICIPATION_DATE_KEY, todayString], 
+                            [CURRENT_CHALLENGE_DURATION_KEY, String(nextChallengeDuration)]
+                        ]); 
+                    } else { 
+                        setRemainingDays(0); 
+                        await AsyncStorage.multiSet([
+                            [REMAINING_CHALLENGE_DAYS_KEY, '0'], 
+                            [LAST_PARTICIPATION_DATE_KEY, todayString]
+                        ]); 
+                    } 
+                } else { 
+                    setRemainingDays(newRemainingDays); 
+                    await AsyncStorage.multiSet([
+                        [REMAINING_CHALLENGE_DAYS_KEY, String(newRemainingDays)], 
+                        [LAST_PARTICIPATION_DATE_KEY, todayString]
+                    ]); 
+                } 
+            } else if (currentRemainingDays <= 0 && remainingDays !== 0) { 
+                setRemainingDays(0); 
+            } 
+        } catch (error) { console.error("Challenge update fail:", error); } 
+    }, []);
+
+    // *** تشغيل تحديث التحدي عند بدء التطبيق أو العودة إليه ***
+    useEffect(() => { 
+        const runInitialChecks = async () => { await updateChallengeStatus(); }; 
+        runInitialChecks(); 
+        const subscription = AppState.addEventListener('change', nextAppState => { 
+            if (appState.match(/inactive|background/) && nextAppState === 'active') { 
+                runInitialChecks(); 
+            } 
+            setAppState(nextAppState); 
+        }); 
+        return () => { subscription.remove(); }; 
+    }, [appState, updateChallengeStatus]);
 
     // تحديث بيانات الشارت اليومي
     useEffect(() => {
@@ -824,7 +863,7 @@ const StepsScreen = (props) => {
                             <StatItem type="time" value={formattedDuration} unit={translation.durationUnit} isDarkMode={isDarkMode} styles={currentStyles} />
                         </View>
 
-                        {/* --- تم استبدال الكود القديم بالمكون الجديد هنا --- */}
+                        {/* --- تم استبدال الكود القديم بالمكون الموحد هنا --- */}
                         <ChallengeCard 
                             onPress={navigateToAchievements} 
                             currentChallengeDuration={currentChallengeDuration} 
@@ -950,7 +989,8 @@ circle: {
     statIcon: { color: "#4caf50" }, 
     statValue: { fontSize: 20, fontWeight: 'bold', color: '#388e3c', marginTop: 5, fontVariant: ['tabular-nums'] }, 
     statUnit: { fontSize: 14, color: '#757575', marginTop: 2 }, 
-    summaryCard: { flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#ffffff', borderRadius: 15, paddingHorizontal: 15, paddingVertical: 15, width: '90%', marginTop: 30, marginBottom: 10, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, alignSelf: 'center' }, 
+    challengeCardWrapper: { width: '100%', marginTop: 30, marginBottom: 10, alignItems: 'center' },
+    summaryCard: { flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#ffffff', borderRadius: 15, paddingHorizontal: 15, paddingVertical: 15, width: '90%', elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, alignSelf: 'center' }, 
     summaryTextContainer: { alignItems: I18nManager.isRTL ? 'flex-end' : 'flex-start', flex: 1, marginHorizontal: 12 }, 
     summaryMainText: { fontSize: 18, fontWeight: 'bold', color: '#424242', textAlign: I18nManager.isRTL ? 'right' : 'left' }, 
     summarySubText: { fontSize: 14, color: '#757575', textAlign: I18nManager.isRTL ? 'right' : 'left', marginTop: 2 }, 

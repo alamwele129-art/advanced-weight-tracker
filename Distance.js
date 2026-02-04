@@ -45,7 +45,7 @@ const translations = {
     ar: {
         headerTitle: 'المسافة', 
         today: 'اليوم',       // يستخدم للتاريخ
-        dayPeriod: 'يوم',     // يستخدم للزر العلوي (تم التعديل هنا)
+        dayPeriod: 'يوم',     // يستخدم للزر العلوي
         week: 'أسبوع', 
         month: 'شهر', 
         yesterday: 'أمس', 
@@ -61,7 +61,7 @@ const translations = {
     en: {
         headerTitle: 'Distance', 
         today: 'Today',       // Uses for date
-        dayPeriod: 'Day',     // Uses for top button (Added here)
+        dayPeriod: 'Day',     // Uses for top button
         week: 'Week', 
         month: 'Month', 
         yesterday: 'Yesterday', 
@@ -137,57 +137,47 @@ const getDaysInMonth = (date) => new Date(Date.UTC(date.getUTCFullYear(), date.g
 // --- المكونات الفرعية ---
 const GoalModal = ({ visible, onClose, onSave, currentValue, currentUnit, translation, styles }) => { const [tempValue, setTempValue] = useState(currentValue); const [tempUnit, setTempUnit] = useState(currentUnit); const distanceValues = Array.from({ length: 120 }, (_, i) => ((i + 1) * 0.5).toFixed(1)); const unitValues = [translation.kmUnit, translation.miUnit]; useEffect(() => { if (visible) { setTempValue(currentValue); setTempUnit(currentUnit); } }, [visible, currentValue, currentUnit]); const handleSave = () => { onSave(tempValue, tempUnit); }; return ( <Modal animationType="fade" transparent={true} visible={visible} onRequestClose={onClose}><View style={styles.modalOverlay}><View style={styles.modalCard}><Text style={styles.modalTitle}>{translation.goalModalTitle}</Text><View style={styles.pickersContainer}><Picker height={180} initialSelectedIndex={distanceValues.indexOf(tempValue.toFixed(1))} items={distanceValues.map(val => ({ label: val, value: val }))} onChange={({ item }) => setTempValue(parseFloat(item.value))} renderItem={(item, i, isSelected) => ( <Text style={isSelected ? styles.selectedPickerItemText : styles.pickerItemText}>{item.label}</Text> )} haptics /><Picker height={180} width={120} initialSelectedIndex={unitValues.indexOf(tempUnit)} items={unitValues.map(val => ({ label: val, value: val }))} onChange={({ item }) => setTempUnit(item.value)} renderItem={(item, i, isSelected) => ( <Text style={isSelected ? styles.selectedPickerItemText : styles.pickerItemText}>{item.label}</Text> )} haptics /></View><View style={styles.buttonRow}><TouchableOpacity style={[styles.modalButton, styles.cancelButton]} onPress={onClose}><Text style={styles.cancelButtonText}>{translation.cancel}</Text></TouchableOpacity><TouchableOpacity style={[styles.modalButton, styles.saveButton]} onPress={handleSave}><Text style={styles.saveButtonText}>{translation.save}</Text></TouchableOpacity></View></View></View></Modal> ); };
 const AnimatedStatCard = ({ iconName, value, label, formatter, styles }) => { const animatedValue = useRef(new Animated.Value(value || 0)).current; const [displayValue, setDisplayValue] = useState(() => formatter(value || 0)); useEffect(() => { Animated.timing(animatedValue, { toValue: value || 0, duration: 750, useNativeDriver: false }).start(); }, [value]); useEffect(() => { const listenerId = animatedValue.addListener((v) => { setDisplayValue(formatter(v.value)); }); return () => { animatedValue.removeListener(listenerId); }; }, [formatter, animatedValue]); return ( <View style={styles.statCard}><View style={styles.iconContainer}><Icon name={iconName} size={24} color={styles.animatedStatIcon.color} /></View><Text style={styles.statValue}>{displayValue}</Text><Text style={styles.statLabel}>{label}</Text></View> ); };
-const ChallengeCard = ({ onPress, currentChallengeDuration, remainingDays, translation, styles, language }) => { 
-  const locale = language === 'ar' ? 'ar-EG' : 'en-US';
-  const daysCompleted = currentChallengeDuration - remainingDays; 
-  const badgeProgressAngle = remainingDays <= 0 || currentChallengeDuration <= 0 ? 359.999 : remainingDays >= currentChallengeDuration ? 0 : (daysCompleted / currentChallengeDuration) * 360; 
-  const badgeProgressPathD = describeArc(BADGE_CENTER_X, BADGE_CENTER_Y, BADGE_PATH_RADIUS, 0.01, badgeProgressAngle); 
-  const subText = remainingDays > 0 ? `${remainingDays.toLocaleString(locale)} ${remainingDays === 1 ? translation.challengeRemainingSingular : translation.challengeRemainingPlural}` : translation.challengeCompleted; 
-  const mainText = `${currentChallengeDuration.toLocaleString(locale)} ${translation.challengePrefix}`; 
 
-  if (language === 'ar') {
-    return ( 
-      <TouchableOpacity style={styles.challengeCardWrapper} onPress={onPress} activeOpacity={0.8}>
-        <View style={styles.summaryCard}>
-          <View style={styles.badgeContainer}>
-            <Svg height={BADGE_SVG_SIZE} width={BADGE_SVG_SIZE} viewBox={`0 0 ${BADGE_SVG_SIZE} ${BADGE_SVG_SIZE}`}>
-              <Circle cx={BADGE_CENTER_X} cy={BADGE_CENTER_Y} r={BADGE_PATH_RADIUS} stroke={styles.badgeBackgroundCircle.stroke} strokeWidth={BADGE_CIRCLE_BORDER_WIDTH} fill="none" />
-              <Path d={badgeProgressPathD} stroke={styles.badgeProgressCircle.stroke} strokeWidth={BADGE_CIRCLE_BORDER_WIDTH} fill="none" strokeLinecap="round" />
-            </Svg>
-            <View style={styles.badgeTextContainer}>
-              <Text style={styles.badgeText}>{remainingDays > 0 ? `${remainingDays.toLocaleString(locale)}${translation.challengeDaySuffix}` : '✓'}</Text>
+// --- المكوّن الموحد الجديد ---
+const ChallengeCard = ({ onPress, currentChallengeDuration, remainingDays, translation, styles, language }) => {
+    const locale = language === 'ar' ? 'ar-EG' : 'en-US';
+
+    const badgeProgressAngle = useMemo(() => {
+        if (remainingDays <= 0 || currentChallengeDuration <= 0) return 359.999;
+        if (remainingDays >= currentChallengeDuration) return 0;
+        const daysCompleted = currentChallengeDuration - remainingDays;
+        return (daysCompleted / currentChallengeDuration) * 360;
+    }, [remainingDays, currentChallengeDuration]);
+
+    const badgeProgressPathD = useMemo(() =>
+        badgeProgressAngle > 0.01 ? describeArc(BADGE_CENTER_X, BADGE_CENTER_Y, BADGE_PATH_RADIUS, 0.01, badgeProgressAngle) : ''
+    , [badgeProgressAngle]);
+
+    const mainText = `${currentChallengeDuration.toLocaleString(locale)} ${translation.challengePrefix}`;
+    const subText = remainingDays > 0 ? `${remainingDays.toLocaleString(locale)} ${remainingDays === 1 ? translation.challengeRemainingSingular : translation.challengeRemainingPlural}` : translation.challengeCompleted;
+    const badgeText = remainingDays > 0 ? `${remainingDays.toLocaleString(locale)}${translation.challengeDaySuffix}` : '✓';
+    const chevronIcon = language === 'ar' ? "chevron-back" : "chevron-forward";
+
+    return (
+        <TouchableOpacity style={styles.challengeCardWrapper || {width: '100%', marginTop: 15}} onPress={onPress} activeOpacity={0.8}>
+            <View style={styles.summaryCard}>
+                <View style={styles.badgeContainer}>
+                    <Svg height={BADGE_SVG_SIZE} width={BADGE_SVG_SIZE} viewBox={`0 0 ${BADGE_SVG_SIZE} ${BADGE_SVG_SIZE}`}>
+                        <Circle cx={BADGE_CENTER_X} cy={BADGE_CENTER_Y} r={BADGE_PATH_RADIUS} stroke={styles.badgeBackgroundCircle.stroke} strokeWidth={BADGE_CIRCLE_BORDER_WIDTH} fill="none" />
+                        <Path d={badgeProgressPathD} stroke={styles.badgeProgressCircle.stroke} strokeWidth={BADGE_CIRCLE_BORDER_WIDTH} fill="none" strokeLinecap="round" />
+                    </Svg>
+                    <View style={styles.badgeTextContainer}>
+                        <Text style={styles.badgeText}>{badgeText}</Text>
+                    </View>
+                </View>
+                <View style={styles.summaryTextContainer}>
+                    <Text style={styles.summaryMainText}>{mainText}</Text>
+                    <Text style={styles.summarySubText}>{subText}</Text>
+                </View>
+                <Ionicons name={chevronIcon} size={24} color={styles.summaryChevron.color} />
             </View>
-          </View>
-          <View style={styles.summaryTextContainer}>
-            <Text style={styles.summaryMainText}>{mainText}</Text>
-            <Text style={styles.summarySubText}>{subText}</Text>
-          </View>
-          <Ionicons name="chevron-back" size={24} color={styles.summaryChevron.color} />
-        </View>
-      </TouchableOpacity> 
+        </TouchableOpacity>
     );
-  }
-
-  return ( 
-    <TouchableOpacity style={styles.challengeCardWrapper} onPress={onPress} activeOpacity={0.8}>
-      <View style={styles.summaryCard}>
-        <View style={styles.badgeContainer}>
-          <Svg height={BADGE_SVG_SIZE} width={BADGE_SVG_SIZE} viewBox={`0 0 ${BADGE_SVG_SIZE} ${BADGE_SVG_SIZE}`}>
-            <Circle cx={BADGE_CENTER_X} cy={BADGE_CENTER_Y} r={BADGE_PATH_RADIUS} stroke={styles.badgeBackgroundCircle.stroke} strokeWidth={BADGE_CIRCLE_BORDER_WIDTH} fill="none" />
-            <Path d={badgeProgressPathD} stroke={styles.badgeProgressCircle.stroke} strokeWidth={BADGE_CIRCLE_BORDER_WIDTH} fill="none" strokeLinecap="round" />
-          </Svg>
-          <View style={styles.badgeTextContainer}>
-            <Text style={styles.badgeText}>{remainingDays > 0 ? `${remainingDays.toLocaleString(locale)}${translation.challengeDaySuffix}` : '✓'}</Text>
-          </View>
-        </View>
-        <View style={styles.summaryTextContainer}>
-          <Text style={styles.summaryMainText}>{mainText}</Text>
-          <Text style={styles.summarySubText}>{subText}</Text>
-        </View>
-        <Ionicons name="chevron-forward" size={24} color={styles.summaryChevron.color} />
-      </View>
-    </TouchableOpacity> 
-  ); 
 };
 
 const DistanceWeeklyChart = ({ weeklyDistanceData, goalDistance, onTestIncrement, onResetData, translation, styles, language }) => { 
@@ -631,7 +621,17 @@ const DistanceScreen = (props) => {
               <AnimatedStatCard iconName="clock-outline" value={rawMinutes} label={translation.timeLabel} formatter={v => { const h = Math.floor(v / 60); const m = Math.floor(v % 60); return `${h.toLocaleString(locale, {minimumIntegerDigits: 2})}:${m.toLocaleString(locale, {minimumIntegerDigits: 2})}`}} styles={currentStyles}/> 
               <AnimatedStatCard iconName="walk" value={rawSteps} label={translation.stepsLabel} formatter={v => Math.round(v).toLocaleString(locale)} styles={currentStyles}/> 
             </View> 
-            <ChallengeCard onPress={handleNavigateToAchievements} currentChallengeDuration={currentChallengeDuration} remainingDays={remainingDays} translation={translation} styles={currentStyles}/> 
+            
+            {/* --- تم استبدال الكود القديم بالمكون الموحد هنا --- */}
+            <ChallengeCard 
+                onPress={handleNavigateToAchievements} 
+                currentChallengeDuration={currentChallengeDuration} 
+                remainingDays={remainingDays} 
+                translation={translation} 
+                styles={currentStyles} 
+                language={language} 
+            />
+            
             <DistanceWeeklyChart weeklyDistanceData={dailyChartData} goalDistance={goalDistance} onTestIncrement={handleTestIncrement} onResetData={handleResetData} translation={translation} styles={currentStyles} language={language}/>
           </View>
         )}
@@ -791,7 +791,7 @@ const darkStyles = StyleSheet.create({
   animatedStatIcon: { color: '#80CBC4'},
   statValue: { ...lightStyles.statValue, color: '#E0E0E0' },
   statLabel: { ...lightStyles.statLabel, color: '#B0B0B0' },
-  summaryCard: { ...lightStyles.summaryCard, backgroundColor: '#1E1E1E' },
+  summaryCard: { ...lightStyles.summaryCard, backgroundColor: '#1E1E1E', shadowColor: '#000' },
   summaryMainText: { ...lightStyles.summaryMainText, color: '#E0E0E0' },
   summarySubText: { ...lightStyles.summarySubText, color: '#B0B0B0' },
   summaryChevron: { color: "#A0A0A0" },

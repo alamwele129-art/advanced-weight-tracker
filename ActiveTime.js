@@ -17,7 +17,8 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Svg, { Circle, Path } from 'react-native-svg';
-import Icon from 'react-native-vector-icons/Ionicons';
+// غيرنا استيراد Icon ليكون Ionicons ليتوافق مع البطاقة الموحدة
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
@@ -94,7 +95,7 @@ const translations = {
   }
 };
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 // *** تعديلات الأبعاد لتطابق كود المسافة ***
 const CIRCLE_SIZE = width * 0.60;
@@ -386,7 +387,7 @@ const DayView = ({ goalHour, goalMinute, onOpenGoalModal, activeTimeForDate, cur
           {/* زر السابق (يمين الشاشة في العربي) */}
           <TouchableOpacity onPress={onPreviousDay}>
             {/* غير الاسم هنا للتحكم في سهم السابق للعربي فقط: chevron-forward-outline (يمين) أو chevron-back-outline (يسار) */}
-            <Icon name="chevron-forward-outline" size={28} color={currentStyles.dayHeaderArrow.color} />
+            <Ionicons name="chevron-forward-outline" size={28} color={currentStyles.dayHeaderArrow.color} />
           </TouchableOpacity>
           
           <Text style={currentStyles.dayHeaderTitle}>{formatDisplayDate(currentDate)}</Text>
@@ -394,7 +395,7 @@ const DayView = ({ goalHour, goalMinute, onOpenGoalModal, activeTimeForDate, cur
           {/* زر التالي (يسار الشاشة في العربي) */}
           <TouchableOpacity onPress={onNextDay} disabled={isViewingToday}>
             {/* غير الاسم هنا للتحكم في سهم التالي للعربي فقط */}
-            <Icon name="chevron-back-outline" size={28} color={isViewingToday ? currentStyles.dayHeaderArrowDisabled.color : currentStyles.dayHeaderArrow.color} />
+            <Ionicons name="chevron-back-outline" size={28} color={isViewingToday ? currentStyles.dayHeaderArrowDisabled.color : currentStyles.dayHeaderArrow.color} />
           </TouchableOpacity>
         </View>
 
@@ -410,14 +411,14 @@ const DayView = ({ goalHour, goalMinute, onOpenGoalModal, activeTimeForDate, cur
       <View style={[currentStyles.dayHeader, { flexDirection: 'row' }]}>
         {/* Previous Button (Left side) */}
         <TouchableOpacity onPress={onPreviousDay}>
-          <Icon name="chevron-back-outline" size={28} color={currentStyles.dayHeaderArrow.color} />
+          <Ionicons name="chevron-back-outline" size={28} color={currentStyles.dayHeaderArrow.color} />
         </TouchableOpacity>
         
         <Text style={currentStyles.dayHeaderTitle}>{formatDisplayDate(currentDate)}</Text>
         
         {/* Next Button (Right side) */}
         <TouchableOpacity onPress={onNextDay} disabled={isViewingToday}>
-          <Icon name="chevron-forward-outline" size={28} color={isViewingToday ? currentStyles.dayHeaderArrowDisabled.color : currentStyles.dayHeaderArrow.color} />
+          <Ionicons name="chevron-forward-outline" size={28} color={isViewingToday ? currentStyles.dayHeaderArrowDisabled.color : currentStyles.dayHeaderArrow.color} />
         </TouchableOpacity>
       </View>
 
@@ -426,38 +427,34 @@ const DayView = ({ goalHour, goalMinute, onOpenGoalModal, activeTimeForDate, cur
     </View>
   );
 };
-
-// دالة مساعدة لعدم تكرار كود الدائرة والإحصائيات مرتين
 const renderCircleContent = (currentStyles, SVG_VIEWBOX_SIZE, CENTER_X, CENTER_Y, PATH_RADIUS, CIRCLE_BORDER_WIDTH, progressPathD, displayTimeText, onOpenGoalModal, goalHour, goalMinute, translation, dynamicDotStyle, calculatedSteps, calculatedCalories, calculatedDistanceKm, language) => {
     const formatTime = (num) => num.toString().padStart(2, '0');
     return (
         <>
             <View style={currentStyles.progressCircleContainer}>
                 <View style={currentStyles.circle}>
-<Svg 
-    width={SVG_VIEWBOX_SIZE} 
-    height={SVG_VIEWBOX_SIZE} 
-    viewBox={`0 0 ${SVG_VIEWBOX_SIZE} ${SVG_VIEWBOX_SIZE}`}
-    // ثبتناها 1 عشان نمنع القلب
-    style={{ transform: [{ scaleX: 1 }] }}
->
-    <Circle stroke={currentStyles.progressCircleBackground.stroke} fill="none" cx={CENTER_X} cy={CENTER_Y} r={PATH_RADIUS} strokeWidth={CIRCLE_BORDER_WIDTH} />
-    <Path d={progressPathD} stroke={currentStyles.progressCircleForeground.stroke} fill="none" strokeWidth={CIRCLE_BORDER_WIDTH} strokeLinecap="round" />
-</Svg>
-                
-                <View style={currentStyles.circleContentOverlay}>
-                    <MaterialIcon name="timer" size={30} color={currentStyles.timerIcon.color} />
-                    <Text style={currentStyles.timerText}>{displayTimeText}</Text>
-                    <TouchableOpacity style={currentStyles.goalContainer} onPress={onOpenGoalModal}>
-                        <Text style={currentStyles.goalText}>{translation.goalPrefix}: {formatTime(goalHour)}:{formatTime(goalMinute)}</Text>
-                        <MaterialIcon name="edit" size={16} color={currentStyles.goalText.color} style={{ [language === 'ar' ? 'marginRight' : 'marginLeft']: 5 }} />
-                    </TouchableOpacity>
-                </View>
+                    <Svg 
+                        width={SVG_VIEWBOX_SIZE} 
+                        height={SVG_VIEWBOX_SIZE} 
+                        viewBox={`0 0 ${SVG_VIEWBOX_SIZE} ${SVG_VIEWBOX_SIZE}`}
+                        style={{ transform: [{ scaleX: 1 }] }}
+                    >
+                        <Circle stroke={currentStyles.progressCircleBackground.stroke} fill="none" cx={CENTER_X} cy={CENTER_Y} r={PATH_RADIUS} strokeWidth={CIRCLE_BORDER_WIDTH} />
+                        <Path d={progressPathD} stroke={currentStyles.progressCircleForeground.stroke} fill="none" strokeWidth={CIRCLE_BORDER_WIDTH} strokeLinecap="round" />
+                    </Svg>
+                    
+                    <View style={currentStyles.circleContentOverlay}>
+                        <MaterialCommunityIcon name="timer-outline" size={40} color={currentStyles.timerIcon.color} />
+                        <Text style={currentStyles.timerText}>{displayTimeText}</Text>
+                        <TouchableOpacity style={currentStyles.goalContainer} onPress={onOpenGoalModal}>
+                            <Text style={currentStyles.goalText}>{translation.goalPrefix}: {formatTime(goalHour)}:{formatTime(goalMinute)}</Text>
+                            <MaterialIcon name="edit" size={16} color={currentStyles.goalText.color} style={{ [language === 'ar' ? 'marginRight' : 'marginLeft']: 5 }} />
+                        </TouchableOpacity>
+                    </View>
 
-                <Animated.View style={dynamicDotStyle}>
-                    <View style={[currentStyles.movingDot, { borderColor: currentStyles.container.backgroundColor }]} />
-                </Animated.View>
-                
+                    <Animated.View style={dynamicDotStyle}>
+                        <View style={[currentStyles.movingDot, { borderColor: currentStyles.container.backgroundColor }]} />
+                    </Animated.View>
                 </View>
             </View>
 
@@ -470,72 +467,46 @@ const renderCircleContent = (currentStyles, SVG_VIEWBOX_SIZE, CENTER_X, CENTER_Y
     );
 }
 
-const ChallengeCard = ({ onPress, currentChallengeDuration, remainingDays, currentStyles, translation, language }) => {
-  const locale = language === 'ar' ? 'ar-EG' : 'en-US';
-  const daysCompleted = currentChallengeDuration - remainingDays;
-  const badgeProgressAngle = remainingDays <= 0 || currentChallengeDuration <= 0 ? 359.999 : remainingDays >= currentChallengeDuration ? 0 : (daysCompleted / currentChallengeDuration) * 360;
-  const badgeProgressPathD = describeArc(BADGE_CENTER_X, BADGE_CENTER_Y, BADGE_PATH_RADIUS, 0.01, badgeProgressAngle);
-  const subText = remainingDays > 0 ? `${remainingDays.toLocaleString(locale)} ${remainingDays === 1 ? translation.challengeRemainingSingular : translation.challengeRemainingPlural}` : translation.challengeCompleted;
-  const mainText = `${currentChallengeDuration.toLocaleString(locale)} ${translation.challengePrefix}`;
-  
-  // ---------------------------------------------------------
-  // (1) الجزء الخاص باللغة العربية فقط
-  // ---------------------------------------------------------
-  if (language === 'ar') {
+// --- المكوّن الموحد الجديد (ChallengeCard) ---
+const ChallengeCard = ({ onPress, currentChallengeDuration, remainingDays, translation, styles, language }) => {
+    const locale = language === 'ar' ? 'ar-EG' : 'en-US';
+
+    const badgeProgressAngle = useMemo(() => {
+        if (remainingDays <= 0 || currentChallengeDuration <= 0) return 359.999;
+        if (remainingDays >= currentChallengeDuration) return 0;
+        const daysCompleted = currentChallengeDuration - remainingDays;
+        return (daysCompleted / currentChallengeDuration) * 360;
+    }, [remainingDays, currentChallengeDuration]);
+
+    const badgeProgressPathD = useMemo(() =>
+        badgeProgressAngle > 0.01 ? describeArc(BADGE_CENTER_X, BADGE_CENTER_Y, BADGE_PATH_RADIUS, 0.01, badgeProgressAngle) : ''
+    , [badgeProgressAngle]);
+
+    const mainText = `${currentChallengeDuration.toLocaleString(locale)} ${translation.challengePrefix}`;
+    const subText = remainingDays > 0 ? `${remainingDays.toLocaleString(locale)} ${remainingDays === 1 ? translation.challengeRemainingSingular : translation.challengeRemainingPlural}` : translation.challengeCompleted;
+    const badgeText = remainingDays > 0 ? `${remainingDays.toLocaleString(locale)}${translation.challengeDaySuffix}` : '✓';
+    const chevronIcon = language === 'ar' ? "chevron-back" : "chevron-forward";
+
     return (
-      <TouchableOpacity style={currentStyles.challengeCardWrapper} activeOpacity={0.8} onPress={onPress}>
-        <View style={currentStyles.summaryCard}>
-          <View style={currentStyles.badgeContainer}>
-            <Svg height={BADGE_SVG_SIZE} width={BADGE_SVG_SIZE} viewBox={`0 0 ${BADGE_SVG_SIZE} ${BADGE_SVG_SIZE}`}>
-              <Circle cx={BADGE_CENTER_X} cy={BADGE_CENTER_Y} r={BADGE_PATH_RADIUS} stroke={currentStyles.badgeBackgroundCircle.stroke} strokeWidth={BADGE_CIRCLE_BORDER_WIDTH} fill="none" />
-              <Path d={badgeProgressPathD} stroke={currentStyles.badgeProgressCircle.stroke} strokeWidth={BADGE_CIRCLE_BORDER_WIDTH} fill="none" strokeLinecap="round" />
-            </Svg>
-            <View style={currentStyles.badgeTextContainer}>
-              <Text style={currentStyles.badgeText}>{remainingDays > 0 ? `${remainingDays.toLocaleString(locale)}${translation.challengeDaySuffix}` : '✓'}</Text>
+        <TouchableOpacity style={styles.challengeCardWrapper || {width: '100%', marginTop: 15}} onPress={onPress} activeOpacity={0.8}>
+            <View style={styles.summaryCard}>
+                <View style={styles.badgeContainer}>
+                    <Svg height={BADGE_SVG_SIZE} width={BADGE_SVG_SIZE} viewBox={`0 0 ${BADGE_SVG_SIZE} ${BADGE_SVG_SIZE}`}>
+                        <Circle cx={BADGE_CENTER_X} cy={BADGE_CENTER_Y} r={BADGE_PATH_RADIUS} stroke={styles.badgeBackgroundCircle.stroke} strokeWidth={BADGE_CIRCLE_BORDER_WIDTH} fill="none" />
+                        <Path d={badgeProgressPathD} stroke={styles.badgeProgressCircle.stroke} strokeWidth={BADGE_CIRCLE_BORDER_WIDTH} fill="none" strokeLinecap="round" />
+                    </Svg>
+                    <View style={styles.badgeTextContainer}>
+                        <Text style={styles.badgeText}>{badgeText}</Text>
+                    </View>
+                </View>
+                <View style={styles.summaryTextContainer}>
+                    <Text style={styles.summaryMainText}>{mainText}</Text>
+                    <Text style={styles.summarySubText}>{subText}</Text>
+                </View>
+                <Ionicons name={chevronIcon} size={24} color={styles.summaryChevron.color} />
             </View>
-          </View>
-          <View style={currentStyles.summaryTextContainer}>
-            <Text style={currentStyles.summaryMainText}>{mainText}</Text>
-            <Text style={currentStyles.summarySubText}>{subText}</Text>
-          </View>
-          
-          {/* ---- تعديل السهم للعربي هنا ---- */}
-          {/* chevron-back = سهم لليسار (<) */}
-          {/* chevron-forward = سهم لليمين (>) */}
-          <Icon name="chevron-back" size={24} color={currentStyles.summaryChevron.color} />
-          
-        </View>
-      </TouchableOpacity>
+        </TouchableOpacity>
     );
-  }
-
-  // ---------------------------------------------------------
-  // (2) الجزء الخاص باللغة الإنجليزية (وباقي اللغات)
-  // ---------------------------------------------------------
-  return (
-    <TouchableOpacity style={currentStyles.challengeCardWrapper} activeOpacity={0.8} onPress={onPress}>
-      <View style={currentStyles.summaryCard}>
-        <View style={currentStyles.badgeContainer}>
-          <Svg height={BADGE_SVG_SIZE} width={BADGE_SVG_SIZE} viewBox={`0 0 ${BADGE_SVG_SIZE} ${BADGE_SVG_SIZE}`}>
-            <Circle cx={BADGE_CENTER_X} cy={BADGE_CENTER_Y} r={BADGE_PATH_RADIUS} stroke={currentStyles.badgeBackgroundCircle.stroke} strokeWidth={BADGE_CIRCLE_BORDER_WIDTH} fill="none" />
-            <Path d={badgeProgressPathD} stroke={currentStyles.badgeProgressCircle.stroke} strokeWidth={BADGE_CIRCLE_BORDER_WIDTH} fill="none" strokeLinecap="round" />
-          </Svg>
-          <View style={currentStyles.badgeTextContainer}>
-            <Text style={currentStyles.badgeText}>{remainingDays > 0 ? `${remainingDays.toLocaleString(locale)}${translation.challengeDaySuffix}` : '✓'}</Text>
-          </View>
-        </View>
-        <View style={currentStyles.summaryTextContainer}>
-          <Text style={currentStyles.summaryMainText}>{mainText}</Text>
-          <Text style={currentStyles.summarySubText}>{subText}</Text>
-        </View>
-
-        {/* ---- تعديل السهم للإنجليزي هنا ---- */}
-        {/* chevron-forward = سهم لليمين (>) */}
-        <Icon name="chevron-forward" size={24} color={currentStyles.summaryChevron.color} />
-
-      </View>
-    </TouchableOpacity>
-  );
 };
 
 const WeekView = ({ weeklyTimeData, onTestIncrement, onResetData, currentStyles, translation, language }) => {
@@ -543,24 +514,17 @@ const WeekView = ({ weeklyTimeData, onTestIncrement, onResetData, currentStyles,
   const [selectedBarIndex, setSelectedBarIndex] = useState(null);
   const [selectedBarValue, setSelectedBarValue] = useState(null);
   const days = translation.dayNamesShort;
-  const maxVal = Math.max(100, ...weeklyTimeData);
+  const maxVal = Math.max(60, ...weeklyTimeData); // الحد الأدنى للرسم 60 دقيقة
   const today = new Date();
   const jsDayIndex = today.getDay();
   const startOfWeekDay = language === 'ar' ? 6 : 0;
   const displayDayIndex = (jsDayIndex - startOfWeekDay + 7) % 7;
   const locale = language === 'ar' ? 'ar-EG' : 'en-US';
 
-  // اتجاه الجدول (كما طلبت سابقاً)
   const chartDirection = language === 'ar' ? 'row-reverse' : 'row';
-  
-  // *** التعديل الجديد هنا: محاذاة العنوان ***
-  // عربي = flex-start (يسار/شمال)
-  // إنجليزي = flex-end (يمين)
   const headerAlign = 'flex-start';
 
-  // ... (نفس دوال الهاندلر: handleBarPress, handleOutsidePress)
   const handleBarPress = useCallback((index, value) => {
-    // ... (نفس الكود)
     const numericValue = value || 0;
     if (tooltipVisible && selectedBarIndex === index) {
       setTooltipVisible(false);
@@ -576,7 +540,6 @@ const WeekView = ({ weeklyTimeData, onTestIncrement, onResetData, currentStyles,
   }, [tooltipVisible, selectedBarIndex]);
 
   const handleOutsidePress = useCallback(() => {
-    // ... (نفس الكود)
     if (tooltipVisible) {
       setTooltipVisible(false);
       setSelectedBarIndex(null);
@@ -586,8 +549,6 @@ const WeekView = ({ weeklyTimeData, onTestIncrement, onResetData, currentStyles,
 
   return (
     <Pressable style={currentStyles.card} onPress={handleOutsidePress}>
-      
-      {/* تطبيق المحاذاة الديناميكية هنا */}
       <View style={[currentStyles.chartHeader, { alignItems: headerAlign }]}>
         <Text style={currentStyles.weekChartTitle}>{translation.weekStatsTitle} <Text style={currentStyles.weekChartSubtitle}>{translation.weekStatsUnit}</Text></Text>
       </View>
@@ -811,7 +772,17 @@ const ActiveTimeScreen = (props) => {
         {activeTab === 'day' && (
           <ScrollView contentContainerStyle={currentStyles.scrollContent} key={`day-${language}-${isDarkMode}`}>
             <DayView goalHour={goalHour} goalMinute={goalMinute} onOpenGoalModal={() => setModalVisible(true)} activeTimeForDate={activeTimeForDate} currentDate={currentDate} onNextDay={handleNextDay} onPreviousDay={handlePreviousDay} formatDisplayDate={formatDisplayDate} currentStyles={currentStyles} translation={translation} language={language} />
-            <ChallengeCard onPress={handleNavigateToAchievements} currentChallengeDuration={currentChallengeDuration} remainingDays={remainingDays} currentStyles={currentStyles} translation={translation} language={language} />
+            
+            {/* --- تم استبدال الكود القديم بالمكون الموحد هنا --- */}
+            <ChallengeCard 
+                onPress={handleNavigateToAchievements} 
+                currentChallengeDuration={currentChallengeDuration} 
+                remainingDays={remainingDays} 
+                translation={translation} 
+                styles={currentStyles} 
+                language={language} 
+            />
+            
             <WeekView weeklyTimeData={weeklyTimeData} onTestIncrement={handleTestIncrement} onResetData={handleResetData} currentStyles={currentStyles} translation={translation} language={language} />
           </ScrollView>
         )}

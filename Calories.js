@@ -1,5 +1,4 @@
-﻿// CaloriesScreen.js
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+﻿import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
     SafeAreaView, View, Text, StyleSheet, TouchableOpacity, Dimensions, ScrollView,
     Platform, Animated, Modal, Pressable, I18nManager, Alert, AppState, ActivityIndicator, useColorScheme,
@@ -16,7 +15,7 @@ import WeeklyCalories from './weeklycalories';
 import MonthlyCalories from './monthlycalories';
 
 // --- الثوابت والأبعاد ---
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 const CIRCLE_SIZE = width * 0.60;
 const CIRCLE_BORDER_WIDTH = 15;
@@ -233,6 +232,48 @@ const ActivityChart = React.memo(({ data = [], goal = DEFAULT_GOAL, styles, lang
         </Pressable> 
     ); 
 });
+
+// --- المكوّن الموحد الجديد ---
+const ChallengeCard = ({ onPress, currentChallengeDuration, remainingDays, translation, styles, language }) => {
+    const locale = language === 'ar' ? 'ar-EG' : 'en-US';
+
+    const badgeProgressAngle = useMemo(() => {
+        if (remainingDays <= 0 || currentChallengeDuration <= 0) return 359.999;
+        if (remainingDays >= currentChallengeDuration) return 0;
+        const daysCompleted = currentChallengeDuration - remainingDays;
+        return (daysCompleted / currentChallengeDuration) * 360;
+    }, [remainingDays, currentChallengeDuration]);
+
+    const badgeProgressPathD = useMemo(() =>
+        badgeProgressAngle > 0.01 ? describeArc(BADGE_CENTER_X, BADGE_CENTER_Y, BADGE_PATH_RADIUS, 0.01, badgeProgressAngle) : ''
+    , [badgeProgressAngle]);
+
+    const mainText = `${currentChallengeDuration.toLocaleString(locale)} ${translation.challengePrefix}`;
+    const subText = remainingDays > 0 ? `${remainingDays.toLocaleString(locale)} ${remainingDays === 1 ? translation.challengeRemainingSingular : translation.challengeRemainingPlural}` : translation.challengeCompleted;
+    const badgeText = remainingDays > 0 ? `${remainingDays.toLocaleString(locale)}${translation.challengeDaySuffix}` : '✓';
+    const chevronIcon = language === 'ar' ? "chevron-back" : "chevron-forward";
+
+    return (
+        <TouchableOpacity style={styles.challengeCardWrapper || {width: '100%', marginTop: 15}} onPress={onPress} activeOpacity={0.8}>
+            <View style={styles.summaryCard}>
+                <View style={styles.badgeContainer}>
+                    <Svg height={BADGE_SVG_SIZE} width={BADGE_SVG_SIZE} viewBox={`0 0 ${BADGE_SVG_SIZE} ${BADGE_SVG_SIZE}`}>
+                        <SvgCircle cx={BADGE_CENTER_X} cy={BADGE_CENTER_Y} r={BADGE_PATH_RADIUS} stroke={styles.badgeBackgroundCircle.stroke} strokeWidth={BADGE_CIRCLE_BORDER_WIDTH} fill="none" />
+                        <Path d={badgeProgressPathD} stroke={styles.badgeProgressCircle.stroke} strokeWidth={BADGE_CIRCLE_BORDER_WIDTH} fill="none" strokeLinecap="round" />
+                    </Svg>
+                    <View style={styles.badgeTextContainer}>
+                        <Text style={styles.badgeText}>{badgeText}</Text>
+                    </View>
+                </View>
+                <View style={styles.summaryTextContainer}>
+                    <Text style={styles.summaryMainText}>{mainText}</Text>
+                    <Text style={styles.summarySubText}>{subText}</Text>
+                </View>
+                <Ionicons name={chevronIcon} size={24} color={styles.summaryChevron.color} />
+            </View>
+        </TouchableOpacity>
+    );
+};
 
 const CaloriesScreen = (props) => {
     const { onNavigate, currentScreenName, onNavigateToAchievements, language: initialLanguage, isDarkMode: initialIsDarkMode } = props;
@@ -544,29 +585,15 @@ const CaloriesScreen = (props) => {
                             <AnimatedStatItem type="distance" value={rawDistance} unit={translation.distanceUnit} styles={currentStyles} formatter={v => v.toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} />
                         </View>
                         
-                        <TouchableOpacity activeOpacity={0.8} onPress={handleNavigateToAchievements}>
-                            <View style={currentStyles.summaryCard}>
-                                <View style={currentStyles.badgeContainer}>
-                                    <Svg height={BADGE_SVG_SIZE} width={BADGE_SVG_SIZE} viewBox={`0 0 ${BADGE_SVG_SIZE} ${BADGE_SVG_SIZE}`}>
-                                        <SvgCircle cx={BADGE_CENTER_X} cy={BADGE_CENTER_Y} r={BADGE_PATH_RADIUS} stroke={currentStyles.badgeBackgroundCircle.stroke} strokeWidth={BADGE_CIRCLE_BORDER_WIDTH} fill="none" />
-                                        <Path d={badgeProgressPathD} stroke={currentStyles.badgeProgressCircle.stroke} strokeWidth={BADGE_CIRCLE_BORDER_WIDTH} fill="none" strokeLinecap="round" />
-                                    </Svg>
-                                    <View style={currentStyles.badgeTextContainer}>
-                                        <Text style={currentStyles.badgeText}>{remainingDays > 0 ? `${remainingDays.toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US')}${translation.challengeDaySuffix}` : '✓'}</Text>
-                                    </View>
-                                </View>
-                                <View style={currentStyles.summaryTextContainer}>
-                                    <Text style={currentStyles.summaryMainText}>{`${currentChallengeDuration.toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US')} ${translation.challengePrefix}`}</Text>
-                                    <Text style={currentStyles.summarySubText}>{remainingDays > 0 ? `${remainingDays.toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US')} ${remainingDays === 1 ? translation.challengeRemainingSingular : translation.challengeRemainingPlural}` : translation.challengeCompleted}</Text>
-                                </View>
-                                <Ionicons 
-    name={language === 'ar' ? "chevron-back" : "chevron-forward"} 
-    size={24} 
-    color={currentStyles.summaryChevron.color} 
-/>
-
-                            </View>
-                        </TouchableOpacity>
+                        {/* --- تم استبدال الكود القديم بالمكون الموحد هنا --- */}
+                        <ChallengeCard 
+                            onPress={handleNavigateToAchievements} 
+                            currentChallengeDuration={currentChallengeDuration} 
+                            remainingDays={remainingDays} 
+                            translation={translation} 
+                            styles={currentStyles} 
+                            language={language} 
+                        />
                         
                         <View style={currentStyles.testButtonsContainer}>
                             <TouchableOpacity style={currentStyles.testButton} onPress={handleAddSteps} disabled={!isToday(currentDate)}>
@@ -702,6 +729,7 @@ circle: {
     statValue: { fontSize: 20, fontWeight: 'bold', color: '#388e3c', fontVariant: ['tabular-nums'] }, 
     statUnit: { fontSize: 14, color: '#757575', marginTop: 2 },
     
+    challengeCardWrapper: { width: '100%', alignItems: 'center', marginTop: 15 },
     summaryCard: { flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#ffffff', borderRadius: 15, padding: 15, width: '90%', marginTop: 30, alignSelf: 'center', elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, },
     summaryTextContainer: { alignItems: I18nManager.isRTL ? 'flex-end' : 'flex-start', flex: 1, marginHorizontal: 12 },
     summaryMainText: { fontSize: 18, fontWeight: 'bold', color: '#424242', textAlign: I18nManager.isRTL ? 'right' : 'left' },

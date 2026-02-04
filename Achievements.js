@@ -256,7 +256,20 @@ const AchievementsScreen = ({ navigation, route, language: propLanguage, darkMod
     <View style={currentStyles.collapsibleSection}>
       <TouchableOpacity onPress={onToggle} activeOpacity={0.7}>
         <View style={currentStyles.sectionHeader}>
-          <Icon name={isExpanded ? "keyboard-arrow-down" : (I18nManager.isRTL ? "keyboard-arrow-right" : "keyboard-arrow-left")} size={28} color={currentStyles.dropdownArrow.color} style={currentStyles.dropdownArrowStyle} />
+          <Icon 
+  name={
+    isExpanded 
+      ? "keyboard-arrow-down" // السهم باصص لتحت لما القائمة تكون مفتوحة
+      : (language === 'ar' ? "keyboard-arrow-left" : "keyboard-arrow-right") 
+      // حالة الإغلاق:
+      // لو عربي: السهم يبص شمال (left)
+      // لو إنجليزي: السهم يبص يمين (right)
+  } 
+  size={28} 
+  color={currentStyles.dropdownArrow.color} 
+  style={currentStyles.dropdownArrowStyle} 
+/>
+
           <Text style={currentStyles.sectionTitle}>{translation[titleKey]}</Text>
         </View>
       </TouchableOpacity>
@@ -270,7 +283,14 @@ const AchievementsScreen = ({ navigation, route, language: propLanguage, darkMod
     <SafeAreaView style={currentStyles.safeArea}>
       <View style={currentStyles.flexContainer}>
         <ScrollView style={currentStyles.scrollViewStyle} contentContainerStyle={currentStyles.contentContainer} showsVerticalScrollIndicator={false} >
-          <View style={currentStyles.headerContainer}><TouchableOpacity onPress={handleAction} style={currentStyles.actionButton}><Icon name={I18nManager.isRTL ? "arrow-back" : "arrow-forward"} size={28} color={currentStyles.headerIcon.color} /></TouchableOpacity></View>
+          <View style={currentStyles.headerContainer}><TouchableOpacity onPress={handleAction} style={currentStyles.actionButton}><Icon 
+    // إذا كانت اللغة عربية: سهم يمين (arrow-forward)
+    // إذا كانت إنجليزية: سهم يسار (arrow-back)
+    name={language === 'ar' ? "arrow-forward" : "arrow-back"} 
+    size={28} 
+    color={currentStyles.headerIcon.color} 
+/>
+</TouchableOpacity></View>
           {isLoadingTotalSteps ? ( <View style={currentStyles.loadingContainer}><ActivityIndicator size="large" color={currentStyles.loadingIndicator.color} /><Text style={currentStyles.loadingText}>{translation.loadingProgress}</Text></View> ) : ( <View style={currentStyles.topSection}><View style={currentStyles.levelBadgeContainer}><Progress.Circle style={currentStyles.levelProgressCircle} size={110} progress={1 - levelRingProgressVisual} color={currentStyles.levelProgressCircleColor.color} unfilledColor={currentStyles.levelProgressCircleUnfilled.color} thickness={8} borderWidth={0} showsText={false} direction="counter-clockwise" strokeCap="round" /><View style={currentStyles.levelBadgeInner}><Text style={currentStyles.levelBadgeText}>{currentLevelInfo.name}</Text></View></View><Text style={currentStyles.levelTitle}>{currentLevelInfo.title}</Text>{nextLevelInfo ? ( <Text style={currentStyles.levelProgressText}>{translation.stepsRemainingToLevel}{' '}<Text style={currentStyles.boldPrimaryGreenText}>{stepsRemaining.toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US')}</Text>{' '}{translation.stepsUnit} {language === 'en' ? translation.stepsToReach : ''} {nextLevelInfo.name}{language === 'ar' ? ` (${translation.stepsToReach})` : ''}</Text> ) : ( <Text style={currentStyles.levelProgressText}>{translation.levelReachedHighest}</Text> )}<View style={currentStyles.progressBarArea}><View style={currentStyles.progressBarContainer}><View style={[currentStyles.progressBarFill, { width: `${progressPercent}%` }]} /><View style={[currentStyles.progressBarMarker, { left: `${progressPercent}%` }]} /></View><View style={currentStyles.progressLabels}><Text style={currentStyles.progressLabelText}> {(currentLevelInfo.level === 1 && totalAccumulatedSteps < (LEVELS[1]?.requiredSteps || Infinity)) ? totalAccumulatedSteps.toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US') : `${(progressBarStartSteps / 1000).toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US')}k`} </Text><Text style={currentStyles.progressLabelText}>{nextLevelTargetLabel}</Text></View></View></View> )}
            <CollapsibleSection titleKey="dailyStepsSectionTitle" isExpanded={isDailyStepsExpanded} onToggle={() => toggleExpansion(setIsDailyStepsExpanded, isDailyStepsExpanded)} data={dailyStepsBadgesData} BadgeComponent={DailyStepsBadge} count={passedDailySteps} />
            <CollapsibleSection titleKey="consecutiveDaysSectionTitle" isExpanded={isConsecutiveDaysExpanded} onToggle={() => toggleExpansion(setIsConsecutiveDaysExpanded, isConsecutiveDaysExpanded)} data={consecutiveBadgesData} BadgeComponent={HexBadge} count={consecutiveDays} isLoading={isLoadingConsecutiveDays} />
